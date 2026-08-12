@@ -9,63 +9,86 @@ Read-only. Single user. Named for the set of games in a window.
 
 ---
 
-## Bootstrap
+## Running it
+
+The Supabase project (`slate`, ref `qqxceojybbacughapnom`) exists and
+migration `0001_init` is applied. One secret is still missing:
 
 ```bash
-npx create-next-app@latest slate \
-  --typescript --tailwind --app --src-dir --eslint --use-npm
-cd slate
-
-npm i @supabase/supabase-js zod
-npm i -D vitest @vitest/coverage-v8 supabase
-
-# drop the handoff files in
-cp ../CLAUDE.md ../DESIGN.md .
-mkdir -p supabase/migrations src/adapters src/sync src/db fixtures
-cp ../schema.sql supabase/migrations/0001_init.sql
-cp ../adapter.ts src/adapters/types.ts
-cp ../sleeper.ts src/adapters/sleeper.ts
-cp ../globals.css src/app/globals.css
-cp ../.env.example .env.local
+npm install
 ```
 
-Then create a Supabase project, run the migration, and generate types:
+Then put your **service role** key in `.env.local` as
+`SUPABASE_SERVICE_ROLE_KEY` — Supabase dashboard → Project Settings → API
+keys. Nothing server-side can read or write until it's set. With that in
+place, fill the database in order:
 
 ```bash
-npx supabase link --project-ref <ref>
-npx supabase db push
-npx supabase gen types typescript --linked > src/db/types.gen.ts
+npm run sync -- players
 ```
-
-## First thing to verify
-
-Before writing any UI, confirm the data path works end to end:
 
 ```bash
-npx tsx scripts/smoke.ts        # you'll write this in 5 lines
+npm run sync -- daily
 ```
 
-It should print your Sleeper leagues for the current season. If that works,
-everything downstream is just rendering.
-
-## Handing off to Claude Code
-
+```bash
+npm run sync -- live
 ```
-Read CLAUDE.md and DESIGN.md. Then build M0 and M1.
-src/adapters/sleeper.ts is already implemented — use it as the reference
-for the other two adapters. Do not touch the write path; this app is read-only.
+
+`players` builds the ~11k-row directory and the crosswalk, `daily` pulls
+leagues/teams/rosters/transactions, `live` writes scores. Order matters on
+a cold database. Then:
+
+```bash
+npm run dev
 ```
+
+## Checking the data path without a database
+
+```bash
+npm run smoke
+```
+
+Prints your Sleeper leagues, your team in each, and the current week's
+score. Touches Sleeper but not Postgres, so it works before the service
+role key is set.
+
+## Tests
+
+```bash
+npm test
+```
+
+41 tests, all against `fixtures/sleeper/`. No test hits a live API. Re-record
+with `npm run fixtures` only when you deliberately want to refresh against a
+schema change.
+
+## Sync cadence
+
+`vercel.json` schedules the cron route in UTC (Vercel Cron has no timezone,
+and no DST awareness — the windows are set for EDT and drift an hour after
+the November changeover). **Vercel Hobby caps cron jobs**, so if the 5-minute
+live schedule is rejected, move the `live` entries to a GitHub Action and
+keep `daily` + `players` on Vercel.
 
 ## Order of operations
 
-1. **M0** skeleton + migration + password gate
-2. **M1** Sleeper adapter → sync job → crosswalk → one league rendering live
+1. ~~**M0** skeleton + migration + password gate~~ — done
+2. ~~**M1** Sleeper adapter → sync job → crosswalk → one league rendering live~~ — done
 3. **M2** the "Left to play" band (Sleeper data is enough)
 4. **M3** Yahoo (OAuth read scope)
 5. **M4** ESPN (cookie paste)
 6. **M5** whole-league scoreboard expansion
 
 Don't start a milestone until the previous one works against real data.
+
+### Known edges left for M2
+
+- `is_final` is derived from the week rolling over, because Sleeper has no
+  per-game state. The game-window data M2 needs will sharpen it.
+- The card footer shows the margin, not a win probability — that needs a
+  variance model, and a made-up percentage is worse than no percentage.
+- "N to play" is deliberately absent until the left-to-play spine lands.
 
 ## Costs
 

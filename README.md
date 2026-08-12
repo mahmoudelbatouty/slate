@@ -3,8 +3,9 @@
 One screen for fantasy leagues spread across Sleeper, ESPN, and Yahoo.
 Read-only. Single user. Named for the set of games in a window.
 
-- `CLAUDE.md` — the build brief. Point Claude Code at this first.
+- `CLAUDE.md` — the build brief. Point your coding agent at this first.
 - `DESIGN.md` — visual direction, tokens, the signature feature.
+- `HANDOFF-M2.md` — current state, and everything needed to build M2.
 - `preview.html` — open in a browser to see the target design.
 
 ---

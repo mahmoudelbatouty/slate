@@ -64,10 +64,27 @@ export function scoringKey(t: CanonicalLeague["scoringType"]): ScoringKey {
  * Returns an empty map on failure rather than throwing: a missing
  * projection should grey out a number, not fail the sync.
  */
+type ProjectionMap = Map<string, Record<ScoringKey, number | null>>;
+
+// One call serves every league, so memoize per (season, week) for the life
+// of the process. A sync run touching six leagues hits the host once.
+// Failures are NOT cached — a transient 502 shouldn't blank projections
+// until the next deploy.
+const projectionCache = new Map<string, { at: number; map: ProjectionMap }>();
+const PROJECTION_TTL_MS = 60 * 60 * 1000;
+
+export function clearProjectionCache(): void {
+  projectionCache.clear();
+}
+
 export async function getProjections(
   season: number,
   week: number
-): Promise<Map<string, Record<ScoringKey, number | null>>> {
+): Promise<ProjectionMap> {
+  const cacheKey = `${season}-${week}`;
+  const hit = projectionCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < PROJECTION_TTL_MS) return hit.map;
+
   const qs = new URLSearchParams({ season_type: "regular" });
   for (const p of POSITIONS) qs.append("position[]", p);
 
@@ -82,7 +99,7 @@ export async function getProjections(
       stats?: Record<string, number>;
     }>;
 
-    const out = new Map<string, Record<ScoringKey, number | null>>();
+    const out: ProjectionMap = new Map();
     for (const r of rows) {
       if (!r.player_id) continue;
       out.set(r.player_id, {
@@ -91,6 +108,7 @@ export async function getProjections(
         pts_std: r.stats?.pts_std ?? null,
       });
     }
+    projectionCache.set(cacheKey, { at: Date.now(), map: out });
     return out;
   } catch {
     return new Map();
@@ -204,6 +222,32 @@ function slotCounts(positions: string[]): Record<string, number> {
   }, {});
 }
 
+/**
+ * Sleeper's transaction vocabulary is free_agent | waiver | trade |
+ * commissioner. Only trade and waiver map by name — the other two are
+ * roster moves whose meaning is in the payload, so a free_agent row that
+ * only drops somebody is a drop, not an add. An unknown type returns null
+ * and the row is skipped rather than written as something the canonical
+ * union doesn't allow.
+ */
+function mapTransactionType(
+  type: string,
+  hasAdds: boolean,
+  hasDrops: boolean
+): CanonicalTransaction["type"] | null {
+  switch (type) {
+    case "trade":
+      return "trade";
+    case "waiver":
+      return "waiver";
+    case "free_agent":
+    case "commissioner":
+      return hasAdds ? "add" : hasDrops ? "drop" : null;
+    default:
+      return null;
+  }
+}
+
 function mapStatus(s: string): CanonicalLeague["status"] {
   if (s === "in_season" || s === "post_season") return "in_season";
   if (s === "complete") return "complete";
@@ -238,7 +282,15 @@ export const sleeperAdapter: PlatformAdapter = {
         name: l.name,
         teamCount: l.total_rosters,
         scoringType: scoringType(l.scoring_settings),
-        scoringRaw: { scoring_settings: l.scoring_settings, settings: l.settings },
+        // roster_positions is kept in the raw blob because rosterSlots below
+        // is a count map and loses ORDER — and order is exactly what resolves
+        // Sleeper's positional `starters` array into real slot names.
+        // See sync/slots.ts.
+        scoringRaw: {
+          scoring_settings: l.scoring_settings,
+          settings: l.settings,
+          roster_positions: l.roster_positions,
+        },
         rosterSlots: slotCounts(l.roster_positions),
         currentWeek: state.week,
         status: mapStatus(l.status),
@@ -256,7 +308,9 @@ export const sleeperAdapter: PlatformAdapter = {
     );
     const byId = new Map(users.map((u) => [u.user_id, u]));
 
-    const teams = rosters.map((r) => {
+    // Annotated: `standing` starts null and is filled in below, so the
+    // inferred literal type would otherwise be `null` and reject the write.
+    const teams: CanonicalTeam[] = rosters.map((r) => {
       const u = r.owner_id ? byId.get(r.owner_id) : undefined;
       const s = r.settings;
       return {
@@ -359,21 +413,25 @@ export const sleeperAdapter: PlatformAdapter = {
 
       for (const t of raw) {
         if (t.status !== "complete") continue;
+
+        const adds = Object.entries(t.adds ?? {}).map(([pid, rid]) => ({
+          teamExternalId: String(rid),
+          externalPlayerId: pid,
+        }));
+        const drops = Object.entries(t.drops ?? {}).map(([pid, rid]) => ({
+          teamExternalId: String(rid),
+          externalPlayerId: pid,
+        }));
+
+        const type = mapTransactionType(t.type, adds.length > 0, drops.length > 0);
+        if (!type) continue;
+
         out.push({
           externalId: t.transaction_id,
-          type: t.type === "free_agent" ? "add" : (t.type as CanonicalTransaction["type"]),
+          type,
           week,
           occurredAt: new Date(t.status_updated ?? Date.now()).toISOString(),
-          payload: {
-            adds: Object.entries(t.adds ?? {}).map(([pid, rid]) => ({
-              teamExternalId: String(rid),
-              externalPlayerId: pid,
-            })),
-            drops: Object.entries(t.drops ?? {}).map(([pid, rid]) => ({
-              teamExternalId: String(rid),
-              externalPlayerId: pid,
-            })),
-          },
+          payload: { adds, drops },
         });
       }
     }

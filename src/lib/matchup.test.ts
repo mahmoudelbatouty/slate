@@ -1,0 +1,86 @@
+import { describe, expect, it } from "vitest";
+import { byDrama, deepLink, MONOGRAM, type MatchupCard, type Platform } from "./matchup";
+
+function card(
+  over: Omit<Partial<MatchupCard>, "mine"> & { mine?: number; theirs?: number }
+): MatchupCard {
+  const { mine = 0, theirs = 0, ...rest } = over;
+  return {
+    leagueId: "l1",
+    leagueName: "Dynasty Degenerates",
+    leagueExternalId: "1313273030905974784",
+    platform: "sleeper",
+    season: 2026,
+    week: 11,
+    isFinal: false,
+    syncedAt: null,
+    mine: { teamId: "t1", externalId: "1", name: "Mine", points: mine, projected: null },
+    opponent: {
+      teamId: "t2",
+      externalId: "2",
+      name: "Theirs",
+      points: theirs,
+      projected: null,
+    },
+    ...rest,
+  };
+}
+
+describe("byDrama", () => {
+  it("puts the closest margin first", () => {
+    const wide = card({ mine: 100, theirs: 40, leagueId: "wide" });
+    const close = card({ mine: 90, theirs: 88, leagueId: "close" });
+    const mid = card({ mine: 90, theirs: 75, leagueId: "mid" });
+
+    const order = [wide, close, mid].sort(byDrama).map((c) => c.leagueId);
+    expect(order).toEqual(["close", "mid", "wide"]);
+  });
+
+  it("sinks finals below anything still playing", () => {
+    // A one-point final is settled; a 40-point live game is not.
+    const settled = card({ mine: 100, theirs: 99, isFinal: true, leagueId: "final" });
+    const blowout = card({ mine: 100, theirs: 60, leagueId: "live" });
+
+    expect([settled, blowout].sort(byDrama).map((c) => c.leagueId)).toEqual([
+      "live",
+      "final",
+    ]);
+  });
+
+  it("treats a missing opponent as a zero score rather than crashing", () => {
+    const solo = card({ mine: 50, opponent: null, leagueId: "solo" });
+    expect(() => [solo, card({ mine: 1, theirs: 1 })].sort(byDrama)).not.toThrow();
+  });
+});
+
+describe("deepLink", () => {
+  it("builds the Sleeper team URL", () => {
+    expect(deepLink(card({})).href).toBe(
+      "https://sleeper.com/leagues/1313273030905974784/team"
+    );
+  });
+
+  it("builds the ESPN URL with team and season", () => {
+    const link = deepLink(card({ platform: "espn", leagueExternalId: "44332" }));
+    expect(link.href).toBe(
+      "https://fantasy.espn.com/football/team?leagueId=44332&teamId=1&seasonId=2026"
+    );
+    expect(link.label).toBe("Open in ESPN");
+  });
+
+  it("builds the Yahoo URL from league and team keys", () => {
+    const link = deepLink(card({ platform: "yahoo", leagueExternalId: "nfl.l.123456" }));
+    expect(link.href).toBe(
+      "https://football.fantasysports.yahoo.com/f1/nfl.l.123456/1"
+    );
+  });
+});
+
+describe("MONOGRAM", () => {
+  it("covers every platform with two characters", () => {
+    const platforms: Platform[] = ["sleeper", "espn", "yahoo"];
+    for (const platform of platforms) {
+      expect(MONOGRAM[platform]).toHaveLength(2);
+    }
+  });
+});

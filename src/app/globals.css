@@ -1,9 +1,10 @@
+/* Fonts first: @import rules have to precede everything else once
+   Tailwind's own imports are expanded. */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Public+Sans:wght@400;600&family=DM+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
 /* Slate — design tokens. See DESIGN.md.
    Rule: color encodes game state only. Platform is a mono monogram. */
-
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Public+Sans:wght@400;600&family=DM+Mono:wght@400;500&display=swap");
 
 @theme {
   --font-display: "Archivo", system-ui, sans-serif;
@@ -19,11 +20,11 @@
   --text-2xs: 11px;
 
   --container-app: 560px;
-}
 
-/* Floodlight — default */
-:root,
-[data-theme="floodlight"] {
+  /* Floodlight — default. Declared here (not just :root) so Tailwind
+     generates bg-ink / text-bone-dim / border-ink-line utilities from them.
+     The [data-theme] blocks below re-point the same variables, so the
+     utilities swap wholesale. Components never name a hex. */
   --color-ink: #0f151a;
   --color-ink-raised: #171f26;
   --color-ink-line: #253039;
@@ -35,9 +36,22 @@
   --color-stone: #5a6670; /* final, settled, inert */
 }
 
+/* Floodlight — default */
+[data-theme="floodlight"] {
+  --color-ink: #0f151a;
+  --color-ink-raised: #171f26;
+  --color-ink-line: #253039;
+  --color-bone: #e8e5de;
+  --color-bone-dim: #8d959d;
+  --color-amber: #f2a33c;
+  --color-turf: #4e9b6e;
+  --color-flag: #cc5847;
+  --color-stone: #5a6670;
+}
+
 /* Daybreak — light alternate */
 [data-theme="daybreak"] {
-  --color-ink: #EDEDE7;
+  --color-ink: #edede7;
   --color-ink-raised: #f7f7f3;
   --color-ink-line: #d4d5cc;
   --color-bone: #161c21;
@@ -80,6 +94,21 @@
     outline: 2px solid var(--color-amber);
     outline-offset: 2px;
   }
+}
+
+/* The live dot. The only animation on the page. */
+@keyframes slate-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.pulse {
+  animation: slate-pulse 2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

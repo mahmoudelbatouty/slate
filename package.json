@@ -6,13 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke": "tsx scripts/smoke.ts",
+    "sync": "tsx scripts/sync.ts",
+    "fixtures": "tsx scripts/record-fixtures.ts",
+    "types": "supabase gen types typescript --linked > src/db/types.gen.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

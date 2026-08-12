@@ -7,7 +7,7 @@ import { safeEqual } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODES: SyncMode[] = ["live", "daily", "players"];
+const MODES: SyncMode[] = ["live", "daily", "players", "backfill"];
 
 function authorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;

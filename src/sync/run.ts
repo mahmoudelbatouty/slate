@@ -29,7 +29,7 @@ import type {
 import { CrosswalkIndex, type CanonicalPlayerRow } from "./crosswalk";
 import { resolveSlot, rosterPositionsFromRaw } from "./slots";
 
-export type SyncMode = "live" | "daily" | "players";
+export type SyncMode = "live" | "daily" | "players" | "backfill";
 
 export interface SyncResult {
   platform: Platform;
@@ -78,7 +78,7 @@ export async function runSync(
       } else if (mode === "daily") {
         Object.assign(stats, await syncDaily(db, adapter, creds, season));
       } else {
-        Object.assign(stats, await syncLive(db, adapter, creds, season));
+        Object.assign(stats, await syncScores(db, adapter, creds, season, mode));
       }
 
       results.push({ platform: adapter.platform, mode, status: "ok", stats });
@@ -324,13 +324,27 @@ async function syncDaily(
   };
 }
 
-// ---------- live ----------
+// ---------- live / backfill ----------
 
-async function syncLive(
+/**
+ * Which weeks to pull for a league.
+ *
+ *   live     — just the current week, every 5 minutes on gameday
+ *   backfill — 1..current, so the dashboard's week filter has history
+ *              to show. One call per league per week; cheap, and the
+ *              projections map is memoized across all of them.
+ */
+export function weeksFor(mode: "live" | "backfill", currentWeek: number): number[] {
+  if (mode === "live") return [currentWeek];
+  return Array.from({ length: currentWeek }, (_, i) => i + 1);
+}
+
+async function syncScores(
   db: Db,
   adapter: PlatformAdapter,
   creds: Credentials,
-  season: number
+  season: number,
+  mode: "live" | "backfill"
 ): Promise<Record<string, number>> {
   const { data: leagues, error } = await db
     .from("leagues")
@@ -341,14 +355,15 @@ async function syncLive(
   if (error) throw new Error(`leagues read: ${error.message}`);
   if (!leagues?.length) {
     // Nothing to score yet — run `daily` first.
-    return { leagues: 0, matchups: 0 };
+    return { leagues: 0, matchups: 0, weeks: 0 };
   }
 
   let matchupCount = 0;
+  let weekCount = 0;
 
   for (const league of leagues) {
-    const week = league.current_week;
-    if (!week) continue;
+    const currentWeek = league.current_week;
+    if (!currentWeek) continue;
 
     const { data: teamRows, error: teamError } = await db
       .from("teams")
@@ -358,35 +373,43 @@ async function syncLive(
     if (teamError) throw new Error(`teams read: ${teamError.message}`);
     const teamIds = new Map((teamRows ?? []).map((t) => [t.external_id, t.id]));
 
-    const matchups = await adapter.getMatchups(creds, league.external_id, season, week);
+    for (const week of weeksFor(mode, currentWeek)) {
+      const matchups = await adapter.getMatchups(
+        creds,
+        league.external_id,
+        season,
+        week
+      );
+      weekCount++;
 
-    const rows = matchups
-      .map((m) => {
-        const teamId = teamIds.get(m.teamExternalId);
-        if (!teamId) return null;
-        return {
-          league_id: league.id,
-          week: m.week,
-          matchup_key: m.matchupKey,
-          team_id: teamId,
-          opponent_team_id: m.opponentExternalId
-            ? (teamIds.get(m.opponentExternalId) ?? null)
-            : null,
-          points: m.points,
-          projected_points: m.projectedPoints,
-          // Sleeper has no per-game state, so "final" means the week has
-          // rolled over. M2's game-window data will sharpen this.
-          is_final: m.isFinal || m.week < week,
-        };
-      })
-      .filter((r): r is NonNullable<typeof r> => r !== null);
+      const rows = matchups
+        .map((m) => {
+          const teamId = teamIds.get(m.teamExternalId);
+          if (!teamId) return null;
+          return {
+            league_id: league.id,
+            week: m.week,
+            matchup_key: m.matchupKey,
+            team_id: teamId,
+            opponent_team_id: m.opponentExternalId
+              ? (teamIds.get(m.opponentExternalId) ?? null)
+              : null,
+            points: m.points,
+            projected_points: m.projectedPoints,
+            // Sleeper has no per-game state, so "final" means the week has
+            // rolled over. M2's game-window data will sharpen this.
+            is_final: m.isFinal || m.week < currentWeek,
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
 
-    if (rows.length) {
-      const { error: upsertError } = await db
-        .from("matchups")
-        .upsert(rows, { onConflict: "league_id,week,team_id" });
-      if (upsertError) throw new Error(`matchups upsert: ${upsertError.message}`);
-      matchupCount += rows.length;
+      if (rows.length) {
+        const { error: upsertError } = await db
+          .from("matchups")
+          .upsert(rows, { onConflict: "league_id,week,team_id" });
+        if (upsertError) throw new Error(`matchups upsert: ${upsertError.message}`);
+        matchupCount += rows.length;
+      }
     }
 
     await db
@@ -395,7 +418,7 @@ async function syncLive(
       .eq("id", league.id);
   }
 
-  return { leagues: leagues.length, matchups: matchupCount };
+  return { leagues: leagues.length, matchups: matchupCount, weeks: weekCount };
 }
 
 // ---------- upsert helpers ----------

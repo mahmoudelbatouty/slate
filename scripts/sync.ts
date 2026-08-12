@@ -3,16 +3,17 @@
  *
  *   npm run sync -- players    # Sleeper directory + crosswalk (do this first)
  *   npm run sync -- daily      # leagues, teams, rosters, transactions
- *   npm run sync -- live       # matchups + scores
+ *   npm run sync -- live       # matchups + scores, current week only
+ *   npm run sync -- backfill   # every week 1..current, for the week filter
  *
- * Order matters on a cold database: players, then daily, then live.
+ * Order matters on a cold database: players, then daily, then backfill.
  */
 
 import { config } from "dotenv";
 
 config({ path: ".env.local", quiet: true });
 
-const MODES = ["live", "daily", "players"] as const;
+const MODES = ["live", "daily", "players", "backfill"] as const;
 type Mode = (typeof MODES)[number];
 
 async function main() {

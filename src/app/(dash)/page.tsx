@@ -3,23 +3,34 @@ import { LeagueCard } from "@/components/LeagueCard";
 import { SyncedAt } from "@/components/SyncedAt";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Today } from "@/components/Today";
+import { WeekPicker } from "@/components/WeekPicker";
 
 // Reads Postgres on every request. The data is already local, so there's
 // nothing to cache around — and a stale score is worse than a query.
 export const dynamic = "force-dynamic";
 
-export default async function Dashboard() {
-  const { configured, cards, lastSyncedAt, leagueCount } = await getDashboard();
-  const week = cards[0]?.week ?? null;
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
+  const { week: raw } = await searchParams;
+  const requested = Number(raw);
+
+  const { configured, cards, lastSyncedAt, leagueCount, week, weeks } =
+    await getDashboard(Number.isInteger(requested) ? requested : undefined);
+
+  const isCurrent = weeks.find((w) => w.week === week)?.isCurrent ?? true;
 
   return (
     <main className="mx-auto max-w-app px-[18px] pb-16">
       <header className="sticky top-0 z-10 border-b border-ink-line bg-ink pt-[22px] pb-[14px]">
-        <Today week={week} />
+        <Today week={week} isCurrent={isCurrent} />
         <div className="flex items-center justify-between gap-3">
           <SyncedAt iso={lastSyncedAt} leagueCount={leagueCount} />
           <ThemeToggle />
         </div>
+        <WeekPicker weeks={weeks} selected={week} />
       </header>
 
       {!configured ? (
@@ -30,7 +41,9 @@ export default async function Dashboard() {
         <Empty>
           {leagueCount === 0
             ? "No leagues yet. Add your Sleeper username in Connections, then run a sync."
-            : "No matchups for the current week yet. Run a live sync."}
+            : isCurrent
+              ? "No matchups for this week yet. Run a live sync."
+              : `Week ${week} hasn't been synced. Run \`npm run sync -- backfill\`.`}
         </Empty>
       ) : (
         <section className="mt-[22px] flex flex-col gap-3">

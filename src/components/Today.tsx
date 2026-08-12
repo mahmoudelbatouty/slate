@@ -3,23 +3,29 @@
 import { useClock } from "@/lib/useClock";
 
 /**
- * The weekday and clock in the header. Client-side because "Sunday" and
- * "1:07 PM" are properties of the reader's timezone, not the server's.
+ * Header line: the week you're looking at, big, because that's what the
+ * filter changes. The weekday and clock sit in the small slot — useful
+ * context at 1pm on a Sunday, noise on a Wednesday in August, and never
+ * worth the hero position either way.
  */
-export function Today({ week }: { week: number | null }) {
+export function Today({ week, isCurrent }: { week: number | null; isCurrent: boolean }) {
   const tick = useClock();
   const now = tick === null ? null : new Date();
 
-  const day = now ? now.toLocaleDateString(undefined, { weekday: "long" }) : "Slate";
+  const day = now
+    ? now.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase()
+    : "";
   const time = now
     ? now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
     : "";
 
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <h1 className="display text-[34px] leading-none">{day}</h1>
-      <div className="mono text-[13px] tracking-[0.06em] text-bone-dim">
-        {week ? `WEEK ${week}` : "OFF SEASON"}
+      <h1 className="display text-[34px] leading-none">
+        {week ? `Week ${week}` : "Slate"}
+      </h1>
+      <div className="mono shrink-0 text-[13px] tracking-[0.06em] text-bone-dim">
+        {week && !isCurrent ? "PAST" : day}
         {time && ` · ${time}`}
       </div>
     </div>

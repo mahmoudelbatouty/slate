@@ -1,23 +1,43 @@
 import "server-only";
 import { db, dbConfigured } from "@/db/client";
-import { byDrama, type MatchupCard } from "./matchup";
+import { byDrama, resolveWeek, type MatchupCard } from "./matchup";
+
+export interface WeekOption {
+  week: number;
+  /** False when nothing has been synced for this week yet. */
+  hasData: boolean;
+  isCurrent: boolean;
+}
 
 export interface Dashboard {
   configured: boolean;
   cards: MatchupCard[];
   lastSyncedAt: string | null;
   leagueCount: number;
+  /** The week actually being shown, after clamping whatever was asked for. */
+  week: number | null;
+  weeks: WeekOption[];
 }
+
+const EMPTY: Dashboard = {
+  configured: false,
+  cards: [],
+  lastSyncedAt: null,
+  leagueCount: 0,
+  week: null,
+  weeks: [],
+};
 
 /**
  * Reads Postgres and nothing else. No platform API is reachable from a
  * page render — that constraint is what keeps this fast and keeps it
  * standing when a platform breaks.
+ *
+ * `requestedWeek` comes from the URL and is clamped to something real, so
+ * a hand-typed ?week=99 shows the current week rather than an error.
  */
-export async function getDashboard(): Promise<Dashboard> {
-  if (!dbConfigured()) {
-    return { configured: false, cards: [], lastSyncedAt: null, leagueCount: 0 };
-  }
+export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
+  if (!dbConfigured()) return EMPTY;
 
   const client = db();
 
@@ -26,9 +46,11 @@ export async function getDashboard(): Promise<Dashboard> {
     .select("id, name, external_id, platform, season, current_week, synced_at");
 
   if (error) throw new Error(`leagues read: ${error.message}`);
-  if (!leagues?.length) {
-    return { configured: true, cards: [], lastSyncedAt: null, leagueCount: 0 };
-  }
+  if (!leagues?.length) return { ...EMPTY, configured: true };
+
+  // Leagues can disagree about the current week (different platforms, or
+  // one league already eliminated). The furthest-along wins for defaults.
+  const currentWeek = Math.max(...leagues.map((l) => l.current_week ?? 0), 0) || null;
 
   // Whole weeks rather than just my own row, deliberately: M5's
   // whole-league toggle needs exactly this data and it's a few dozen rows.
@@ -51,10 +73,27 @@ export async function getDashboard(): Promise<Dashboard> {
   const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
   const rowByTeam = new Map((rows ?? []).map((r) => [`${r.week}:${r.team_id}`, r]));
 
+  // Every week up to now is selectable, whether or not it's been synced —
+  // an unsynced week shows an empty state rather than vanishing from the
+  // filter, because "nothing here yet" is the useful answer.
+  const weeksWithData = new Set((rows ?? []).map((r) => r.week));
+  const weeks: WeekOption[] = currentWeek
+    ? Array.from({ length: currentWeek }, (_, i) => i + 1).map((week) => ({
+        week,
+        hasData: weeksWithData.has(week),
+        isCurrent: week === currentWeek,
+      }))
+    : [];
+
+  const week = resolveWeek(
+    requestedWeek,
+    weeks.map((w) => w.week),
+    currentWeek
+  );
+
   const cards: MatchupCard[] = [];
 
   for (const league of leagues) {
-    const week = league.current_week;
     if (!week) continue;
 
     const mineRow = (rows ?? []).find(
@@ -116,5 +155,7 @@ export async function getDashboard(): Promise<Dashboard> {
     cards,
     lastSyncedAt: syncTimes.at(-1) ?? null,
     leagueCount: leagues.length,
+    week,
+    weeks,
   };
 }

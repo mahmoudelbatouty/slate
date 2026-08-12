@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { byDrama, deepLink, MONOGRAM, type MatchupCard, type Platform } from "./matchup";
+import {
+  byDrama,
+  deepLink,
+  MONOGRAM,
+  resolveWeek,
+  type MatchupCard,
+  type Platform,
+} from "./matchup";
 
 function card(
   over: Omit<Partial<MatchupCard>, "mine"> & { mine?: number; theirs?: number }
@@ -73,6 +80,32 @@ describe("deepLink", () => {
     expect(link.href).toBe(
       "https://football.fantasysports.yahoo.com/f1/nfl.l.123456/1"
     );
+  });
+});
+
+describe("resolveWeek", () => {
+  const weeks = [1, 2, 3, 4, 5];
+
+  it("honours a week that exists", () => {
+    expect(resolveWeek(3, weeks, 5)).toBe(3);
+  });
+
+  it("defaults to the current week when none was asked for", () => {
+    expect(resolveWeek(undefined, weeks, 5)).toBe(5);
+  });
+
+  it("falls back rather than showing a week that isn't there", () => {
+    // ?week= is hand-typeable and shareable, so it gets everything.
+    expect(resolveWeek(99, weeks, 5)).toBe(5);
+    expect(resolveWeek(0, weeks, 5)).toBe(5);
+    expect(resolveWeek(-3, weeks, 5)).toBe(5);
+    expect(resolveWeek(2.5, weeks, 5)).toBe(5);
+    expect(resolveWeek(NaN, weeks, 5)).toBe(5);
+  });
+
+  it("stays null in the preseason when there's no week at all", () => {
+    expect(resolveWeek(4, [], null)).toBeNull();
+    expect(resolveWeek(undefined, [], null)).toBeNull();
   });
 });
 

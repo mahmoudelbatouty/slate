@@ -1,0 +1,247 @@
+# Slate
+
+One dashboard for fantasy leagues spread across Sleeper, ESPN, and Yahoo.
+
+**Single user.** This runs for one person (the repo owner). No signup, no
+multi-tenancy, no RLS in v1. Auth is a single hardcoded password or a Supabase
+magic link to one allowlisted email. Do not build a user system.
+
+---
+
+## Why this exists
+
+Three leagues on three platforms means three apps, three logins, and no way to
+see Sunday as one picture. The hub answers one question fast: **across every
+league I'm in, how am I doing right now, and what haven't I done yet?**
+
+Everything else is secondary. If a feature doesn't serve that question, cut it.
+
+---
+
+## Stack
+
+| Layer | Choice | Notes |
+|---|---|---|
+| Framework | Next.js 15, App Router, TypeScript strict | Server Components by default |
+| DB | Supabase Postgres | schema in `supabase/migrations/` |
+| Styling | Tailwind CSS v4 | tokens from `DESIGN.md`, no arbitrary hex in components |
+| Deploy | Vercel | Hobby tier is fine |
+| Scheduling | Vercel Cron | see sync cadence below |
+| Testing | Vitest | adapters tested against recorded fixtures, never live APIs |
+
+No ORM. Use `supabase-js` with typed queries generated via
+`supabase gen types typescript`.
+
+---
+
+## Architecture (non-negotiable)
+
+```
+  Sleeper API ─┐
+  Yahoo API ───┼─→ adapters/ ─→ normalizers/ ─→ Supabase ─→ UI
+  ESPN API ────┘   (per platform)  (canonical)    (cache)   (reads DB only)
+```
+
+**The UI never calls a platform API.** Page loads read Postgres and nothing
+else. Sync jobs are the only code that touches Sleeper/ESPN/Yahoo. This is what
+keeps the app fast and keeps it standing when ESPN changes something.
+
+Consequences to respect:
+- Every page is fast and works offline-ish. No loading spinners on platform data.
+- A broken platform degrades to stale data with a "last synced 14m ago" label,
+  not an error page.
+- Writes (Yahoo only) go through a server action that calls Yahoo, then
+  immediately re-syncs that one league so the UI reflects reality.
+
+### Repo layout
+
+```
+src/
+  app/
+    (dash)/page.tsx           # today across all leagues — the main screen
+    (dash)/league/[id]/page.tsx
+    (dash)/team/[id]/page.tsx
+    admin/unmatched/page.tsx  # crosswalk failures, manual mapping
+    admin/connections/page.tsx# credential status, re-paste ESPN cookies
+    api/cron/sync/route.ts
+  adapters/
+    types.ts                  # PlatformAdapter contract — provided
+    sleeper.ts
+    yahoo.ts
+    espn.ts
+  sync/
+    run.ts                    # orchestrator: loop adapters, upsert, log
+    crosswalk.ts              # player ID matching
+  db/
+    client.ts
+    types.gen.ts
+  components/
+supabase/
+  migrations/0001_init.sql    # provided schema
+fixtures/                     # recorded API responses for tests
+```
+
+---
+
+## Scope: read-only
+
+**This app never writes to a platform.** Yahoo's API does support lineup edits
+and add/drops, and ESPN has undocumented write endpoints — both are explicitly
+out of scope. Do not build them, do not scaffold for them, do not add a
+disabled "Swap" button.
+
+Consequences, all of them good:
+- Yahoo OAuth requests the **read scope only** (`fspt-r`).
+- No server actions, no optimistic updates, no rollback logic, no write-path
+  error handling. Every route is a pure read from Postgres.
+- Pages can be cached hard and revalidated on sync.
+
+Every team card carries an "Open in Sleeper / ESPN / Yahoo" deep link. That is
+the entire action surface. Copy should be matter-of-fact about it — the hub is
+where you look, the platform is where you act.
+
+Deep link patterns:
+- Sleeper: `https://sleeper.com/leagues/{league_id}/team`
+- ESPN: `https://fantasy.espn.com/football/team?leagueId={id}&teamId={teamId}&seasonId={season}`
+- Yahoo: `https://football.fantasysports.yahoo.com/f1/{league_id}/{team_id}`
+
+## Full-league visibility
+
+The hub shows **every matchup in every league**, not just yours. This is a
+core requirement, not a stretch goal — half the point of Sunday is watching the
+game that decides your playoff seed.
+
+Costs one API call per league per week on each platform:
+- Sleeper `/league/{id}/matchups/{week}` — all rosters, plus `players_points`
+  for player-level scoring on every team.
+- ESPN `?view=mMatchup` — full week scoreboard; add `mBoxscore` for players.
+- Yahoo `/league/{key}/scoreboard;week={n}` — all matchups. Player-level
+  requires a per-team roster call, so batch with
+  `/teams;team_keys={a},{b},...` rather than looping.
+
+The `matchups` table already stores one row per team per week for all teams.
+Default the dashboard to your own matchups; a "whole league" toggle on each
+card expands to the full scoreboard inline. **No navigation** — it expands in
+place, because the data is already loaded.
+
+Deep link patterns:
+- Sleeper: `https://sleeper.com/leagues/{league_id}/team`
+- ESPN: `https://fantasy.espn.com/football/team?leagueId={id}&teamId={teamId}&seasonId={season}`
+- Yahoo: `https://football.fantasysports.yahoo.com/f1/{league_id}/{team_id}`
+
+---
+
+## Credentials
+
+Store in `platform_accounts`, secrets in the `secrets` jsonb column. Client
+IDs/secrets live in env vars, never in the DB.
+
+```
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+YAHOO_CLIENT_ID=
+YAHOO_CLIENT_SECRET=
+YAHOO_REDIRECT_URI=
+SLEEPER_USERNAME=
+CRON_SECRET=
+APP_PASSWORD=
+```
+
+- **Sleeper**: username only. Nothing to expire.
+- **Yahoo**: one-time OAuth consent at `/admin/connections`. Store the refresh
+  token; mint access tokens on demand (1hr life). Refresh tokens are long-lived
+  but not eternal — surface a reconnect banner when `last_ok_at` goes stale.
+- **ESPN**: `espn_s2` + `SWID`, pasted by hand into `/admin/connections`. These
+  cannot be obtained programmatically. They rotate silently, so the health check
+  matters. When ESPN 401s, show a banner with copy-paste instructions, not a stack trace.
+
+---
+
+## Sync cadence
+
+Driven by one cron route that takes a `mode` param.
+
+| Mode | Schedule | Does |
+|---|---|---|
+| `live` | every 5 min, Sun 12:45–23:59 ET + Thu/Mon 20:00–23:59 ET | matchups + scores only |
+| `daily` | 06:00 ET | leagues, teams, rosters, transactions, standings |
+| `players` | 04:00 ET | Sleeper player directory + crosswalk rebuild |
+
+Guard the route with `CRON_SECRET`. Every run writes a `sync_runs` row —
+success or failure. Sleeper allows generous throughput but stay well under
+1000 requests/minute; batch by league and cache the player dump for 24h (it's
+several MB, never fetch it per-request).
+
+---
+
+## Build order
+
+Ship each milestone working before starting the next.
+
+- **M0 — skeleton.** Next.js + Supabase wired, migration applied, types
+  generated, password gate, empty dashboard shell using the design tokens.
+- **M1 — Sleeper end to end.** Adapter, sync job, player crosswalk, dashboard
+  rendering one real league's live matchup. *This is the proof the whole
+  architecture works.* No auth complexity to fight while you validate it.
+- **M2 — the "Left to play" view.** The signature feature (see `DESIGN.md`).
+  Needs only Sleeper data, so build it before adding platforms.
+- **M3 — Yahoo.** OAuth flow (read scope), adapter, JSON flattener helper.
+  Dashboard now shows two platforms side by side.
+- **M4 — ESPN.** Cookie paste flow, adapter, graceful degradation. Expect this
+  one to be the flakiest; it must never break the other two.
+- **M5 — full-league expansion.** Whole-league scoreboard toggle on every card,
+  player-level breakdowns, league standings view.
+
+---
+
+## Platform gotchas
+
+**Sleeper** — `https://api.sleeper.app/v1`. GET only, no auth.
+`/user/{username}` → `user_id` → `/user/{user_id}/leagues/nfl/{season}`.
+`isMine` is `roster.owner_id === your user_id`. Player dump at `/players/nfl` is
+large: fetch once daily, cache, never call it from a request path.
+
+*Projections are on a different host* — `https://api.sleeper.com/projections/nfl/{season}/{week}`,
+undocumented but publicly readable. Returns `pts_ppr`, `pts_half_ppr`, `pts_std`
+per player, so **one call serves every league**; you just read the field matching
+each league's scoring type. Fetch once per week in the sync job and pass the map
+down to each league, rather than calling it per league. Treat it as unstable:
+on failure return an empty map and render projections as "—". A missing
+projection must never fail a score sync.
+
+**Yahoo** — `https://fantasysports.yahooapis.com/fantasy/v2`. Always append
+`?format=json`. The JSON is XML translated literally: numeric string keys,
+`count` fields, arrays that are sometimes objects. Write one
+`flattenYahoo()` helper in `adapters/yahoo/flatten.ts`, test it hard against
+fixtures, then never think about it again. Keys look like `nfl.l.123456` and
+`nfl.l.123456.t.4`. **Attribution is required**: render "Fantasy data provided
+by Yahoo Fantasy" linking to Yahoo on any screen showing Yahoo data.
+
+**ESPN** — `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/leagues/{id}`.
+Cookies `espn_s2` and `SWID`. Data is selected with stackable `?view=` params:
+`mTeam`, `mRoster`, `mMatchup`, `mSettings`, `mTransactions2`. Undocumented and
+unversioned — treat every response as untrusted, validate with Zod at the
+adapter boundary, and let a failure write to `sync_runs` and return empty rather
+than throw.
+
+---
+
+## Conventions
+
+- Adapters return canonical DTOs only. Platform-shaped objects never escape
+  `src/adapters/`.
+- Every adapter response is validated with Zod before normalization.
+- Keep raw payloads: `leagues.scoring_raw` and `roster_entries.external_player_id`
+  are populated even when normalization succeeds. When a platform changes a
+  field name mid-season you re-derive from the raw blob instead of re-fetching
+  history you may no longer have.
+- Tests run against `fixtures/`, recorded once. No test hits a live API.
+- Times stored UTC, rendered in the user's local zone.
+- No `any`. No client-side data fetching from platform APIs.
+
+## Definition of done for v1
+
+Open the app on a phone on Sunday at 1pm and see, without navigating anywhere,
+every league's live matchup, whether you're up or down, which of your starters
+haven't played yet, and — one tap to expand — every other matchup in each
+league. Acting on any of it is one deep link away.

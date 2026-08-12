@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/* Slate — design tokens. See DESIGN.md.
+   Rule: color encodes game state only. Platform is a mono monogram. */
+
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Public+Sans:wght@400;600&family=DM+Mono:wght@400;500&display=swap");
+
+@theme {
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+
+  --text-hero: 44px;
+  --text-score: 28px;
+  --text-lead: 20px;
+  --text-base: 16px;
+  --text-sm: 14px;
+  --text-xs: 12px;
+  --text-2xs: 11px;
+
+  --container-app: 560px;
+}
+
+/* Floodlight — default */
+:root,
+[data-theme="floodlight"] {
+  --color-ink: #0f151a;
+  --color-ink-raised: #171f26;
+  --color-ink-line: #253039;
+  --color-bone: #e8e5de;
+  --color-bone-dim: #8d959d;
+  --color-amber: #f2a33c; /* LIVE only. ration it. */
+  --color-turf: #4e9b6e; /* winning / positive */
+  --color-flag: #cc5847; /* losing / negative */
+  --color-stone: #5a6670; /* final, settled, inert */
+}
+
+/* Daybreak — light alternate */
+[data-theme="daybreak"] {
+  --color-ink: #EDEDE7;
+  --color-ink-raised: #f7f7f3;
+  --color-ink-line: #d4d5cc;
+  --color-bone: #161c21;
+  --color-bone-dim: #646c74;
+  --color-amber: #c77a16;
+  --color-turf: #2f7a4e;
+  --color-flag: #b0402f;
+  --color-stone: #8b939a;
+}
+
+@layer base {
+  html {
+    background: var(--color-ink);
+    color: var(--color-bone);
+  }
+
+  body {
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Display face: extended grotesque, uppercase, tabular.
+     Tabular figures matter — live scores tick every 5 min and
+     proportional digits make the whole card reflow. */
+  .display {
+    font-family: var(--font-display);
+    font-variation-settings: "wdth" 118;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-amber);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

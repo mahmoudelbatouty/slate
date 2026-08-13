@@ -62,7 +62,7 @@ src/
     (dash)/league/[id]/page.tsx
     (dash)/team/[id]/page.tsx
     admin/unmatched/page.tsx  # crosswalk failures, manual mapping
-    admin/connections/page.tsx# credential status, re-paste ESPN cookies
+    admin/connections/page.tsx# OAuth and browser-connector status
     api/cron/sync/route.ts
   adapters/
     types.ts                  # PlatformAdapter contract — provided
@@ -151,9 +151,23 @@ APP_PASSWORD=
 - **Yahoo**: one-time OAuth consent at `/admin/connections`. Store the refresh
   token; mint access tokens on demand (1hr life). Refresh tokens are long-lived
   but not eternal — surface a reconnect banner when `last_ok_at` goes stale.
-- **ESPN**: `espn_s2` + `SWID`, pasted by hand into `/admin/connections`. These
-  cannot be obtained programmatically. They rotate silently, so the health check
-  matters. When ESPN 401s, show a banner with copy-paste instructions, not a stack trace.
+- **ESPN**: browser connector. The user signs into ESPN directly; Slate never
+  receives the password, cookies, or session token. Surface a reconnect banner
+  when approved captures stop arriving.
+
+### Browser connector
+
+For private data that a provider does not expose through a supported API,
+prefer the local browser connector over collecting passwords or copying
+cookies. The user signs into the provider directly. The extension may observe
+only explicitly allowlisted fantasy response bodies and must never read
+password fields, cookies, local storage, request headers, or platform tokens.
+
+The extension authenticates to Slate with a random ingest-only token. Store
+only its SHA-256 hash, make it revocable, validate and sanitize every payload at
+the server boundary, and keep connector tables inaccessible to `anon` and
+`authenticated`. Native projections live separately from the scheduled sync
+cache so a routine sync cannot overwrite them.
 
 ---
 

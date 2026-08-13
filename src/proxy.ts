@@ -12,7 +12,11 @@ export const config = {
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname === "/login" || pathname === "/api/auth/login") {
+  if (
+    pathname === "/login" ||
+    pathname === "/api/auth/login" ||
+    pathname === "/api/connector/ingest"
+  ) {
     return NextResponse.next();
   }
 

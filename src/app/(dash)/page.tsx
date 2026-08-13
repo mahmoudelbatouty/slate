@@ -5,6 +5,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Today } from "@/components/Today";
 import { WeekPicker } from "@/components/WeekPicker";
 import { LeftToPlay } from "@/components/LeftToPlay";
+import { ConnectorStatus } from "@/components/ConnectorStatus";
+import { getConnectorStatus } from "@/lib/connector-status";
 
 // Reads Postgres on every request. The data is already local, so there's
 // nothing to cache around — and a stale score is worse than a query.
@@ -18,8 +20,11 @@ export default async function Dashboard({
   const { week: raw } = await searchParams;
   const requested = Number(raw);
 
-  const { configured, cards, lastSyncedAt, leagueCount, week, weeks, spine } =
-    await getDashboard(Number.isInteger(requested) ? requested : undefined);
+  const [dashboard, connector] = await Promise.all([
+    getDashboard(Number.isInteger(requested) ? requested : undefined),
+    getConnectorStatus(),
+  ]);
+  const { configured, cards, lastSyncedAt, leagueCount, week, weeks, spine } = dashboard;
 
   const isCurrent = weeks.find((w) => w.week === week)?.isCurrent ?? true;
 
@@ -33,6 +38,8 @@ export default async function Dashboard({
         </div>
         <WeekPicker weeks={weeks} selected={week} />
       </header>
+
+      <ConnectorStatus status={connector} />
 
       {configured && <LeftToPlay spine={spine} />}
 

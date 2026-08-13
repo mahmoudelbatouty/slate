@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      connector_captures: {
+        Row: {
+          captured_at: string
+          external_league_id: string
+          id: string
+          installation_id: string
+          kind: string
+          payload: Json
+          platform: Database["public"]["Enums"]["platform"]
+          received_at: string
+          week: number
+        }
+        Insert: {
+          captured_at: string
+          external_league_id: string
+          id?: string
+          installation_id: string
+          kind: string
+          payload: Json
+          platform: Database["public"]["Enums"]["platform"]
+          received_at?: string
+          week: number
+        }
+        Update: {
+          captured_at?: string
+          external_league_id?: string
+          id?: string
+          installation_id?: string
+          kind?: string
+          payload?: Json
+          platform?: Database["public"]["Enums"]["platform"]
+          received_at?: string
+          week?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connector_captures_installation_id_fkey"
+            columns: ["installation_id"]
+            isOneToOne: false
+            referencedRelation: "connector_installations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      connector_installations: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          last_seen_at: string | null
+          revoked_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          last_seen_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          last_seen_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+        }
+        Relationships: []
+      }
       leagues: {
         Row: {
           current_week: number | null
@@ -137,6 +208,47 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      native_projections: {
+        Row: {
+          captured_at: string
+          external_league_id: string
+          external_team_id: string
+          id: string
+          installation_id: string
+          platform: Database["public"]["Enums"]["platform"]
+          projected_points: number
+          week: number
+        }
+        Insert: {
+          captured_at: string
+          external_league_id: string
+          external_team_id: string
+          id?: string
+          installation_id: string
+          platform: Database["public"]["Enums"]["platform"]
+          projected_points: number
+          week: number
+        }
+        Update: {
+          captured_at?: string
+          external_league_id?: string
+          external_team_id?: string
+          id?: string
+          installation_id?: string
+          platform?: Database["public"]["Enums"]["platform"]
+          projected_points?: number
+          week?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "native_projections_installation_id_fkey"
+            columns: ["installation_id"]
+            isOneToOne: false
+            referencedRelation: "connector_installations"
             referencedColumns: ["id"]
           },
         ]

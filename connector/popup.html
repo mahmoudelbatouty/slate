@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Slate Connector</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Slate Connector</h1>
+      <p class="intro">Sign in on fantasy sites normally. Slate reads only approved matchup data.</p>
+
+      <label for="dashboardUrl">Dashboard URL</label>
+      <input id="dashboardUrl" type="url" placeholder="http://localhost:3000" />
+
+      <label for="connectorToken">Connector token</label>
+      <input id="connectorToken" type="password" autocomplete="off" placeholder="slate_…" />
+
+      <button id="save" type="button">Save connection</button>
+      <button id="sync" class="secondary" type="button">Sync open Sleeper tabs</button>
+      <p id="status" role="status"></p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

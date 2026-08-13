@@ -24,6 +24,9 @@ export interface MatchupCard {
   season: number;
   week: number;
   isFinal: boolean;
+  isLive: boolean;
+  winProbability: number | null;
+  remaining: number;
   syncedAt: string | null;
   mine: Side;
   opponent: Side | null;

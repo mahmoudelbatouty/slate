@@ -14,6 +14,7 @@ import {
   projectTeam,
   scoringKey,
   sleeperAdapter,
+  uniqueSleeperPlayerIds,
 } from "./sleeper";
 import type { Credentials } from "./types";
 
@@ -142,6 +143,27 @@ describe("getTeams", () => {
 });
 
 describe("getRosters", () => {
+  it("drops repeated preseason empty-slot placeholders", async () => {
+    vi.stubGlobal("fetch", async () =>
+      new Response(
+        JSON.stringify([
+          {
+            roster_id: 1,
+            owner_id: "owner",
+            players: ["p1", "0", "0", "p2", "p2"],
+            starters: ["p1", "0", "0"],
+            settings: null,
+          },
+        ]),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    );
+
+    const entries = await sleeperAdapter.getRosters(creds, "league", 2026, 1);
+    expect(entries.map((entry) => entry.externalPlayerId)).toEqual(["p1", "p2"]);
+    expect(entries[0].slot).toBe("S0");
+  });
+
   it("emits positional placeholders for starters and BN for the bench", async () => {
     const entries = await sleeperAdapter.getRosters(
       creds,
@@ -173,6 +195,12 @@ describe("getRosters", () => {
       seen.add(entry.externalPlayerId);
       byTeam.set(entry.teamExternalId, seen);
     }
+  });
+});
+
+describe("uniqueSleeperPlayerIds", () => {
+  it("removes empty slots and duplicate starters", () => {
+    expect(uniqueSleeperPlayerIds(["p1", "0", "p1", "", "p2"])).toEqual(["p1", "p2"]);
   });
 });
 

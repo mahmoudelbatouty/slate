@@ -20,6 +20,9 @@ function card(
     season: 2026,
     week: 11,
     isFinal: false,
+    isLive: false,
+    winProbability: null,
+    remaining: 0,
     syncedAt: null,
     mine: { teamId: "t1", externalId: "1", name: "Mine", points: mine, projected: null },
     opponent: {

@@ -10,10 +10,8 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
   const theirs = card.opponent?.points ?? 0;
   const diff = mine - theirs;
 
-  // Share of the combined score, so the hairline reads as "who's ahead"
-  // rather than pretending to be a win probability we can't compute yet.
   const total = mine + theirs;
-  const share = total > 0 ? Math.round((mine / total) * 100) : 50;
+  const share = card.winProbability ?? (total > 0 ? Math.round((mine / total) * 100) : 50);
 
   return (
     <article className="border border-ink-line bg-ink-raised px-4 pt-[15px] pb-[13px]">
@@ -24,7 +22,7 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
         <span className="display min-w-0 flex-1 truncate text-sm font-bold">
           {card.leagueName}
         </span>
-        <StateLabel isFinal={card.isFinal} hasScore={total > 0} />
+        <StateLabel isFinal={card.isFinal} isLive={card.isLive} hasScore={total > 0} />
       </div>
 
       <Row side={card.mine} isMine diff={diff} isFinal={card.isFinal} />
@@ -40,7 +38,11 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
       <Row side={card.opponent} isMine={false} diff={0} isFinal={card.isFinal} />
 
       <div className="mt-[14px] flex items-center justify-between border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
-        <span className="mono">{marginLabel(diff, card.isFinal, total)}</span>
+        <span className="mono">
+          {card.winProbability === null
+            ? marginLabel(diff, card.isFinal, total)
+            : `${card.winProbability}% win · ${card.remaining} to play`}
+        </span>
         <a
           className="border-b border-ink-line pb-[2px] text-2xs text-bone"
           href={link.href}
@@ -54,13 +56,16 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
   );
 }
 
-function StateLabel({ isFinal, hasScore }: { isFinal: boolean; hasScore: boolean }) {
+function StateLabel({ isFinal, isLive, hasScore }: { isFinal: boolean; isLive: boolean; hasScore: boolean }) {
   if (isFinal) {
     return <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">FINAL</span>;
   }
   if (!hasScore) {
     // Pre-kickoff. Amber is rationed for things actually happening.
     return <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">PREGAME</span>;
+  }
+  if (!isLive) {
+    return <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">IN PROGRESS</span>;
   }
   return (
     <span className="mono flex items-center gap-[6px] text-[10px] tracking-[0.14em] text-amber">

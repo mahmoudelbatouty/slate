@@ -15,7 +15,7 @@
  * runSync(), because a broken ESPN must never take down Sleeper.
  */
 
-import type { Db } from "@/db/client";
+import type { Db } from "@/db/admin";
 import type { Json } from "@/db/types.gen";
 import { sleeperAdapter } from "@/adapters/sleeper";
 import type {
@@ -284,7 +284,9 @@ async function syncDaily(
 
     const ids = [...teamIds.values()];
     if (ids.length) {
-      const { error } = await db.from("roster_entries").delete().in("team_id", ids);
+      let clear = db.from("roster_entries").delete().in("team_id", ids);
+      if (league.currentWeek !== null) clear = clear.eq("week", league.currentWeek);
+      const { error } = await clear;
       if (error) throw new Error(`roster_entries clear: ${error.message}`);
     }
     if (rows.length) {
@@ -358,6 +360,16 @@ async function syncScores(
     return { leagues: 0, matchups: 0, weeks: 0 };
   }
 
+  const requestedWeeks = [
+    ...new Set(
+      leagues.flatMap((league) =>
+        league.current_week ? weeksFor(mode, league.current_week) : []
+      )
+    ),
+  ];
+  const gameState = await syncGameStates(db, adapter, season, requestedWeeks);
+  const crosswalk = await loadCrosswalk(db, adapter.platform);
+
   let matchupCount = 0;
   let weekCount = 0;
 
@@ -382,6 +394,27 @@ async function syncScores(
       );
       weekCount++;
 
+      const starterRows = matchups.flatMap((matchup) => {
+        const teamId = teamIds.get(matchup.teamExternalId);
+        if (!teamId) return [];
+        return (matchup.starterStats ?? []).map((starter) => ({
+          team_id: teamId,
+          player_id: crosswalk.get(starter.externalPlayerId) ?? null,
+          external_player_id: starter.externalPlayerId,
+          is_starter: true,
+          week,
+          current_points: starter.currentPoints,
+          projected_points: starter.projectedPoints,
+        }));
+      });
+
+      if (starterRows.length) {
+        const { error: starterError } = await db
+          .from("roster_entries")
+          .upsert(starterRows, { onConflict: "team_id,external_player_id,week" });
+        if (starterError) throw new Error(`starter stats upsert: ${starterError.message}`);
+      }
+
       const rows = matchups
         .map((m) => {
           const teamId = teamIds.get(m.teamExternalId);
@@ -396,9 +429,7 @@ async function syncScores(
               : null,
             points: m.points,
             projected_points: m.projectedPoints,
-            // Sleeper has no per-game state, so "final" means the week has
-            // rolled over. M2's game-window data will sharpen this.
-            is_final: m.isFinal || m.week < currentWeek,
+            is_final: m.isFinal || gameState.finalWeeks.has(m.week),
           };
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -418,7 +449,69 @@ async function syncScores(
       .eq("id", league.id);
   }
 
-  return { leagues: leagues.length, matchups: matchupCount, weeks: weekCount };
+  return {
+    leagues: leagues.length,
+    matchups: matchupCount,
+    weeks: weekCount,
+    games: gameState.gameCount,
+    game_state_errors: gameState.errorCount,
+  };
+}
+
+async function syncGameStates(
+  db: Db,
+  adapter: PlatformAdapter,
+  season: number,
+  weeks: number[]
+): Promise<{ gameCount: number; errorCount: number; finalWeeks: Set<number> }> {
+  const finalWeeks = new Set<number>();
+  let gameCount = 0;
+  let errorCount = 0;
+
+  if (!adapter.getGameState) return { gameCount, errorCount, finalWeeks };
+
+  for (const week of weeks) {
+    try {
+      const games = await adapter.getGameState(SPORT, season, week);
+      if (games.length) {
+        const { error } = await db.from("nfl_games").upsert(
+          games.map((game) => ({
+            game_id: game.gameId,
+            season: game.season,
+            week: game.week,
+            season_type: game.seasonType,
+            start_time: game.startTime,
+            status: game.status,
+            home_team: game.homeTeam,
+            away_team: game.awayTeam,
+            is_over: game.isOver,
+            in_progress: game.inProgress,
+            canceled: game.canceled,
+            quarter: game.quarter,
+            raw: game.raw as Json,
+            updated_at: new Date().toISOString(),
+          })),
+          { onConflict: "game_id" }
+        );
+        if (error) throw new Error(`nfl_games upsert: ${error.message}`);
+        gameCount += games.length;
+        const active = games.filter((game) => !game.canceled);
+        if (active.length && active.every((game) => game.isOver)) finalWeeks.add(week);
+      }
+    } catch (err) {
+      errorCount++;
+      const message = err instanceof Error ? err.message : String(err);
+      await db.from("sync_runs").insert({
+        platform: adapter.platform,
+        status: "error",
+        finished_at: new Date().toISOString(),
+        error: `game state week ${week}: ${message}`,
+        stats: { week } as Json,
+      });
+    }
+  }
+
+  return { gameCount, errorCount, finalWeeks };
 }
 
 // ---------- upsert helpers ----------

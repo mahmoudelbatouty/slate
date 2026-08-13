@@ -13,6 +13,7 @@ import { join } from "node:path";
 config({ path: ".env.local", quiet: true });
 
 const BASE = "https://api.sleeper.app/v1";
+const GRAPHQL = "https://sleeper.com/graphql";
 const DIR = "fixtures/sleeper";
 
 async function save(name: string, path: string) {
@@ -24,11 +25,38 @@ async function save(name: string, path: string) {
   return json;
 }
 
+async function saveScores(season: number, week: number) {
+  const res = await fetch(GRAPHQL, {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json" },
+    body: JSON.stringify({
+      query: `query Scores($season: String!, $week: Int!) {
+        scores(sport: "nfl", season: $season, season_type: "regular", week: $week) {
+          game_id
+          status
+          start_time
+          metadata
+        }
+      }`,
+      variables: { season: String(season), week },
+    }),
+  });
+  if (!res.ok) throw new Error(`scores -> ${res.status}`);
+  const json = await res.json();
+  await writeFile(join(DIR, "scores.json"), JSON.stringify(json, null, 2));
+  console.log("recorded scores.json");
+}
+
 async function main() {
+  await mkdir(DIR, { recursive: true });
+
+  if (process.argv.includes("--scores-only")) {
+    await saveScores(2025, 11);
+    return;
+  }
+
   const username = process.env.SLEEPER_USERNAME;
   if (!username) throw new Error("SLEEPER_USERNAME is not set");
-
-  await mkdir(DIR, { recursive: true });
 
   const user = (await save("user", `/user/${username}`)) as { user_id: string };
   const state = (await save("state", "/state/nfl")) as { season: string; week: number };
@@ -47,6 +75,7 @@ async function main() {
   await save("users", `/league/${league.league_id}/users`);
   await save("matchups", `/league/${league.league_id}/matchups/${state.week}`);
   await save("transactions", `/league/${league.league_id}/transactions/${state.week}`);
+  await saveScores(Number(state.season), state.week);
 
   await writeFile(
     join(DIR, "meta.json"),

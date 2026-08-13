@@ -105,6 +105,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "matchups_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["league_id"]
+          },
+          {
+            foreignKeyName: "matchups_opponent_team_id_fkey"
+            columns: ["opponent_team_id"]
+            isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["team_id"]
+          },
+          {
             foreignKeyName: "matchups_opponent_team_id_fkey"
             columns: ["opponent_team_id"]
             isOneToOne: false
@@ -115,10 +129,68 @@ export type Database = {
             foreignKeyName: "matchups_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "matchups_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
+      }
+      nfl_games: {
+        Row: {
+          away_team: string | null
+          canceled: boolean
+          game_id: string
+          home_team: string | null
+          in_progress: boolean
+          is_over: boolean
+          quarter: string | null
+          raw: Json
+          season: number
+          season_type: string
+          start_time: string | null
+          status: string | null
+          updated_at: string
+          week: number
+        }
+        Insert: {
+          away_team?: string | null
+          canceled?: boolean
+          game_id: string
+          home_team?: string | null
+          in_progress?: boolean
+          is_over?: boolean
+          quarter?: string | null
+          raw?: Json
+          season: number
+          season_type: string
+          start_time?: string | null
+          status?: string | null
+          updated_at?: string
+          week: number
+        }
+        Update: {
+          away_team?: string | null
+          canceled?: boolean
+          game_id?: string
+          home_team?: string | null
+          in_progress?: boolean
+          is_over?: boolean
+          quarter?: string | null
+          raw?: Json
+          season?: number
+          season_type?: string
+          start_time?: string | null
+          status?: string | null
+          updated_at?: string
+          week?: number
+        }
+        Relationships: []
       }
       platform_accounts: {
         Row: {
@@ -226,28 +298,34 @@ export type Database = {
       }
       roster_entries: {
         Row: {
+          current_points: number | null
           external_player_id: string
           id: string
           is_starter: boolean
           player_id: string | null
+          projected_points: number | null
           slot: string | null
           team_id: string
           week: number | null
         }
         Insert: {
+          current_points?: number | null
           external_player_id: string
           id?: string
           is_starter?: boolean
           player_id?: string | null
+          projected_points?: number | null
           slot?: string | null
           team_id: string
           week?: number | null
         }
         Update: {
+          current_points?: number | null
           external_player_id?: string
           id?: string
           is_starter?: boolean
           player_id?: string | null
+          projected_points?: number | null
           slot?: string | null
           team_id?: string
           week?: number | null
@@ -259,6 +337,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "players"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roster_entries_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["team_id"]
           },
           {
             foreignKeyName: "roster_entries_team_id_fkey"
@@ -307,6 +392,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leagues"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_runs_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["league_id"]
           },
         ]
       }
@@ -364,6 +456,13 @@ export type Database = {
             referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "teams_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["league_id"]
+          },
         ]
       }
       transactions: {
@@ -402,6 +501,13 @@ export type Database = {
             referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["league_id"]
+          },
         ]
       }
     }
@@ -417,6 +523,30 @@ export type Database = {
           points: number | null
           projected_points: number | null
           season: number | null
+          week: number | null
+        }
+        Relationships: []
+      }
+      starter_game_state: {
+        Row: {
+          canceled: boolean | null
+          current_points: number | null
+          external_player_id: string | null
+          full_name: string | null
+          game_id: string | null
+          in_progress: boolean | null
+          is_mine: boolean | null
+          is_over: boolean | null
+          league_id: string | null
+          position: string | null
+          projected_points: number | null
+          quarter: string | null
+          season: number | null
+          slot: string | null
+          start_time: string | null
+          status: string | null
+          team_abbr: string | null
+          team_id: string | null
           week: number | null
         }
         Relationships: []

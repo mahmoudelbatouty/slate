@@ -1,6 +1,13 @@
 import "server-only";
 import { db, dbConfigured } from "@/db/client";
 import { byDrama, resolveWeek, type MatchupCard } from "./matchup";
+import {
+  buildLeftToPlay,
+  remainingStarters,
+  winProbability,
+  type LeftToPlay,
+  type StarterGame,
+} from "./game-state";
 
 export interface WeekOption {
   week: number;
@@ -17,7 +24,17 @@ export interface Dashboard {
   /** The week actually being shown, after clamping whatever was asked for. */
   week: number | null;
   weeks: WeekOption[];
+  spine: LeftToPlay;
 }
+
+const EMPTY_SPINE: LeftToPlay = {
+  total: 0,
+  remaining: 0,
+  played: 0,
+  live: 0,
+  unassigned: 0,
+  windows: [],
+};
 
 const EMPTY: Dashboard = {
   configured: false,
@@ -26,6 +43,7 @@ const EMPTY: Dashboard = {
   leagueCount: 0,
   week: null,
   weeks: [],
+  spine: EMPTY_SPINE,
 };
 
 /**
@@ -91,6 +109,39 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     currentWeek
   );
 
+  let starterGames: StarterGame[] = [];
+  if (week) {
+    const { data: starterRows, error: starterError } = await client
+      .from("starter_game_state")
+      .select("league_id, team_id, is_mine, start_time, is_over, in_progress, canceled, quarter, projected_points")
+      .eq("week", week)
+      .in("league_id", leagues.map((league) => league.id));
+
+    if (starterError) throw new Error(`starter game state read: ${starterError.message}`);
+    starterGames = (starterRows ?? []).flatMap((row) =>
+      row.league_id && row.team_id
+        ? [{
+            leagueId: row.league_id,
+            teamId: row.team_id,
+            isMine: row.is_mine ?? false,
+            startTime: row.start_time,
+            isOver: row.is_over ?? false,
+            inProgress: row.in_progress ?? false,
+            canceled: row.canceled ?? false,
+            quarter: row.quarter,
+            projectedPoints: row.projected_points,
+          }]
+        : []
+    );
+  }
+
+  const startersByTeam = new Map<string, StarterGame[]>();
+  for (const starter of starterGames) {
+    const list = startersByTeam.get(starter.teamId) ?? [];
+    list.push(starter);
+    startersByTeam.set(starter.teamId, list);
+  }
+
   const cards: MatchupCard[] = [];
 
   for (const league of leagues) {
@@ -113,6 +164,17 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     const oppRow = mineRow.opponent_team_id
       ? rowByTeam.get(`${week}:${mineRow.opponent_team_id}`)
       : undefined;
+    const mineStarters = startersByTeam.get(mineTeam.id) ?? [];
+    const opponentStarters = oppTeam ? startersByTeam.get(oppTeam.id) ?? [] : [];
+    const probability = oppTeam && oppRow
+      ? winProbability(
+          mineRow.points ?? 0,
+          oppRow.points ?? 0,
+          mineStarters,
+          opponentStarters,
+          mineRow.is_final
+        )
+      : null;
 
     cards.push({
       leagueId: league.id,
@@ -122,6 +184,9 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
       season: league.season,
       week,
       isFinal: mineRow.is_final,
+      isLive: [...mineStarters, ...opponentStarters].some((starter) => starter.inProgress),
+      winProbability: probability,
+      remaining: remainingStarters(mineStarters),
       syncedAt: league.synced_at,
       mine: {
         teamId: mineTeam.id,
@@ -157,5 +222,6 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     leagueCount: leagues.length,
     week,
     weeks,
+    spine: buildLeftToPlay(starterGames),
   };
 }

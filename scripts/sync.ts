@@ -30,7 +30,7 @@ async function main() {
 
   const season = Number(process.env.DEFAULT_SEASON ?? 2026);
 
-  const { db } = await import("../src/db/client");
+  const { db } = await import("../src/db/admin");
   const { runSync } = await import("../src/sync/run");
 
   const started = Date.now();

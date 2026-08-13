@@ -64,6 +64,7 @@ export type Database = {
           id: string
           label: string
           last_seen_at: string | null
+          platform: Database["public"]["Enums"]["platform"]
           revoked_at: string | null
           token_hash: string
         }
@@ -72,6 +73,7 @@ export type Database = {
           id?: string
           label?: string
           last_seen_at?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
           revoked_at?: string | null
           token_hash: string
         }
@@ -80,10 +82,55 @@ export type Database = {
           id?: string
           label?: string
           last_seen_at?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
           revoked_at?: string | null
           token_hash?: string
         }
         Relationships: []
+      }
+      connector_pairing_challenges: {
+        Row: {
+          challenge_hash: string
+          consumed_at: string | null
+          created_at: string
+          dashboard_origin: string
+          expires_at: string
+          id: string
+          installation_id: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          session_hash: string
+        }
+        Insert: {
+          challenge_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          dashboard_origin: string
+          expires_at: string
+          id?: string
+          installation_id?: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          session_hash: string
+        }
+        Update: {
+          challenge_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          dashboard_origin?: string
+          expires_at?: string
+          id?: string
+          installation_id?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
+          session_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connector_pairing_challenges_installation_id_fkey"
+            columns: ["installation_id"]
+            isOneToOne: false
+            referencedRelation: "connector_installations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leagues: {
         Row: {
@@ -665,7 +712,20 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      claim_connector_pairing: {
+        Args: {
+          p_challenge_hash: string
+          p_dashboard_origin: string
+          p_pairing_id: string
+          p_platform: Database["public"]["Enums"]["platform"]
+          p_token_hash: string
+        }
+        Returns: {
+          dashboard_origin: string
+          installation_id: string
+          platform: Database["public"]["Enums"]["platform"]
+        }[]
+      }
     }
     Enums: {
       platform: "sleeper" | "espn" | "yahoo"

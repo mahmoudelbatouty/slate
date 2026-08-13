@@ -1,6 +1,76 @@
 "use strict";
 
 const MAX_MATCHUPS = 100;
+const DASHBOARD_SCRIPT_ID = "slate-dashboard-bridge";
+
+function normalizedOrigin(value) {
+  const url = new URL(value);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Dashboard must use HTTP or HTTPS");
+  }
+  return url.origin;
+}
+
+async function registerDashboardBridge(dashboardUrl) {
+  const dashboardOrigin = normalizedOrigin(dashboardUrl);
+  await chrome.scripting.unregisterContentScripts({ ids: [DASHBOARD_SCRIPT_ID] }).catch(() => undefined);
+  await chrome.scripting.registerContentScripts([{
+    id: DASHBOARD_SCRIPT_ID,
+    matches: [`${dashboardOrigin}/*`],
+    js: ["dashboard-bridge.js"],
+    runAt: "document_start",
+    persistAcrossSessions: true,
+  }]);
+}
+
+async function claimPairing(message) {
+  try {
+    const dashboardOrigin = normalizedOrigin(message.dashboardOrigin);
+    if (
+      message.platform !== "sleeper" ||
+      typeof message.challengeId !== "string" ||
+      typeof message.claimSecret !== "string" ||
+      !message.claimSecret.startsWith("slate_pair_")
+    ) {
+      throw new Error("Invalid pairing request");
+    }
+
+    const response = await fetch(`${dashboardOrigin}/api/connector/claim`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        challengeId: message.challengeId,
+        claimSecret: message.claimSecret,
+        platform: message.platform,
+        dashboardOrigin,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (
+      !response.ok ||
+      typeof result.token !== "string" ||
+      !result.token.startsWith("slate_") ||
+      result.platform !== message.platform ||
+      result.dashboardOrigin !== dashboardOrigin
+    ) {
+      throw new Error(result.error || "Dashboard rejected pairing");
+    }
+
+    await chrome.storage.local.set({
+      dashboardUrl: dashboardOrigin,
+      connectorToken: result.token,
+      platform: result.platform,
+      installationId: result.installationId,
+      lastError: null,
+    });
+    await chrome.tabs.create({ url: "https://sleeper.com/?login=" });
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Pairing failed";
+    await chrome.storage.local.set({ lastError: message });
+    return { ok: false, error: message };
+  }
+}
 
 function finiteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -74,8 +144,36 @@ async function deliver(message) {
   }
 }
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "SLATE_PAIR_CLAIM") {
+    void claimPairing(message).then(sendResponse);
+    return true;
+  }
+
+  if (message?.type === "SLATE_REGISTER_DASHBOARD") {
+    void registerDashboardBridge(message.dashboardUrl)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => sendResponse({
+        ok: false,
+        error: error instanceof Error ? error.message : "Dashboard registration failed",
+      }));
+    return true;
+  }
+
   if (message?.type === "SLATE_CAPTURE" && message.platform === "sleeper") {
     void deliver(message);
   }
+});
+
+async function restoreDashboardBridge() {
+  const { dashboardUrl } = await chrome.storage.local.get("dashboardUrl");
+  if (dashboardUrl) await registerDashboardBridge(dashboardUrl);
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  void restoreDashboardBridge().catch(() => undefined);
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  void restoreDashboardBridge().catch(() => undefined);
 });

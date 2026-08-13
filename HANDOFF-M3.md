@@ -30,6 +30,17 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 - Supabase migrations through `20260813005306_native_projection_overrides.sql`
   are already applied to project `qqxceojybbacughapnom`.
 
+## M3 progress
+
+- Automatic Sleeper pairing is implemented on `codex/m3-auto-pairing`.
+- Pairing challenges expire after five minutes, are single-use, and are
+  consumed atomically by a server-role-only Postgres function.
+- The dashboard never renders the claim secret or ingest token. The extension
+  stores the ingest token locally and opens Sleeper for normal provider login.
+- A provider is shown as connected only after a validated capture exists.
+- The manual connector-token input has been removed from the extension popup.
+- Next implementation slice: the always-visible full-season week selector.
+
 ## Non-negotiable security boundary
 
 - Never accept or store a Sleeper/ESPN/Yahoo password.

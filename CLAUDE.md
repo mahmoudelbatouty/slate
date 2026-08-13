@@ -181,9 +181,9 @@ cache so a routine sync cannot overwrite them.
 The production UX must not ask the user to copy that token. Pairing is a
 short-lived, one-time handshake initiated from **Connect Sleeper** or **Connect
 ESPN**. The raw connector token is delivered directly to the installed
-extension and is never rendered in the page. The existing copy/paste token UI
-is development-only scaffolding and should be removed once automatic pairing
-works.
+extension and is never rendered in the page. The old copy/paste token UI has
+been removed; future platform connections must use the same short-lived,
+single-use challenge pattern.
 
 ---
 

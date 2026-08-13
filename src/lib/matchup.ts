@@ -16,6 +16,33 @@ export interface Side {
   name: string;
   points: number | null;
   projected: number | null;
+  lineup?: TeamLineup;
+}
+
+export interface MatchupPlayer {
+  externalPlayerId: string;
+  name: string;
+  position: string | null;
+  nflTeam: string | null;
+  slot: string | null;
+  isStarter: boolean;
+  currentPoints: number | null;
+  projectedPoints: number | null;
+  injuryStatus: string | null;
+  game: {
+    opponent: string | null;
+    startTime: string | null;
+    status: string | null;
+    isOver: boolean;
+    inProgress: boolean;
+    canceled: boolean;
+    quarter: string | null;
+  } | null;
+}
+
+export interface TeamLineup {
+  starters: MatchupPlayer[];
+  bench: MatchupPlayer[];
 }
 
 export interface MatchupCard {

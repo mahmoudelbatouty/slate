@@ -206,6 +206,11 @@ a database-backed cooldown and also coalesces same-instance requests, so
 multiple tabs do not normally multiply provider traffic. Batch by league and
 cache the player dump for 24h (it's several MB, never fetch it per-request).
 
+The live-refresh and inline-matchup surfaces are canonical and cross-platform.
+ESPN and Yahoo adapters must populate the same tables and types so they inherit
+the same cadence, weekly status model, full lineup display, and automatic UI
+refresh without provider-specific dashboard branches.
+
 ---
 
 ## Build order

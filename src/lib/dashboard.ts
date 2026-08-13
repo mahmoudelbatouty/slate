@@ -1,6 +1,6 @@
 import "server-only";
 import { db, dbConfigured } from "@/db/client";
-import { byDrama, type MatchupCard } from "./matchup";
+import { byDrama, type MatchupCard, type MatchupPlayer, type TeamLineup } from "./matchup";
 import { buildWeekOptions, resolveWeek, type WeekOption } from "./weeks";
 import {
   EMPTY_STARTER_SUMMARY,
@@ -105,6 +105,91 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     weeks.map((w) => w.week),
     currentWeek
   );
+
+  const selectedRows = (rows ?? []).filter((row) => row.week === week);
+  const relevantTeamIds = new Set<string>();
+  for (const row of selectedRows) {
+    if (teamById.get(row.team_id)?.is_mine) {
+      relevantTeamIds.add(row.team_id);
+      if (row.opponent_team_id) relevantTeamIds.add(row.opponent_team_id);
+    }
+  }
+
+  const lineupsByTeam = new Map<string, TeamLineup>();
+  if (week && relevantTeamIds.size > 0) {
+    const { data: entries, error: entryError } = await client
+      .from("roster_entries")
+      .select("team_id, player_id, external_player_id, slot, is_starter, current_points, projected_points")
+      .eq("week", week)
+      .in("team_id", [...relevantTeamIds]);
+    if (entryError) throw new Error(`lineup read: ${entryError.message}`);
+
+    const playerIds = [...new Set((entries ?? []).flatMap((entry) => entry.player_id ? [entry.player_id] : []))];
+    const seasons = [...new Set(leagues.map((league) => league.season))];
+    const [{ data: playerRows, error: playerError }, { data: gameRows, error: gameDetailError }] =
+      await Promise.all([
+        playerIds.length
+          ? client.from("players").select("id, full_name, position, team_abbr, status").in("id", playerIds)
+          : Promise.resolve({ data: [], error: null }),
+        client
+          .from("nfl_games")
+          .select("season, home_team, away_team, start_time, status, is_over, in_progress, canceled, quarter")
+          .eq("week", week)
+          .in("season", seasons),
+      ]);
+    if (playerError) throw new Error(`lineup player read: ${playerError.message}`);
+    if (gameDetailError) throw new Error(`lineup game read: ${gameDetailError.message}`);
+
+    const playerById = new Map((playerRows ?? []).map((player) => [player.id, player]));
+    const seasonByTeam = new Map(teams?.map((team) => [
+      team.id,
+      leagues.find((league) => league.id === team.league_id)?.season ?? null,
+    ]) ?? []);
+    const gameByTeam = new Map<string, NonNullable<typeof gameRows>[number]>();
+    for (const game of gameRows ?? []) {
+      if (game.home_team) gameByTeam.set(`${game.season}:${game.home_team}`, game);
+      if (game.away_team) gameByTeam.set(`${game.season}:${game.away_team}`, game);
+    }
+
+    for (const entry of entries ?? []) {
+      const player = entry.player_id ? playerById.get(entry.player_id) : undefined;
+      const season = seasonByTeam.get(entry.team_id);
+      const game = player?.team_abbr && season
+        ? gameByTeam.get(`${season}:${player.team_abbr}`)
+        : undefined;
+      const opponent = game && player?.team_abbr
+        ? (game.home_team === player.team_abbr ? game.away_team : game.home_team)
+        : null;
+      const detail: MatchupPlayer = {
+        externalPlayerId: entry.external_player_id,
+        name: player?.full_name ?? `Player ${entry.external_player_id}`,
+        position: player?.position ?? null,
+        nflTeam: player?.team_abbr ?? null,
+        slot: entry.slot,
+        isStarter: entry.is_starter,
+        currentPoints: entry.current_points,
+        projectedPoints: entry.projected_points,
+        injuryStatus: player?.status ?? null,
+        game: game ? {
+          opponent,
+          startTime: game.start_time,
+          status: game.status,
+          isOver: game.is_over,
+          inProgress: game.in_progress,
+          canceled: game.canceled,
+          quarter: game.quarter,
+        } : null,
+      };
+      const lineup = lineupsByTeam.get(entry.team_id) ?? { starters: [], bench: [] };
+      (entry.is_starter ? lineup.starters : lineup.bench).push(detail);
+      lineupsByTeam.set(entry.team_id, lineup);
+    }
+
+    for (const lineup of lineupsByTeam.values()) {
+      lineup.starters.sort(byLineupSlot);
+      lineup.bench.sort(byPlayerName);
+    }
+  }
 
   let starterGames: StarterGame[] = [];
   if (week) {
@@ -238,6 +323,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         name: mineTeam.name ?? "My team",
         points: mineRow.points,
         projected: nativeMine ?? mineRow.projected_points,
+        lineup: lineupsByTeam.get(mineTeam.id),
       },
       opponent:
         oppTeam && oppRow
@@ -247,6 +333,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
               name: oppTeam.name ?? "Opponent",
               points: oppRow.points,
               projected: nativeOpponent ?? oppRow.projected_points,
+              lineup: lineupsByTeam.get(oppTeam.id),
             }
           : null,
     });
@@ -267,4 +354,17 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     week,
     weeks,
   };
+}
+
+const SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"];
+
+function byLineupSlot(a: MatchupPlayer, b: MatchupPlayer): number {
+  const aIndex = SLOT_ORDER.indexOf(a.slot ?? "");
+  const bIndex = SLOT_ORDER.indexOf(b.slot ?? "");
+  const slotOrder = (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex);
+  return slotOrder || byPlayerName(a, b);
+}
+
+function byPlayerName(a: MatchupPlayer, b: MatchupPlayer): number {
+  return a.name.localeCompare(b.name);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { type MatchupCard, type MatchupPlayer, type Side } from "@/lib/matchup";
 import type { StarterSummary } from "@/lib/game-state";
 import { playerGameLabel } from "@/lib/player-state";
@@ -30,18 +30,27 @@ export function LeagueCard({
       <div className="mb-[15px] flex items-center gap-[10px]">
         {reorderHandle}
         <PlatformMark platform={card.platform} />
-        <span className="display min-w-0 flex-1 truncate text-sm font-bold">
-          {card.leagueName}
-        </span>
-        {card.leagueStatus === "pre_draft" ? (
+        <div className="min-w-0 flex-1" title={card.leagueName}>
+          <span className={`display block text-sm font-bold ${card.leagueFormat === "chopped" ? "leading-tight" : "truncate"}`}>
+            {card.leagueName}
+          </span>
+          {card.leagueFormat === "chopped" ? (
+            <span className="mono mt-1 block text-[9px] tracking-[0.12em] text-bone-dim">
+              CHOPPED{card.leagueStatus === "pre_draft" ? " · PRE-DRAFT" : ""}
+            </span>
+          ) : null}
+        </div>
+        {card.leagueFormat !== "chopped" && card.leagueStatus === "pre_draft" ? (
           <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">PRE-DRAFT</span>
-        ) : (
+        ) : card.leagueFormat !== "chopped" ? (
           <StateLabel isFinal={card.isFinal} isLive={card.isLive} hasScore={total > 0} />
-        )}
+        ) : null}
       </div>
 
       {card.leagueStatus === "pre_draft" ? (
         <PreDraft card={card} />
+      ) : card.leagueFormat === "chopped" ? (
+        <ChoppedLeague card={card} expanded={expanded} setExpanded={setExpanded} />
       ) : (
         <>
 
@@ -77,6 +86,104 @@ export function LeagueCard({
         </>
       )}
     </article>
+  );
+}
+
+function ChoppedLeague({
+  card,
+  expanded,
+  setExpanded,
+}: {
+  card: MatchupCard;
+  expanded: boolean;
+  setExpanded: Dispatch<SetStateAction<boolean>>;
+}) {
+  const summary = card.chopped;
+  const mine = summary?.standings.find((team) => team.isMine) ?? null;
+  const chop = summary?.chopZone ?? null;
+  const total = summary?.standings.length ?? 0;
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0">
+          <p className="mono text-[9px] tracking-[0.08em] text-stone">YOUR SURVIVAL RANK</p>
+          <p className="display mt-1 text-[27px] leading-none text-bone">
+            {summary?.myRank ?? "—"}<span className="ml-1 text-sm text-bone-dim">/ {total || "—"}</span>
+          </p>
+          <p className="mt-2 truncate text-sm font-semibold text-bone">{card.mine.name}</p>
+          <p className="mono mt-1 text-2xs text-bone-dim">
+            {card.isFinal ? "final" : `proj ${mine?.projected?.toFixed(1) ?? "—"}`}
+          </p>
+        </div>
+        <div className="min-w-0 border-l border-ink-line pl-3 text-right">
+          <p className="mono text-[9px] tracking-[0.08em] text-flag">CHOP ZONE</p>
+          <p className="display mt-1 text-[27px] leading-none text-flag">
+            {chop?.projected?.toFixed(1) ?? chop?.points?.toFixed(1) ?? "—"}
+          </p>
+          <p className="mt-2 truncate text-sm text-bone-dim">{chop?.name ?? "Waiting for scores"}</p>
+          <p className="mono mt-1 text-2xs text-bone-dim">
+            {summary?.marginAboveChop === null || summary?.marginAboveChop === undefined
+              ? "margin —"
+              : `${summary.marginAboveChop.toFixed(1)} pts above`}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-[14px] grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-ink-line pt-[10px] text-2xs text-bone-dim">
+        <span className="mono">{total || card.teamCount || "—"} TEAMS · LOW SCORE IS CHOPPED</span>
+        <button
+          type="button"
+          className="min-h-11 shrink-0 border border-ink-line px-3 py-2 text-left text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
+          aria-expanded={expanded}
+          aria-controls={`chopped-detail-${card.leagueId}`}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "HIDE STANDINGS ↑" : "VIEW STANDINGS ↓"}
+        </button>
+      </div>
+      {expanded ? <ChoppedStandings card={card} /> : null}
+    </>
+  );
+}
+
+function ChoppedStandings({ card }: { card: MatchupCard }) {
+  const standings = card.chopped?.standings ?? [];
+  return (
+    <section
+      id={`chopped-detail-${card.leagueId}`}
+      className="mt-4 border-t border-ink-line pt-4"
+      aria-label={`${card.leagueName} Week ${card.week} Chopping Block`}
+    >
+      <div className="mb-2 flex items-end justify-between gap-3">
+        <div>
+          <p className="mono text-[9px] tracking-[0.1em] text-flag">CHOPPING BLOCK</p>
+          <p className="text-xs text-bone-dim">Lowest projected score first</p>
+        </div>
+        <span className="mono text-[9px] text-stone">WEEK {card.week}</span>
+      </div>
+      <ol className="border border-ink-line bg-ink">
+        {standings.map((team, index) => (
+          <li
+            key={team.teamId}
+            className={`grid grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 border-t border-ink-line px-3 py-2 first:border-t-0 ${team.isMine ? "bg-bone/5" : ""}`}
+          >
+            <span className={`mono text-[9px] ${index === 0 ? "text-flag" : "text-stone"}`}>
+              {index === 0 ? "CUT" : index + 1}
+            </span>
+            <span className={`truncate text-xs ${team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
+              {team.name}{team.isMine ? " · YOU" : ""}
+            </span>
+            <span className="mono tabular-nums text-xs text-bone">
+              {team.projected?.toFixed(1) ?? team.points?.toFixed(1) ?? "—"}
+            </span>
+          </li>
+        ))}
+      </ol>
+      {standings.length === 0 ? (
+        <p className="py-3 text-xs text-bone-dim">Standings will appear when Sleeper publishes Week {card.week} scores.</p>
+      ) : null}
+    </section>
   );
 }
 
@@ -368,7 +475,10 @@ function PreDraft({ card }: { card: MatchupCard }) {
     <div>
       <p className="text-sm font-semibold text-bone">Draft not started</p>
       <p className="mt-1 text-xs text-bone-dim">
-        {card.teamCount ? `${card.teamCount} teams · ` : ""}Matchups and projections will appear after the draft.
+        {card.teamCount ? `${card.teamCount} teams · ` : ""}
+        {card.leagueFormat === "chopped"
+          ? "Lowest score is eliminated each week. The Chopping Block will appear after the draft."
+          : "Matchups and projections will appear after the draft."}
       </p>
       <div className="mt-[14px] border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
         <span className="mono">{card.mine.teamId ? card.mine.name : "ROSTER PENDING"}</span>

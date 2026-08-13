@@ -196,6 +196,17 @@ Pending, verified, and rejected states must be textual as well as visual.
 Experimental Sleeper/ESPN actions must say **Experimental** beside the action;
 do not bury that qualification in settings or help copy.
 
+### Chopped / guillotine leagues
+
+Treat Chopped leagues as league-wide survival contests, never as head-to-head
+matchups. Detect the provider's explicit format (`settings.type = 3` for
+Sleeper), store it as canonical `format = chopped`, and retain the raw settings.
+The collapsed card shows the user's survival rank, projected score, current
+Chop Zone team, and margin above the lowest projected score. Its expanded view
+is the provider-sourced Chopping Block ordered lowest-to-highest. Do not show an
+opponent, head-to-head win odds, or manufacture a matchup pairing. Apply this
+format distinction to Yahoo and ESPN if they expose equivalent contests.
+
 ---
 
 ## Motion

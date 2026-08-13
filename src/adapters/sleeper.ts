@@ -18,6 +18,7 @@ import type {
   CanonicalTransaction,
   CanonicalPlayerRef,
 } from "./types";
+import { sleeperLeagueFormat } from "@/lib/league-format";
 import { getSleeperGameState } from "./sleeper/scores";
 
 const BASE = "https://api.sleeper.app/v1";
@@ -336,6 +337,7 @@ export const sleeperAdapter: PlatformAdapter = {
         rosterSlots: slotCounts(l.roster_positions),
         currentWeek: state.week,
         status: mapStatus(l.status),
+        format: sleeperLeagueFormat(l.settings),
       };
     });
   },
@@ -451,6 +453,7 @@ export const sleeperAdapter: PlatformAdapter = {
     const raw = matchupRows.map((m) => zMatchup.parse(m));
     const league = zLeague.parse(leagueRow);
     const scoringSettings = league.scoring_settings;
+    const format = sleeperLeagueFormat(league.settings);
     const rosterById = new Map(rosters.map((roster) => [roster.roster_id, roster]));
 
     // Two rows share a matchup_id. Pair them to fill in opponents.
@@ -463,9 +466,9 @@ export const sleeperAdapter: PlatformAdapter = {
     }
 
     return raw
-      .filter((m) => m.matchup_id !== null)
+      .filter((m) => format === "chopped" || m.matchup_id !== null)
       .map((m) => {
-        const pair = byMatchup.get(m.matchup_id!) ?? [];
+        const pair = m.matchup_id === null ? [] : byMatchup.get(m.matchup_id) ?? [];
         const opp = pair.find((x) => x.roster_id !== m.roster_id);
         const orderedStarters = (m.starters ?? []).flatMap((playerId, lineupOrder) =>
           playerId && playerId !== "0" ? [{ playerId, lineupOrder }] : []
@@ -494,7 +497,9 @@ export const sleeperAdapter: PlatformAdapter = {
         ];
         return {
           week,
-          matchupKey: `${week}-${m.matchup_id}`,
+          matchupKey: format === "chopped"
+            ? `${week}-chopped-${m.roster_id}`
+            : `${week}-${m.matchup_id}`,
           teamExternalId: String(m.roster_id),
           opponentExternalId: opp ? String(opp.roster_id) : null,
           points: m.points,

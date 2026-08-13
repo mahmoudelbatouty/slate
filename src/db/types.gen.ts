@@ -136,6 +136,7 @@ export type Database = {
         Row: {
           current_week: number | null
           external_id: string
+          format: string
           id: string
           name: string
           platform: Database["public"]["Enums"]["platform"]
@@ -151,6 +152,7 @@ export type Database = {
         Insert: {
           current_week?: number | null
           external_id: string
+          format?: string
           id?: string
           name: string
           platform: Database["public"]["Enums"]["platform"]
@@ -166,6 +168,7 @@ export type Database = {
         Update: {
           current_week?: number | null
           external_id?: string
+          format?: string
           id?: string
           name?: string
           platform?: Database["public"]["Enums"]["platform"]

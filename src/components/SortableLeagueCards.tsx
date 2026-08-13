@@ -83,9 +83,9 @@ export function SortableLeagueCards({ cards }: { cards: MatchupCard[] }) {
   }
 
   return (
-    <section className="mt-[22px] flex flex-col gap-3" aria-label="Ordered matchups">
+    <section className="mt-[22px] flex flex-col gap-3" aria-label="Ordered leagues">
       <p className="mono px-1 text-[9px] tracking-[0.1em] text-stone">
-        DRAG THE HANDLE TO SET YOUR MATCHUP ORDER · SAVED IN THIS BROWSER
+        DRAG THE HANDLE TO SET YOUR LEAGUE ORDER · SAVED IN THIS BROWSER
       </p>
       <p className="sr-only" aria-live="polite">{announcement}</p>
       {orderedCards.map((card, index) => {

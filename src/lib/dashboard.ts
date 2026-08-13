@@ -8,6 +8,7 @@ import {
   winProbability,
   type StarterGame,
 } from "./game-state";
+import { choppedSummary } from "./league-format";
 
 export type { WeekOption } from "./weeks";
 
@@ -45,7 +46,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   const { data: leagues, error } = await client
     .from("leagues")
-    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw");
+    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw, format");
 
   if (error) throw new Error(`leagues read: ${error.message}`);
   if (!leagues?.length) return { ...EMPTY, configured: true };
@@ -250,6 +251,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         leagueExternalId: league.external_id,
         platform: league.platform,
         leagueStatus: "pre_draft",
+        leagueFormat: league.format === "chopped" ? "chopped" : "head_to_head",
         teamCount: league.team_count,
         season: league.season,
         week,
@@ -269,12 +271,15 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
           projected: null,
         },
         opponent: null,
+        chopped: null,
       });
       continue;
     }
 
     const mineTeam = teamById.get(mineRow.team_id);
     if (!mineTeam) continue;
+
+    const leagueFormat = league.format === "chopped" ? "chopped" : "head_to_head";
 
     const oppTeam = mineRow.opponent_team_id
       ? teamById.get(mineRow.opponent_team_id)
@@ -301,6 +306,26 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
           mineRow.is_final
         )
       : null;
+    const chopped = leagueFormat === "chopped"
+      ? choppedSummary((rows ?? []).flatMap((row) => {
+          if (row.league_id !== league.id || row.week !== week) return [];
+          const team = teamById.get(row.team_id);
+          if (!team) return [];
+          const native = nativeByTeam.get(
+            `${league.platform}:${league.external_id}:${team.external_id}:${week}`
+          );
+          return [{
+            teamId: team.id,
+            name: team.name ?? `Roster ${team.external_id}`,
+            points: row.points,
+            projected: native ?? row.projected_points,
+            isMine: team.is_mine,
+          }];
+        }))
+      : null;
+    const choppedStarters = leagueFormat === "chopped"
+      ? starterGames.filter((starter) => starter.leagueId === league.id)
+      : [];
 
     cards.push({
       leagueId: league.id,
@@ -308,15 +333,18 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
       leagueExternalId: league.external_id,
       platform: league.platform,
       leagueStatus: league.status === "complete" ? "complete" : "in_season",
+      leagueFormat,
       teamCount: league.team_count,
       season: league.season,
       week,
       isFinal: mineRow.is_final,
-      isLive: [...mineStarters, ...opponentStarters].some((starter) => starter.inProgress),
-      winProbability: probability,
+      isLive: [...mineStarters, ...opponentStarters, ...choppedStarters].some((starter) => starter.inProgress),
+      winProbability: leagueFormat === "chopped" ? null : probability,
       starterStatus: {
         mine: summarizeStarterStates(mineStarters),
-        opponent: oppTeam ? summarizeStarterStates(opponentStarters) : null,
+        opponent: leagueFormat === "chopped"
+          ? null
+          : oppTeam ? summarizeStarterStates(opponentStarters) : null,
       },
       syncedAt: league.synced_at,
       mine: {
@@ -328,7 +356,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         lineup: lineupsByTeam.get(mineTeam.id),
       },
       opponent:
-        oppTeam && oppRow
+        leagueFormat === "head_to_head" && oppTeam && oppRow
           ? {
               teamId: oppTeam.id,
               externalId: oppTeam.external_id,
@@ -338,6 +366,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
               lineup: lineupsByTeam.get(oppTeam.id),
             }
           : null,
+      chopped,
     });
   }
 

@@ -186,6 +186,11 @@ The collapsed card and expanded matchup header must use the same shared,
 accessible platform-logo component. Expanding a matchup must not regress to a
 two-letter monogram.
 
+Sleeper Chopped leagues are a distinct canonical format, detected from
+`settings.type = 3`. They use a league-wide Chopping Block card and standings,
+not a fabricated head-to-head opponent. Future Yahoo/ESPN guillotine formats
+must normalize into the same `chopped` presentation.
+
 Do not restore the global dot/blinker field. It becomes unreadable across many
 leagues and omits opponent context. The collapsed card uses compact counts with
 a hover/keyboard-focus table; the expanded view owns player-level status.

@@ -100,6 +100,7 @@ describe("listLeagues", () => {
       expect(league.season).toBe(meta.season);
       expect(["ppr", "half_ppr", "standard", "custom"]).toContain(league.scoringType);
       expect(["pre_draft", "in_season", "complete"]).toContain(league.status);
+      expect(["head_to_head", "chopped"]).toContain(league.format);
       expect(typeof league.teamCount).toBe("number");
       // Not a Sleeper field name in sight.
       expect(league).not.toHaveProperty("league_id");
@@ -237,6 +238,40 @@ describe("getMatchups", () => {
       expect(mirror?.opponentExternalId).toBe(row.teamExternalId);
       expect(mirror?.matchupKey).toBe(row.matchupKey);
     }
+  });
+
+  it("keeps unpaired Chopped rows as league-wide competitors", async () => {
+    const league = { ...fixture("league"), settings: { type: 3 } };
+    const roster = {
+      roster_id: 7,
+      owner_id: "owner",
+      players: ["p1"],
+      starters: ["p1"],
+      reserve: [],
+      taxi: [],
+      settings: null,
+    };
+    vi.stubGlobal("fetch", async (input: string | URL) => {
+      const url = String(input);
+      const body = url.includes("/projections/")
+        ? PROJECTIONS
+        : url.includes("/matchups/")
+          ? [{ ...roster, matchup_id: null, points: 10, players_points: { p1: 10 } }]
+          : url.endsWith("/rosters")
+            ? [roster]
+            : league;
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    const [row] = await sleeperAdapter.getMatchups(creds, "chopped", 2026, 1);
+    expect(row).toMatchObject({
+      matchupKey: "1-chopped-7",
+      teamExternalId: "7",
+      opponentExternalId: null,
+    });
   });
 
   it("leaves isFinal to the sync job", async () => {

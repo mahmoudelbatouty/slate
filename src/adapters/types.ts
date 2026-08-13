@@ -53,6 +53,7 @@ export interface CanonicalRosterEntry {
   externalPlayerId: string;
   slot: string;                     // QB | RB | WR | TE | FLEX | K | DEF | BN | IR
   isStarter: boolean;
+  lineupOrder: number;              // provider order within starters or bench
   week: number | null;
 }
 
@@ -64,11 +65,13 @@ export interface CanonicalMatchup {
   points: number | null;
   projectedPoints: number | null;
   isFinal: boolean;
-  starterStats?: CanonicalStarterStat[];
+  playerStats?: CanonicalPlayerStat[];
 }
 
-export interface CanonicalStarterStat {
+export interface CanonicalPlayerStat {
   externalPlayerId: string;
+  isStarter: boolean;
+  lineupOrder: number;
   currentPoints: number | null;
   projectedPoints: number | null;
 }

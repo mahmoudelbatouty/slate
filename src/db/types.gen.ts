@@ -461,6 +461,7 @@ export type Database = {
           external_player_id: string
           id: string
           is_starter: boolean
+          lineup_order: number
           player_id: string | null
           projected_points: number | null
           slot: string | null
@@ -472,6 +473,7 @@ export type Database = {
           external_player_id: string
           id?: string
           is_starter?: boolean
+          lineup_order?: number
           player_id?: string | null
           projected_points?: number | null
           slot?: string | null
@@ -483,6 +485,7 @@ export type Database = {
           external_player_id?: string
           id?: string
           is_starter?: boolean
+          lineup_order?: number
           player_id?: string | null
           projected_points?: number | null
           slot?: string | null

@@ -46,7 +46,31 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 - Daily sync now imports every provider-published season matchup, including
   future pairings. Users never need to open individual provider matchups to
   populate Slate; private/native fields may arrive separately when published.
-- Next implementation slice: the complete inline matchup view.
+- Complete inline matchup views are implemented on `codex/m3-inline-matchups`:
+  both starters and collapsible benches, weekly you/opponent status, current
+  points, projections, injury/lock state, NFL opponent/game state, and provider
+  sync time render without leaving Slate. The shared platform mark is reused
+  in both card states and the layout is verified at 360px.
+- Sleeper player projections use Sleeper's own weekly projected stat lines
+  scored through the league's complete `scoring_settings`. This matches the
+  value shown by Sleeper, including custom categories and bonuses; generic
+  PPR/half-PPR/standard totals must not be used as a shortcut.
+- Every expanded player row states the selected-week game state explicitly:
+  `PLAYED`, `LIVE`, `TO PLAY`, `BYE / TBD`, or `CANCELED`. This comes from the
+  provider game feed and is not inferred from the current calendar day.
+- Provider lineup order is stored canonically on `roster_entries`. Sleeper
+  starter rows preserve empty-slot gaps and bench rows carry native current
+  points/projections; IR and taxi players remain stored but do not masquerade
+  as bench players. Apply this same canonical order field to Yahoo and ESPN.
+- Dashboard matchup cards have a visible drag handle with pointer and keyboard
+  reordering. The preference uses `platform:externalLeagueId`, persists across
+  reloads and selected weeks, and preserves temporarily hidden leagues. Future
+  ESPN/Yahoo cards must enter this same shared sortable list automatically.
+- Routine provider deep-link buttons were removed once inline inspection
+  existed. The expanded lineup is a two-column head-to-head comparison at all
+  widths so the user never has to remember a roster shown further up-screen.
+- Next implementation slice after this branch: add the first official Yahoo
+  connection/read path, then feed it into the same canonical UI before writes.
 - Sleeper cards use the official monochrome Sleeper wordmark instead of `SL`.
 - Pre-draft leagues now render as cards even before a matchup exists. This is
   driven by canonical league status, so ESPN and Yahoo receive the same
@@ -149,6 +173,15 @@ existing password proxy, rejects cross-origin POSTs, checks recent `sync_runs`
 for cross-instance cooldown, and coalesces in-flight work in one instance.
 Vercel cron is deliberately daily-only so the prototype deploys on Hobby.
 
+This is platform infrastructure, not a Sleeper-only UI. Every enabled adapter
+must write the same canonical matchup, roster-entry, player, and real-game
+fields. `LiveRefresh`, the weekly you/opponent summary, inline starters and
+benches, game/lock state, and automatic redraw then work unchanged for ESPN and
+Yahoo. Provider-specific code belongs only at adapter/connector boundaries;
+do not fork dashboard components or invent a second refresh loop per platform.
+The live endpoint currently enables Sleeper because that is the only finished
+adapter, and must iterate all enabled provider adapters as they land.
+
 The collapsed card and expanded matchup header must use the same shared,
 accessible platform-logo component. Expanding a matchup must not regress to a
 two-letter monogram.
@@ -220,6 +253,5 @@ league-setting operations are out of scope until lineup edits are reliable.
 
 ## Verification baseline
 
-At handoff time: 66 tests pass, lint passes, production build passes, and the
-Sleeper native-projection path was verified end to end against the live
-Supabase project. No active test connector remains paired.
+The Sleeper native-projection path has been verified against Sleeper's web UI
+and the live Supabase project. No active test connector remains paired.

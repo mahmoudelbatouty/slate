@@ -206,6 +206,16 @@ a database-backed cooldown and also coalesces same-instance requests, so
 multiple tabs do not normally multiply provider traffic. Batch by league and
 cache the player dump for 24h (it's several MB, never fetch it per-request).
 
+The live-refresh and inline-matchup surfaces are canonical and cross-platform.
+ESPN and Yahoo adapters must populate the same tables and types so they inherit
+the same cadence, weekly status model, full lineup display, and automatic UI
+refresh without provider-specific dashboard branches.
+
+Matchup-card ordering is also canonical and cross-platform. Drama order is the
+default only; the user's saved `platform:externalLeagueId` order wins across
+weeks and reloads, with newly connected leagues appended. Every future adapter
+must feed the shared sortable card list rather than create provider-only order.
+
 ---
 
 ## Build order
@@ -223,6 +233,8 @@ Ship each milestone working before starting the next.
 - **M3 — Connections + complete matchup.** Automatic connector pairing,
   always-visible week selection, expandable player-level matchups, and Yahoo
   OAuth with Fantasy Read/Write access.
+  Provider order is canonical data: retain starter-slot gaps and bench order,
+  and sync native current/projected points for both starters and bench players.
 - **M4 — Lineup actions.** Official Yahoo lineup edits, followed by explicitly
   experimental Sleeper/ESPN connector actions with confirmation and read-back.
 - **M5 — full-league expansion.** Whole-league scoreboard toggle on every card,
@@ -238,12 +250,13 @@ Ship each milestone working before starting the next.
 large: fetch once daily, cache, never call it from a request path.
 
 *Projections are on a different host* — `https://api.sleeper.com/projections/nfl/{season}/{week}`,
-undocumented but publicly readable. Returns `pts_ppr`, `pts_half_ppr`, `pts_std`
-per player, so **one call serves every league**; you just read the field matching
-each league's scoring type. Fetch once per week in the sync job and pass the map
-down to each league, rather than calling it per league. Treat it as unstable:
-on failure return an empty map and render projections as "—". A missing
-projection must never fail a score sync.
+undocumented but publicly readable. It returns Sleeper's projected stat line.
+Apply the complete `league.scoring_settings` map as a dot product, exactly as
+Sleeper's web client does; never substitute the generic `pts_ppr`,
+`pts_half_ppr`, or `pts_std` convenience fields. Sum unrounded player values
+before rounding the team total. One weekly call still serves every league.
+Treat the host as unstable: on failure return an empty map and render
+projections as "—". A missing projection must never fail a score sync.
 
 **Yahoo** — `https://fantasysports.yahooapis.com/fantasy/v2`. Always append
 `?format=json`. The JSON is XML translated literally: numeric string keys,

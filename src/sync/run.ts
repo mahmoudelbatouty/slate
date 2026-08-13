@@ -286,6 +286,7 @@ async function syncDaily(
           external_player_id: e.externalPlayerId,
           slot: resolveSlot(e.slot, positions),
           is_starter: e.isStarter,
+          lineup_order: e.lineupOrder,
           week: e.week,
         };
       })
@@ -415,25 +416,26 @@ async function syncScores(
       );
       weekCount++;
 
-      const starterRows = matchups.flatMap((matchup) => {
+      const playerRows = matchups.flatMap((matchup) => {
         const teamId = teamIds.get(matchup.teamExternalId);
         if (!teamId) return [];
-        return (matchup.starterStats ?? []).map((starter) => ({
+        return (matchup.playerStats ?? []).map((player) => ({
           team_id: teamId,
-          player_id: crosswalk.get(starter.externalPlayerId) ?? null,
-          external_player_id: starter.externalPlayerId,
-          is_starter: true,
+          player_id: crosswalk.get(player.externalPlayerId) ?? null,
+          external_player_id: player.externalPlayerId,
+          is_starter: player.isStarter,
+          lineup_order: player.lineupOrder,
           week,
-          current_points: starter.currentPoints,
-          projected_points: starter.projectedPoints,
+          current_points: player.currentPoints,
+          projected_points: player.projectedPoints,
         }));
       });
 
-      if (starterRows.length) {
-        const { error: starterError } = await db
+      if (playerRows.length) {
+        const { error: playerError } = await db
           .from("roster_entries")
-          .upsert(starterRows, { onConflict: "team_id,external_player_id,week" });
-        if (starterError) throw new Error(`starter stats upsert: ${starterError.message}`);
+          .upsert(playerRows, { onConflict: "team_id,external_player_id,week" });
+        if (playerError) throw new Error(`player stats upsert: ${playerError.message}`);
       }
 
       const rows = matchups

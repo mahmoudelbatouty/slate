@@ -138,7 +138,7 @@ app that happens to open in a browser.
 │ │ proj 108.0               │ │
 │ │                          │ │
 │ │ YOU 6 · OPP 4 LEFT       │ │  hover/focus for weekly counts
-│ │                 Open in ↗ │ │
+│ │ VIEW MATCHUP ↓           │ │  inline; no routine provider detour
 │ └──────────────────────────┘ │
 │ ┌──────────────────────────┐ │
 │ │ YH │ THE WORK LEAGUE     │ │  Yahoo card gets inline swap
@@ -146,8 +146,11 @@ app that happens to open in a browser.
 └──────────────────────────────┘
 ```
 
-Cards are ordered by *drama*, not alphabetically: closest margin first, finals
-last. A blowout you already won doesn't need to be at the top.
+Cards default to *drama* order, not alphabetical order: closest margin first,
+finals last. A visible drag handle lets the user override that default. The
+platform-qualified league order persists across reloads and weeks, while newly
+discovered leagues append after the saved order. The same sortable list must
+wrap Sleeper, ESPN, and Yahoo cards; provider-specific ordering UIs are forbidden.
 
 ### Week selection
 
@@ -160,8 +163,24 @@ just because only one week currently has data.
 ### Matchup expansion and lineup editing
 
 Pressing a matchup card expands it inline. Do not navigate away from the Slate
-screen. The expanded state shows both starting lineups, benches, player-level
-scores and native projections, game status, and remaining players.
+screen and do not show routine “Open in provider” buttons on matchup cards. The
+expanded state shows a persistent two-column head-to-head view: each of the
+user's players stays beside the corresponding opponent player. It includes
+both starting lineups, benches, player-level scores and native projections,
+game status, and remaining players. Inside each player half, identity/game
+context extends toward the outside while the score columns meet at the center:
+the user's current points and projection sit immediately left of the divide,
+and the opponent's sit immediately right. Current points are larger, with the
+smaller projection immediately underneath and no redundant suffix.
+Show player projections to two decimals so the value can be compared directly
+with the provider. Each player row must also say `PLAYED`, `LIVE`, `TO PLAY`,
+`BYE / TBD`, or `CANCELED` for the selected fantasy week; kickoff and opponent
+remain supporting context. Other adapters must normalize their provider's
+native projection and game-state source into the same presentation.
+Preserve the provider's starter-slot order, including empty lineup slots, so
+the two sides align exactly like the source matchup. Bench rows include native
+current points and projections, group by the provider's positional display
+order, and exclude IR/taxi players from the bench section.
 
 When lineup changes are supported, show **Edit lineup** inside the expanded
 card. Selection happens inline, but the final action always uses a confirmation

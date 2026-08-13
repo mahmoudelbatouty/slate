@@ -40,6 +40,10 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 - A provider is shown as connected only after a validated capture exists.
 - The manual connector-token input has been removed from the extension popup.
 - Next implementation slice: the always-visible full-season week selector.
+- Sleeper cards use the official monochrome Sleeper wordmark instead of `SL`.
+- Pre-draft leagues now render as cards even before a matchup exists. This is
+  driven by canonical league status, so ESPN and Yahoo receive the same
+  behavior when their adapters are enabled.
 
 ## Non-negotiable security boundary
 

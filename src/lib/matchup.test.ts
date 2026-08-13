@@ -17,6 +17,8 @@ function card(
     leagueName: "Dynasty Degenerates",
     leagueExternalId: "1313273030905974784",
     platform: "sleeper",
+    leagueStatus: "in_season",
+    teamCount: 12,
     season: 2026,
     week: 11,
     isFinal: false,
@@ -61,12 +63,27 @@ describe("byDrama", () => {
     const solo = card({ mine: 50, opponent: null, leagueId: "solo" });
     expect(() => [solo, card({ mine: 1, theirs: 1 })].sort(byDrama)).not.toThrow();
   });
+
+  it("places pre-draft leagues after active matchups", () => {
+    const preDraft = card({ leagueStatus: "pre_draft", leagueId: "pre" });
+    const active = card({ leagueId: "active" });
+    expect([preDraft, active].sort(byDrama).map((item) => item.leagueId)).toEqual([
+      "active",
+      "pre",
+    ]);
+  });
 });
 
 describe("deepLink", () => {
   it("builds the Sleeper team URL", () => {
     expect(deepLink(card({})).href).toBe(
       "https://sleeper.com/leagues/1313273030905974784/team"
+    );
+  });
+
+  it("builds a league URL before the draft creates a matchup", () => {
+    expect(deepLink(card({ leagueStatus: "pre_draft" })).href).toBe(
+      "https://sleeper.com/leagues/1313273030905974784"
     );
   });
 
@@ -78,11 +95,31 @@ describe("deepLink", () => {
     expect(link.label).toBe("Open in ESPN");
   });
 
+  it("builds the ESPN league URL before the draft", () => {
+    expect(
+      deepLink(card({
+        platform: "espn",
+        leagueExternalId: "44332",
+        leagueStatus: "pre_draft",
+      })).href
+    ).toBe("https://fantasy.espn.com/football/league?leagueId=44332");
+  });
+
   it("builds the Yahoo URL from league and team keys", () => {
     const link = deepLink(card({ platform: "yahoo", leagueExternalId: "nfl.l.123456" }));
     expect(link.href).toBe(
       "https://football.fantasysports.yahoo.com/f1/nfl.l.123456/1"
     );
+  });
+
+  it("builds the Yahoo league URL before the draft", () => {
+    expect(
+      deepLink(card({
+        platform: "yahoo",
+        leagueExternalId: "nfl.l.123456",
+        leagueStatus: "pre_draft",
+      })).href
+    ).toBe("https://football.fantasysports.yahoo.com/f1/nfl.l.123456");
   });
 });
 

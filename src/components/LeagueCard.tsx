@@ -1,8 +1,10 @@
+import Image from "next/image";
 import { deepLink, MONOGRAM, type MatchupCard, type Side } from "@/lib/matchup";
 
 /**
- * Color means game state and nothing else — see DESIGN.md. Platform is
- * the mono monogram in the hairline box, never a brand color.
+ * Color means game state and nothing else — see DESIGN.md. Platform identity
+ * stays neutral: an official monochrome mark where available, otherwise the
+ * compact monogram fallback.
  */
 export function LeagueCard({ card }: { card: MatchupCard }) {
   const link = deepLink(card);
@@ -16,28 +18,35 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
   return (
     <article className="border border-ink-line bg-ink-raised px-4 pt-[15px] pb-[13px]">
       <div className="mb-[15px] flex items-center gap-[10px]">
-        <span className="mono shrink-0 border border-ink-line px-[6px] py-[3px] text-2xs tracking-[0.05em] text-bone-dim">
-          {MONOGRAM[card.platform]}
-        </span>
+        <PlatformMark platform={card.platform} />
         <span className="display min-w-0 flex-1 truncate text-sm font-bold">
           {card.leagueName}
         </span>
-        <StateLabel isFinal={card.isFinal} isLive={card.isLive} hasScore={total > 0} />
+        {card.leagueStatus === "pre_draft" ? (
+          <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">PRE-DRAFT</span>
+        ) : (
+          <StateLabel isFinal={card.isFinal} isLive={card.isLive} hasScore={total > 0} />
+        )}
       </div>
 
-      <Row side={card.mine} isMine diff={diff} isFinal={card.isFinal} />
+      {card.leagueStatus === "pre_draft" ? (
+        <PreDraft card={card} link={link} />
+      ) : (
+        <>
 
-      <div className="relative my-[14px] h-[2px] bg-ink-line">
+          <Row side={card.mine} isMine diff={diff} isFinal={card.isFinal} />
+
+          <div className="relative my-[14px] h-[2px] bg-ink-line">
         <i
           className={`absolute inset-y-0 left-0 block ${diff < 0 ? "bg-flag" : "bg-turf"}`}
           style={{ width: `${share}%` }}
         />
         <u className="absolute top-[-3px] left-1/2 h-2 w-px bg-bone-dim opacity-70" />
-      </div>
+          </div>
 
-      <Row side={card.opponent} isMine={false} diff={0} isFinal={card.isFinal} />
+          <Row side={card.opponent} isMine={false} diff={0} isFinal={card.isFinal} />
 
-      <div className="mt-[14px] flex items-center justify-between border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
+          <div className="mt-[14px] flex items-center justify-between border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
         <span className="mono">
           {card.winProbability === null
             ? marginLabel(diff, card.isFinal, total)
@@ -51,8 +60,60 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
         >
           {link.label} ↗
         </a>
-      </div>
+          </div>
+        </>
+      )}
     </article>
+  );
+}
+
+function PlatformMark({ platform }: { platform: MatchupCard["platform"] }) {
+  if (platform === "sleeper") {
+    return (
+      <span className="flex h-[24px] w-[58px] shrink-0 items-center border border-ink-line px-[5px]">
+        <Image
+          src="https://sleepercdn.com/landing/web2026/img/logos/logo-full-horizontal-white.png"
+          alt="Sleeper"
+          width={94}
+          height={24}
+          className="h-auto w-full opacity-80"
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span className="mono shrink-0 border border-ink-line px-[6px] py-[3px] text-2xs tracking-[0.05em] text-bone-dim">
+      {MONOGRAM[platform]}
+    </span>
+  );
+}
+
+function PreDraft({
+  card,
+  link,
+}: {
+  card: MatchupCard;
+  link: ReturnType<typeof deepLink>;
+}) {
+  return (
+    <div>
+      <p className="text-sm font-semibold text-bone">Draft not started</p>
+      <p className="mt-1 text-xs text-bone-dim">
+        {card.teamCount ? `${card.teamCount} teams · ` : ""}Matchups and projections will appear after the draft.
+      </p>
+      <div className="mt-[14px] flex items-center justify-between border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
+        <span className="mono">{card.mine.teamId ? card.mine.name : "ROSTER PENDING"}</span>
+        <a
+          className="border-b border-ink-line pb-[2px] text-2xs text-bone"
+          href={link.href}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {link.label} ↗
+        </a>
+      </div>
+    </div>
   );
 }
 

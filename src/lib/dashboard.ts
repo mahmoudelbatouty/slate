@@ -61,7 +61,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   const { data: leagues, error } = await client
     .from("leagues")
-    .select("id, name, external_id, platform, season, current_week, synced_at");
+    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count");
 
   if (error) throw new Error(`leagues read: ${error.message}`);
   if (!leagues?.length) return { ...EMPTY, configured: true };
@@ -162,13 +162,44 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
   for (const league of leagues) {
     if (!week) continue;
 
+    const mineTeamForLeague = (teams ?? []).find(
+      (team) => team.league_id === league.id && team.is_mine
+    );
+
     const mineRow = (rows ?? []).find(
       (r) =>
         r.league_id === league.id &&
         r.week === week &&
         teamById.get(r.team_id)?.is_mine
     );
-    if (!mineRow) continue;
+    if (!mineRow) {
+      if (league.status !== "pre_draft") continue;
+
+      cards.push({
+        leagueId: league.id,
+        leagueName: league.name,
+        leagueExternalId: league.external_id,
+        platform: league.platform,
+        leagueStatus: "pre_draft",
+        teamCount: league.team_count,
+        season: league.season,
+        week,
+        isFinal: false,
+        isLive: false,
+        winProbability: null,
+        remaining: 0,
+        syncedAt: league.synced_at,
+        mine: {
+          teamId: mineTeamForLeague?.id ?? "",
+          externalId: mineTeamForLeague?.external_id ?? "",
+          name: mineTeamForLeague?.name ?? "Team not assigned",
+          points: null,
+          projected: null,
+        },
+        opponent: null,
+      });
+      continue;
+    }
 
     const mineTeam = teamById.get(mineRow.team_id);
     if (!mineTeam) continue;
@@ -204,6 +235,8 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
       leagueName: league.name,
       leagueExternalId: league.external_id,
       platform: league.platform,
+      leagueStatus: league.status === "complete" ? "complete" : "in_season",
+      teamCount: league.team_count,
       season: league.season,
       week,
       isFinal: mineRow.is_final,

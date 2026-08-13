@@ -57,10 +57,11 @@ npm run sync -- daily
 npm run sync -- live
 ```
 
-`players` builds the ~11k-row directory and the crosswalk, `daily` pulls
-leagues/teams/rosters/transactions, and `live` writes fantasy scores plus NFL
-game state. Order matters on
-a cold database. Then:
+`players` builds the ~11k-row directory and the crosswalk. `daily` pulls
+leagues, teams, rosters, transactions, and every provider-published matchup
+week—including future pairings. `live` refreshes current scores plus NFL game
+state. Order matters on a cold database; a separate `backfill` is only a repair
+tool because normal daily sync already covers the full schedule. Then:
 
 ```bash
 npm run dev

@@ -28,7 +28,7 @@ export function buildWeekOptions(
   const currentWeek = maxValidWeek(leagues.map((league) => league.currentWeek));
   const syncedWeeks = new Set(dataWeeks.filter(isValidWeek));
   const explicitEnds = leagues
-    .map((league) => seasonEndFromRaw(league.scoringRaw))
+    .map((league) => explicitSeasonEndFromRaw(league.scoringRaw))
     .filter((week): week is number => week !== null);
   const fallbackEnd = explicitEnds.length > 0
     ? Math.max(...explicitEnds)
@@ -49,6 +49,11 @@ export function buildWeekOptions(
   });
 }
 
+/** Provider-defined final matchup week, with the normal NFL season fallback. */
+export function seasonEndWeek(scoringRaw: unknown): number {
+  return explicitSeasonEndFromRaw(scoringRaw) ?? DEFAULT_FANTASY_WEEKS;
+}
+
 /**
  * Clamp a user-editable/shareable URL week to the season rail.
  * In preseason there is no default selected week, but any valid requested
@@ -63,7 +68,7 @@ export function resolveWeek(
   return currentWeek;
 }
 
-function seasonEndFromRaw(raw: unknown): number | null {
+function explicitSeasonEndFromRaw(raw: unknown): number | null {
   if (!isRecord(raw)) return null;
   const settings = isRecord(raw.settings) ? raw.settings : raw;
 

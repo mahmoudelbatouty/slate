@@ -90,8 +90,8 @@ function UnsyncedWeek({ week, isCurrent }: { week: number; isCurrent: boolean })
       <p className="mono text-2xs tracking-[0.08em] text-bone">WEEK {week} · UNSYNCED</p>
       <p className="mt-1 text-xs leading-relaxed text-bone-dim">
         {isCurrent
-          ? "Open this week's matchup on your connected fantasy platform to import its approved data."
-          : `Open Week ${week} on your connected fantasy platform to capture its matchup data, or return to the current week.`}
+          ? "Slate is syncing this matchup automatically. Scores and projections will appear as the platform publishes them."
+          : `Slate syncs Week ${week} automatically. Its matchup will appear when the platform publishes the schedule; scores and projections can arrive later.`}
       </p>
       {!isCurrent && (
         <Link

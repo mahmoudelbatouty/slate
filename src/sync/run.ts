@@ -7,7 +7,7 @@
  *
  * Modes mirror the cron cadence in CLAUDE.md:
  *   players — Sleeper player directory + crosswalk rebuild   (04:00 ET)
- *   daily   — leagues, teams, rosters, transactions          (06:00 ET)
+ *   daily   — leagues, teams, rosters, transactions, schedule (06:00 ET)
  *   live    — matchups + scores only                         (every 5 min)
  *
  * A platform that throws is contained: its sync_runs row goes to 'error'
@@ -28,6 +28,7 @@ import type {
 } from "@/adapters/types";
 import { CrosswalkIndex, type CanonicalPlayerRow } from "./crosswalk";
 import { resolveSlot, rosterPositionsFromRaw } from "./slots";
+import { seasonEndWeek } from "@/lib/weeks";
 
 export type SyncMode = "live" | "daily" | "players" | "backfill";
 
@@ -77,6 +78,14 @@ export async function runSync(
         Object.assign(stats, await syncPlayers(db, adapter));
       } else if (mode === "daily") {
         Object.assign(stats, await syncDaily(db, adapter, creds, season));
+        const schedule = await syncScores(db, adapter, creds, season, "backfill");
+        Object.assign(stats, {
+          matchup_leagues: schedule.leagues,
+          matchups: schedule.matchups,
+          matchup_weeks: schedule.weeks,
+          games: schedule.games,
+          game_state_errors: schedule.game_state_errors,
+        });
       } else {
         Object.assign(stats, await syncScores(db, adapter, creds, season, mode));
       }
@@ -332,13 +341,18 @@ async function syncDaily(
  * Which weeks to pull for a league.
  *
  *   live     — just the current week, every 5 minutes on gameday
- *   backfill — 1..current, so the dashboard's week filter has history
- *              to show. One call per league per week; cheap, and the
- *              projections map is memoized across all of them.
+ *   backfill — every published season week, including future pairings.
+ *              One call per league per week; projections are memoized.
  */
-export function weeksFor(mode: "live" | "backfill", currentWeek: number): number[] {
+export function weeksFor(
+  mode: "live" | "backfill",
+  currentWeek: number,
+  finalWeek = 18
+): number[] {
+  if (currentWeek < 1) return [];
   if (mode === "live") return [currentWeek];
-  return Array.from({ length: currentWeek }, (_, i) => i + 1);
+  const end = Math.max(currentWeek, Math.min(Math.trunc(finalWeek), 25));
+  return Array.from({ length: end }, (_, i) => i + 1);
 }
 
 async function syncScores(
@@ -350,7 +364,7 @@ async function syncScores(
 ): Promise<Record<string, number>> {
   const { data: leagues, error } = await db
     .from("leagues")
-    .select("id, external_id, current_week")
+    .select("id, external_id, current_week, scoring_raw, status")
     .eq("platform", adapter.platform)
     .eq("season", season);
 
@@ -363,7 +377,13 @@ async function syncScores(
   const requestedWeeks = [
     ...new Set(
       leagues.flatMap((league) =>
-        league.current_week ? weeksFor(mode, league.current_week) : []
+        league.status === "pre_draft"
+          ? []
+          : weeksFor(
+              mode,
+              league.current_week ?? 0,
+              seasonEndWeek(league.scoring_raw)
+            )
       )
     ),
   ];
@@ -375,7 +395,8 @@ async function syncScores(
 
   for (const league of leagues) {
     const currentWeek = league.current_week;
-    if (!currentWeek) continue;
+    if (!currentWeek || league.status === "pre_draft") continue;
+    const leagueWeeks = weeksFor(mode, currentWeek, seasonEndWeek(league.scoring_raw));
 
     const { data: teamRows, error: teamError } = await db
       .from("teams")
@@ -385,7 +406,7 @@ async function syncScores(
     if (teamError) throw new Error(`teams read: ${teamError.message}`);
     const teamIds = new Map((teamRows ?? []).map((t) => [t.external_id, t.id]));
 
-    for (const week of weeksFor(mode, currentWeek)) {
+    for (const week of leagueWeeks) {
       const matchups = await adapter.getMatchups(
         creds,
         league.external_id,

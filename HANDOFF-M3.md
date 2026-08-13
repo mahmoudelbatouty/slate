@@ -43,6 +43,9 @@ Slate remains the one browser screen used during fantasy game day. A user can:
   `codex/m3-week-selector`. It remains server-rendered and shareable through
   `?week=N`, supports preseason and provider season-end metadata, and labels
   current/synced/unsynced states without relying on color.
+- Daily sync now imports every provider-published season matchup, including
+  future pairings. Users never need to open individual provider matchups to
+  populate Slate; private/native fields may arrive separately when published.
 - Next implementation slice: the complete inline matchup view.
 - Sleeper cards use the official monochrome Sleeper wordmark instead of `SL`.
 - Pre-draft leagues now render as cards even before a matchup exists. This is

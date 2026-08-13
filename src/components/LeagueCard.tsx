@@ -227,30 +227,38 @@ function PairedPlayerRows({ mine, opponent, emptyLabel }: { mine: MatchupPlayer[
 
   return Array.from({ length }, (_, index) => (
     <div className="grid grid-cols-2 gap-2 border-t border-ink-line py-2" key={`${mine[index]?.externalPlayerId ?? "empty"}:${opponent[index]?.externalPlayerId ?? "empty"}`}>
-      <PlayerCell player={mine[index]} />
-      <PlayerCell player={opponent[index]} />
+      <PlayerCell player={mine[index]} side="left" />
+      <PlayerCell player={opponent[index]} side="right" />
     </div>
   ));
 }
 
-function PlayerCell({ player }: { player: MatchupPlayer | undefined }) {
-  if (!player) return <div className="min-w-0 text-xs text-stone">—</div>;
+function PlayerCell({ player, side }: { player: MatchupPlayer | undefined; side: "left" | "right" }) {
+  if (!player) return <div className={`min-h-12 min-w-0 text-xs text-stone ${side === "left" ? "text-left" : "text-right"}`}>—</div>;
   const game = playerGameLabel(player);
+  const score = (
+    <div className={`mono self-center tabular-nums ${side === "left" ? "text-left" : "text-right"}`}>
+      <p className="text-[15px] font-medium leading-none text-bone">{numberLabel(player.currentPoints)}</p>
+      <p className="mt-1 text-[10px] leading-none text-stone">{numberLabel(player.projectedPoints)}</p>
+    </div>
+  );
+  const identity = (
+    <div className={`min-w-0 self-center ${side === "left" ? "text-right" : "text-left"}`}>
+      <div className={`flex min-w-0 items-baseline gap-1 ${side === "left" ? "justify-end" : "justify-start"}`}>
+        {side === "right" ? <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span> : null}
+        <p className="truncate text-xs text-bone">{player.name}</p>
+        {side === "left" ? <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span> : null}
+      </div>
+      <p className={`mono mt-0.5 truncate text-[8px] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}>
+        {[player.nflTeam, game, lockLabel(player), meaningfulStatus(player.injuryStatus)].filter(Boolean).join(" · ")}
+      </p>
+    </div>
+  );
+
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_38px] gap-1.5">
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-baseline gap-1">
-          <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span>
-          <p className="truncate text-xs text-bone">{player.name}</p>
-        </div>
-        <p className={`mono mt-0.5 truncate text-[8px] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}>
-          {[player.nflTeam, game, lockLabel(player), meaningfulStatus(player.injuryStatus)].filter(Boolean).join(" · ")}
-        </p>
-      </div>
-      <div className="mono text-right tabular-nums">
-        <p className="text-xs leading-none text-bone">{numberLabel(player.currentPoints)}</p>
-        <p className="mt-1 text-[8px] leading-none text-stone">{numberLabel(player.projectedPoints)} P</p>
-      </div>
+    <div className={`grid min-h-12 min-w-0 items-stretch gap-2 ${side === "left" ? "grid-cols-[42px_minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)_42px]"}`}>
+      {side === "left" ? score : identity}
+      {side === "left" ? identity : score}
     </div>
   );
 }

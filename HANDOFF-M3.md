@@ -141,6 +141,14 @@ Fetch platform data only through sync/connector ingestion. Page rendering still
 reads Postgres only. Use a small client component for expansion state and keep
 the data server-sourced.
 
+Live score freshness is implemented through `LiveRefresh` and
+`POST /api/live/sync`: visible dashboards check every 30 seconds, provider
+pulls are limited to once per minute and only during real NFL game windows,
+and successful pulls call `router.refresh()`. The endpoint is protected by the
+existing password proxy, rejects cross-origin POSTs, checks recent `sync_runs`
+for cross-instance cooldown, and coalesces in-flight work in one instance.
+Vercel cron is deliberately daily-only so the prototype deploys on Hobby.
+
 The collapsed card and expanded matchup header must use the same shared,
 accessible platform-logo component. Expanding a matchup must not regress to a
 two-letter monogram.

@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Today } from "@/components/Today";
 import { WeekPicker } from "@/components/WeekPicker";
 import { ConnectorStatus } from "@/components/ConnectorStatus";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { getConnectorStatus } from "@/lib/connector-status";
 
@@ -42,8 +43,11 @@ export default async function Dashboard({
     <main className="mx-auto max-w-app px-[18px] pb-16">
       <header className="sticky top-0 z-10 border-b border-ink-line bg-ink pt-[22px] pb-[14px]">
         <Today week={week} context={weekContext} />
-        <div className="flex items-center justify-between gap-3">
-          <SyncedAt iso={lastSyncedAt} leagueCount={leagueCount} />
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <SyncedAt iso={lastSyncedAt} leagueCount={leagueCount} />
+            <LiveRefresh enabled={configured && leagueCount > 0} />
+          </div>
           <ThemeToggle />
         </div>
         <WeekPicker weeks={weeks} selected={week} />

@@ -8,7 +8,7 @@
  * Modes mirror the cron cadence in CLAUDE.md:
  *   players — Sleeper player directory + crosswalk rebuild   (04:00 ET)
  *   daily   — leagues, teams, rosters, transactions, schedule (06:00 ET)
- *   live    — matchups + scores only                         (every 5 min)
+ *   live    — matchups + scores only (at most once/min while games are live)
  *
  * A platform that throws is contained: its sync_runs row goes to 'error'
  * and the remaining platforms still run. Nothing here rethrows past
@@ -340,7 +340,7 @@ async function syncDaily(
 /**
  * Which weeks to pull for a league.
  *
- *   live     — just the current week, every 5 minutes on gameday
+ *   live     — just the current week, at most once per minute on gameday
  *   backfill — every published season week, including future pairings.
  *              One call per league per week; projections are memoized.
  */

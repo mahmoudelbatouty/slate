@@ -58,6 +58,10 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 - Every expanded player row states the selected-week game state explicitly:
   `PLAYED`, `LIVE`, `TO PLAY`, `BYE / TBD`, or `CANCELED`. This comes from the
   provider game feed and is not inferred from the current calendar day.
+- Provider lineup order is stored canonically on `roster_entries`. Sleeper
+  starter rows preserve empty-slot gaps and bench rows carry native current
+  points/projections; IR and taxi players remain stored but do not masquerade
+  as bench players. Apply this same canonical order field to Yahoo and ESPN.
 - Routine provider deep-link buttons were removed once inline inspection
   existed. The expanded lineup is a two-column head-to-head comparison at all
   widths so the user never has to remember a roster shown further up-screen.

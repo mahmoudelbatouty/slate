@@ -119,7 +119,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
   if (week && relevantTeamIds.size > 0) {
     const { data: entries, error: entryError } = await client
       .from("roster_entries")
-      .select("team_id, player_id, external_player_id, slot, is_starter, current_points, projected_points")
+      .select("team_id, player_id, external_player_id, slot, is_starter, lineup_order, current_points, projected_points")
       .eq("week", week)
       .in("team_id", [...relevantTeamIds]);
     if (entryError) throw new Error(`lineup read: ${entryError.message}`);
@@ -167,6 +167,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         nflTeam: player?.team_abbr ?? null,
         slot: entry.slot,
         isStarter: entry.is_starter,
+        lineupOrder: entry.lineup_order,
         currentPoints: entry.current_points,
         projectedPoints: entry.projected_points,
         injuryStatus: player?.status ?? null,
@@ -181,13 +182,14 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         } : null,
       };
       const lineup = lineupsByTeam.get(entry.team_id) ?? { starters: [], bench: [] };
-      (entry.is_starter ? lineup.starters : lineup.bench).push(detail);
+      if (entry.is_starter) lineup.starters.push(detail);
+      else if (entry.slot === "BN" || entry.slot === null) lineup.bench.push(detail);
       lineupsByTeam.set(entry.team_id, lineup);
     }
 
     for (const lineup of lineupsByTeam.values()) {
-      lineup.starters.sort(byLineupSlot);
-      lineup.bench.sort(byPlayerName);
+      lineup.starters.sort(byLineupOrder);
+      lineup.bench.sort(byBenchPosition);
     }
   }
 
@@ -356,13 +358,17 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
   };
 }
 
-const SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"];
+function byLineupOrder(a: MatchupPlayer, b: MatchupPlayer): number {
+  return a.lineupOrder - b.lineupOrder || byPlayerName(a, b);
+}
 
-function byLineupSlot(a: MatchupPlayer, b: MatchupPlayer): number {
-  const aIndex = SLOT_ORDER.indexOf(a.slot ?? "");
-  const bIndex = SLOT_ORDER.indexOf(b.slot ?? "");
-  const slotOrder = (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex);
-  return slotOrder || byPlayerName(a, b);
+const BENCH_POSITION_ORDER = ["QB", "RB", "WR", "TE", "K", "DEF"];
+
+function byBenchPosition(a: MatchupPlayer, b: MatchupPlayer): number {
+  const aIndex = BENCH_POSITION_ORDER.indexOf(a.position ?? "");
+  const bIndex = BENCH_POSITION_ORDER.indexOf(b.position ?? "");
+  const positionOrder = (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex);
+  return positionOrder || byLineupOrder(a, b);
 }
 
 function byPlayerName(a: MatchupPlayer, b: MatchupPlayer): number {

@@ -174,6 +174,10 @@ with the provider. Each player row must also say `PLAYED`, `LIVE`, `TO PLAY`,
 `BYE / TBD`, or `CANCELED` for the selected fantasy week; kickoff and opponent
 remain supporting context. Other adapters must normalize their provider's
 native projection and game-state source into the same presentation.
+Preserve the provider's starter-slot order, including empty lineup slots, so
+the two sides align exactly like the source matchup. Bench rows include native
+current points and projections, group by the provider's positional display
+order, and exclude IR/taxi players from the bench section.
 
 When lineup changes are supported, show **Edit lineup** inside the expanded
 card. Selection happens inline, but the final action always uses a confirmation

@@ -228,6 +228,8 @@ Ship each milestone working before starting the next.
 - **M3 — Connections + complete matchup.** Automatic connector pairing,
   always-visible week selection, expandable player-level matchups, and Yahoo
   OAuth with Fantasy Read/Write access.
+  Provider order is canonical data: retain starter-slot gaps and bench order,
+  and sync native current/projected points for both starters and bench players.
 - **M4 — Lineup actions.** Official Yahoo lineup edits, followed by explicitly
   experimental Sleeper/ESPN connector actions with confirmation and read-back.
 - **M5 — full-league expansion.** Whole-league scoreboard toggle on every card,

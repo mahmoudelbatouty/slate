@@ -26,6 +26,7 @@ export interface MatchupPlayer {
   nflTeam: string | null;
   slot: string | null;
   isStarter: boolean;
+  lineupOrder: number;
   currentPoints: number | null;
   projectedPoints: number | null;
   injuryStatus: string | null;

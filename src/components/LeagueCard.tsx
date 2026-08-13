@@ -191,7 +191,7 @@ function HeadToHeadLineups({ mine, opponent }: { mine: Side; opponent: Side | nu
         <TeamColumnHeader label="YOU" side={mine} />
         <TeamColumnHeader label="OPP" side={opponent} />
       </div>
-      <PairedPlayerGroup label="STARTERS" mine={mineStarters} opponent={opponentStarters} />
+      <PairedPlayerGroup label="STARTERS" mine={mineStarters} opponent={opponentStarters} alignSlots />
       <details className="group/bench mt-3 border-t border-ink-line">
         <summary className="mono flex min-h-11 cursor-pointer list-none items-center justify-between text-[9px] tracking-[0.1em] text-stone focus-visible:outline-2 focus-visible:outline-amber">
           <span>BENCH · YOU {mineBench.length} / OPP {opponentBench.length}</span>
@@ -213,25 +213,33 @@ function TeamColumnHeader({ label, side }: { label: string; side: Side | null })
   );
 }
 
-function PairedPlayerGroup({ label, mine, opponent }: { label: string; mine: MatchupPlayer[]; opponent: MatchupPlayer[] }) {
+function PairedPlayerGroup({ label, mine, opponent, alignSlots = false }: { label: string; mine: MatchupPlayer[]; opponent: MatchupPlayer[]; alignSlots?: boolean }) {
   return (
     <div className="mt-3">
       <p className="mono mb-1 text-[9px] tracking-[0.1em] text-stone">{label} · YOU {mine.length} / OPP {opponent.length}</p>
-      <PairedPlayerRows mine={mine} opponent={opponent} emptyLabel={`No ${label.toLowerCase()} synced.`} />
+      <PairedPlayerRows mine={mine} opponent={opponent} emptyLabel={`No ${label.toLowerCase()} synced.`} alignSlots={alignSlots} />
     </div>
   );
 }
 
-function PairedPlayerRows({ mine, opponent, emptyLabel }: { mine: MatchupPlayer[]; opponent: MatchupPlayer[]; emptyLabel: string }) {
-  const length = Math.max(mine.length, opponent.length);
+function PairedPlayerRows({ mine, opponent, emptyLabel, alignSlots = false }: { mine: MatchupPlayer[]; opponent: MatchupPlayer[]; emptyLabel: string; alignSlots?: boolean }) {
+  const mineByOrder = new Map(mine.map((player) => [player.lineupOrder, player]));
+  const opponentByOrder = new Map(opponent.map((player) => [player.lineupOrder, player]));
+  const length = alignSlots
+    ? Math.max(...mineByOrder.keys(), ...opponentByOrder.keys(), -1) + 1
+    : Math.max(mine.length, opponent.length);
   if (length === 0) return <p className="border-t border-ink-line py-2 text-xs text-bone-dim">{emptyLabel}</p>;
 
-  return Array.from({ length }, (_, index) => (
-    <div className="grid grid-cols-2 border-t border-ink-line py-2" key={`${mine[index]?.externalPlayerId ?? "empty"}:${opponent[index]?.externalPlayerId ?? "empty"}`}>
-      <PlayerCell player={mine[index]} side="left" />
-      <PlayerCell player={opponent[index]} side="right" />
-    </div>
-  ));
+  return Array.from({ length }, (_, index) => {
+    const minePlayer = alignSlots ? mineByOrder.get(index) : mine[index];
+    const opponentPlayer = alignSlots ? opponentByOrder.get(index) : opponent[index];
+    return (
+      <div className="grid grid-cols-2 border-t border-ink-line py-2" key={`${minePlayer?.externalPlayerId ?? "empty"}:${opponentPlayer?.externalPlayerId ?? "empty"}:${index}`}>
+        <PlayerCell player={minePlayer} side="left" />
+        <PlayerCell player={opponentPlayer} side="right" />
+      </div>
+    );
+  });
 }
 
 function PlayerCell({ player, side }: { player: MatchupPlayer | undefined; side: "left" | "right" }) {

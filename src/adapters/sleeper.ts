@@ -71,6 +71,7 @@ const PROJECTION_TTL_MS = 60 * 60 * 1000;
 
 export function clearProjectionCache(): void {
   projectionCache.clear();
+  rosterCache.clear();
 }
 
 export async function getProjections(
@@ -120,15 +121,15 @@ export function projectPlayer(
   if (!stats || !scoringSettings) return null;
 
   let total = 0;
-  let hits = 0;
   for (const [category, multiplier] of Object.entries(scoringSettings)) {
     const value = stats[category];
     if (!Number.isFinite(value) || !Number.isFinite(multiplier) || multiplier === 0) continue;
     total += value * multiplier;
-    hits++;
   }
 
-  return hits === 0 ? null : total;
+  // Sleeper renders 0.00 when it publishes a projection row containing no
+  // score-bearing categories (for example, an injured player's ADP only).
+  return total;
 }
 
 /** Team projection = sum of the unrounded native projections for its starters. */
@@ -180,6 +181,8 @@ const zRoster = z.object({
   owner_id: z.string().nullable(),
   players: z.array(z.string()).nullable(),
   starters: z.array(z.string()).nullable(),
+  reserve: z.array(z.string()).nullable().optional(),
+  taxi: z.array(z.string()).nullable().optional(),
   settings: z
     .object({
       wins: z.number().optional(),
@@ -192,6 +195,23 @@ const zRoster = z.object({
     })
     .nullable(),
 });
+
+type SleeperRoster = z.infer<typeof zRoster>;
+const rosterCache = new Map<string, Promise<SleeperRoster[]>>();
+
+async function getLeagueRosters(leagueId: string): Promise<SleeperRoster[]> {
+  const cached = rosterCache.get(leagueId);
+  if (cached) return cached;
+
+  const request = get<unknown[]>(`/league/${leagueId}/rosters`)
+    .then((rows) => rows.map((row) => zRoster.parse(row)))
+    .catch((error) => {
+      rosterCache.delete(leagueId);
+      throw error;
+    });
+  rosterCache.set(leagueId, request);
+  return request;
+}
 
 const zLeagueUser = z.object({
   user_id: z.string(),
@@ -322,9 +342,7 @@ export const sleeperAdapter: PlatformAdapter = {
 
   async getTeams(c, leagueId): Promise<CanonicalTeam[]> {
     const me = zUser.parse(await get(`/user/${creds(c).username}`));
-    const rosters = (await get<unknown[]>(`/league/${leagueId}/rosters`)).map((r) =>
-      zRoster.parse(r)
-    );
+    const rosters = await getLeagueRosters(leagueId);
     const users = (await get<unknown[]>(`/league/${leagueId}/users`)).map((u) =>
       zLeagueUser.parse(u)
     );
@@ -357,9 +375,7 @@ export const sleeperAdapter: PlatformAdapter = {
   },
 
   async getRosters(c, leagueId, _season, week): Promise<CanonicalRosterEntry[]> {
-    const rosters = (await get<unknown[]>(`/league/${leagueId}/rosters`)).map((r) =>
-      zRoster.parse(r)
-    );
+    const rosters = await getLeagueRosters(leagueId);
 
     return rosters.flatMap((r) => {
       const starterIds = new Set<string>();
@@ -369,8 +385,17 @@ export const sleeperAdapter: PlatformAdapter = {
         return [{ playerId, index }];
       });
       const benchIds = new Set<string>();
+      const reserveIds = new Set(r.reserve ?? []);
+      const taxiIds = new Set(r.taxi ?? []);
       const bench = (r.players ?? []).filter((playerId) => {
-        if (!playerId || playerId === "0" || starterIds.has(playerId) || benchIds.has(playerId)) {
+        if (
+          !playerId ||
+          playerId === "0" ||
+          starterIds.has(playerId) ||
+          reserveIds.has(playerId) ||
+          taxiIds.has(playerId) ||
+          benchIds.has(playerId)
+        ) {
           return false;
         }
         benchIds.add(playerId);
@@ -385,13 +410,31 @@ export const sleeperAdapter: PlatformAdapter = {
           // roster_positions minus bench slots. Index → slot name.
           slot: `S${index}`, // resolved to QB/RB/FLEX in the normalizer using rosterSlots
           isStarter: true,
+          lineupOrder: index,
           week: week ?? null,
         })),
-        ...bench.map((p) => ({
+        ...bench.map((p, index) => ({
           teamExternalId: String(r.roster_id),
           externalPlayerId: p,
           slot: "BN",
           isStarter: false,
+          lineupOrder: index,
+          week: week ?? null,
+        })),
+        ...[...(r.reserve ?? [])].map((p, index) => ({
+          teamExternalId: String(r.roster_id),
+          externalPlayerId: p,
+          slot: "IR",
+          isStarter: false,
+          lineupOrder: index,
+          week: week ?? null,
+        })),
+        ...[...(r.taxi ?? [])].map((p, index) => ({
+          teamExternalId: String(r.roster_id),
+          externalPlayerId: p,
+          slot: "TAXI",
+          isStarter: false,
+          lineupOrder: index,
           week: week ?? null,
         })),
       ];
@@ -399,15 +442,16 @@ export const sleeperAdapter: PlatformAdapter = {
   },
 
   async getMatchups(_c, leagueId, season, week): Promise<CanonicalMatchup[]> {
-    const raw = (await get<unknown[]>(`/league/${leagueId}/matchups/${week}`)).map((m) =>
-      zMatchup.parse(m)
-    );
-
-    // One projections call serves every league — cache this upstream in the
-    // sync job so you fetch it once per week, not once per league.
-    const proj = await getProjections(season, week);
-    const league = zLeague.parse(await get(`/league/${leagueId}`));
+    const [matchupRows, proj, leagueRow, rosters] = await Promise.all([
+      get<unknown[]>(`/league/${leagueId}/matchups/${week}`),
+      getProjections(season, week),
+      get(`/league/${leagueId}`),
+      getLeagueRosters(leagueId),
+    ]);
+    const raw = matchupRows.map((m) => zMatchup.parse(m));
+    const league = zLeague.parse(leagueRow);
     const scoringSettings = league.scoring_settings;
+    const rosterById = new Map(rosters.map((roster) => [roster.roster_id, roster]));
 
     // Two rows share a matchup_id. Pair them to fill in opponents.
     const byMatchup = new Map<number, typeof raw>();
@@ -423,7 +467,31 @@ export const sleeperAdapter: PlatformAdapter = {
       .map((m) => {
         const pair = byMatchup.get(m.matchup_id!) ?? [];
         const opp = pair.find((x) => x.roster_id !== m.roster_id);
-        const starters = uniqueSleeperPlayerIds(m.starters);
+        const orderedStarters = (m.starters ?? []).flatMap((playerId, lineupOrder) =>
+          playerId && playerId !== "0" ? [{ playerId, lineupOrder }] : []
+        );
+        const starters = orderedStarters.map(({ playerId }) => playerId);
+        const starterSet = new Set(starters);
+        const roster = rosterById.get(m.roster_id);
+        const reserveSet = new Set(roster?.reserve ?? []);
+        const taxiSet = new Set(roster?.taxi ?? []);
+        const bench = uniqueSleeperPlayerIds(m.players).filter(
+          (playerId) => !starterSet.has(playerId) && !reserveSet.has(playerId) && !taxiSet.has(playerId)
+        );
+        const allPlayers = [
+          ...orderedStarters.map(({ playerId, lineupOrder }) => ({ playerId, isStarter: true, lineupOrder })),
+          ...bench.map((playerId, lineupOrder) => ({ playerId, isStarter: false, lineupOrder })),
+          ...[...(roster?.reserve ?? [])].map((playerId, lineupOrder) => ({
+            playerId,
+            isStarter: false,
+            lineupOrder,
+          })),
+          ...[...(roster?.taxi ?? [])].map((playerId, lineupOrder) => ({
+            playerId,
+            isStarter: false,
+            lineupOrder,
+          })),
+        ];
         return {
           week,
           matchupKey: `${week}-${m.matchup_id}`,
@@ -432,8 +500,10 @@ export const sleeperAdapter: PlatformAdapter = {
           points: m.points,
           projectedPoints: projectTeam(starters, proj, scoringSettings),
           isFinal: false, // set by the sync job from NFL game state, not Sleeper
-          starterStats: starters.map((playerId) => ({
+          playerStats: allPlayers.map(({ playerId, isStarter, lineupOrder }) => ({
             externalPlayerId: playerId,
+            isStarter,
+            lineupOrder,
             currentPoints: m.players_points?.[playerId] ?? null,
             projectedPoints: (() => {
               const value = projectPlayer(proj.get(playerId), scoringSettings);

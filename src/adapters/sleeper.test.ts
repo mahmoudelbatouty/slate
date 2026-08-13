@@ -173,11 +173,23 @@ describe("getRosters", () => {
     );
 
     const starters = entries.filter((e) => e.isStarter);
-    const bench = entries.filter((e) => !e.isStarter);
+    const bench = entries.filter((e) => e.slot === "BN");
+    const inactive = entries.filter((e) => e.slot === "IR" || e.slot === "TAXI");
 
     expect(starters.length).toBeGreaterThan(0);
     for (const entry of starters) expect(entry.slot).toMatch(/^S\d+$/);
     for (const entry of bench) expect(entry.slot).toBe("BN");
+    for (const entry of inactive) expect(entry.isStarter).toBe(false);
+    for (const teamId of new Set(entries.map((entry) => entry.teamExternalId))) {
+      const teamStarters = starters.filter((entry) => entry.teamExternalId === teamId);
+      const teamBench = bench.filter((entry) => entry.teamExternalId === teamId);
+      expect(teamStarters.map((entry) => entry.lineupOrder)).toEqual(
+        teamStarters.map((_, index) => index)
+      );
+      expect(teamBench.map((entry) => entry.lineupOrder)).toEqual(
+        teamBench.map((_, index) => index)
+      );
+    }
   });
 
   it("never lists a player as both starter and bench", async () => {
@@ -235,6 +247,60 @@ describe("getMatchups", () => {
       meta.week
     );
     expect(matchups.every((m) => m.isFinal === false)).toBe(true);
+  });
+
+  it("returns scores and native projections for starters and bench players", async () => {
+    const league = {
+      ...fixture("league"),
+      scoring_settings: { pass_yd: 0.04, pass_td: 4, rec: 0.5, rec_yd: 0.1 },
+    };
+    vi.stubGlobal("fetch", async (input: string | URL) => {
+      const url = String(input);
+      const body = url.includes("/projections/")
+        ? PROJECTIONS
+        : url.includes("/matchups/")
+          ? [{
+              roster_id: 1,
+              matchup_id: 1,
+              points: 10,
+              starters: ["0", "p1"],
+              players: ["p1", "p2"],
+              players_points: { p1: 10, p2: 7.5 },
+            }]
+          : url.endsWith("/rosters")
+            ? [{
+                roster_id: 1,
+                owner_id: "owner",
+                players: ["p1", "p2"],
+                starters: ["0", "p1"],
+                reserve: [],
+                taxi: [],
+                settings: null,
+              }]
+          : league;
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    const [matchup] = await sleeperAdapter.getMatchups(creds, "league", 2026, 1);
+    expect(matchup.playerStats).toEqual([
+      {
+        externalPlayerId: "p1",
+        isStarter: true,
+        lineupOrder: 1,
+        currentPoints: 10,
+        projectedPoints: 18,
+      },
+      {
+        externalPlayerId: "p2",
+        isStarter: false,
+        lineupOrder: 0,
+        currentPoints: 7.5,
+        projectedPoints: 10.5,
+      },
+    ]);
   });
 });
 
@@ -317,6 +383,7 @@ describe("projections", () => {
     };
 
     expect(projectPlayer(maye, scoring)).toBeCloseTo(17.2861, 4);
+    expect(projectPlayer({ adp_dd_ppr: 1000 }, scoring)).toBe(0);
   });
 });
 

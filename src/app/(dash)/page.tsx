@@ -4,6 +4,7 @@ import { SyncedAt } from "@/components/SyncedAt";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Today } from "@/components/Today";
 import { WeekPicker } from "@/components/WeekPicker";
+import { LeftToPlay } from "@/components/LeftToPlay";
 
 // Reads Postgres on every request. The data is already local, so there's
 // nothing to cache around — and a stale score is worse than a query.
@@ -17,7 +18,7 @@ export default async function Dashboard({
   const { week: raw } = await searchParams;
   const requested = Number(raw);
 
-  const { configured, cards, lastSyncedAt, leagueCount, week, weeks } =
+  const { configured, cards, lastSyncedAt, leagueCount, week, weeks, spine } =
     await getDashboard(Number.isInteger(requested) ? requested : undefined);
 
   const isCurrent = weeks.find((w) => w.week === week)?.isCurrent ?? true;
@@ -32,6 +33,8 @@ export default async function Dashboard({
         </div>
         <WeekPicker weeks={weeks} selected={week} />
       </header>
+
+      {configured && <LeftToPlay spine={spine} />}
 
       {!configured ? (
         <Empty>

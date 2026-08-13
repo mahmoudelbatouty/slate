@@ -66,7 +66,7 @@ async function main() {
 
   if (!process.argv.includes("--sync")) return;
 
-  const { db } = await import("../src/db/client");
+  const { db } = await import("../src/db/admin");
   const { runSync } = await import("../src/sync/run");
 
   for (const mode of ["daily", "live"] as const) {

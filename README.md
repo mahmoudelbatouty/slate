@@ -13,7 +13,7 @@ Read-only. Single user. Named for the set of games in a window.
 ## Running it
 
 The Supabase project (`slate`, ref `qqxceojybbacughapnom`) exists and
-migration `0001_init` is applied. One secret is still missing:
+migrations `init` and `nfl_games` are applied. One secret is still missing:
 
 ```bash
 npm install
@@ -37,7 +37,8 @@ npm run sync -- live
 ```
 
 `players` builds the ~11k-row directory and the crosswalk, `daily` pulls
-leagues/teams/rosters/transactions, `live` writes scores. Order matters on
+leagues/teams/rosters/transactions, and `live` writes fantasy scores plus NFL
+game state. Order matters on
 a cold database. Then:
 
 ```bash
@@ -60,7 +61,7 @@ role key is set.
 npm test
 ```
 
-41 tests, all against `fixtures/sleeper/`. No test hits a live API. Re-record
+63 tests, all against `fixtures/sleeper/`. No test hits a live API. Re-record
 with `npm run fixtures` only when you deliberately want to refresh against a
 schema change.
 
@@ -76,20 +77,20 @@ keep `daily` + `players` on Vercel.
 
 1. ~~**M0** skeleton + migration + password gate~~ — done
 2. ~~**M1** Sleeper adapter → sync job → crosswalk → one league rendering live~~ — done
-3. **M2** the "Left to play" band (Sleeper data is enough)
+3. **M2** the "Left to play" band â€” code/schema complete; awaiting initial data sync
 4. **M3** Yahoo (OAuth read scope)
 5. **M4** ESPN (cookie paste)
 6. **M5** whole-league scoreboard expansion
 
 Don't start a milestone until the previous one works against real data.
 
-### Known edges left for M2
+### M2 implementation
 
-- `is_final` is derived from the week rolling over, because Sleeper has no
-  per-game state. The game-window data M2 needs will sharpen it.
-- The card footer shows the margin, not a win probability — that needs a
-  variance model, and a made-up percentage is worse than no percentage.
-- "N to play" is deliberately absent until the left-to-play spine lands.
+- `is_final` now comes from the real NFL slate reaching completion.
+- The card footer shows a projection-based win probability whose variance
+  shrinks with the number and game progress of remaining starters. If required
+  projection data is missing, it deliberately falls back to the score margin.
+- The spine reports played, live, upcoming, and bye/unmatched starters.
 
 ## Costs
 

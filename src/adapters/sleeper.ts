@@ -18,6 +18,7 @@ import type {
   CanonicalTransaction,
   CanonicalPlayerRef,
 } from "./types";
+import { getSleeperGameState } from "./sleeper/scores";
 
 const BASE = "https://api.sleeper.app/v1";
 
@@ -133,6 +134,10 @@ export function projectTeam(
   }
   // Empty starter slots are normal pre-lock; zero hits means no data.
   return hits === 0 ? null : Math.round(total * 100) / 100;
+}
+
+export function uniqueSleeperPlayerIds(ids: string[] | null): string[] {
+  return [...new Set((ids ?? []).filter((id) => Boolean(id) && id !== "0"))];
 }
 
 // ---------- raw shapes (validated, then discarded) ----------
@@ -259,6 +264,8 @@ function mapStatus(s: string): CanonicalLeague["status"] {
 export const sleeperAdapter: PlatformAdapter = {
   platform: "sleeper",
 
+  getGameState: getSleeperGameState,
+
   async healthCheck(c) {
     try {
       await get(`/user/${creds(c).username}`);
@@ -340,17 +347,28 @@ export const sleeperAdapter: PlatformAdapter = {
     );
 
     return rosters.flatMap((r) => {
-      const starters = r.starters ?? [];
-      const all = r.players ?? [];
-      const bench = all.filter((p) => !starters.includes(p));
+      const starterIds = new Set<string>();
+      const starters = (r.starters ?? []).flatMap((playerId, index) => {
+        if (!playerId || playerId === "0" || starterIds.has(playerId)) return [];
+        starterIds.add(playerId);
+        return [{ playerId, index }];
+      });
+      const benchIds = new Set<string>();
+      const bench = (r.players ?? []).filter((playerId) => {
+        if (!playerId || playerId === "0" || starterIds.has(playerId) || benchIds.has(playerId)) {
+          return false;
+        }
+        benchIds.add(playerId);
+        return true;
+      });
 
       return [
-        ...starters.map((p, i) => ({
+        ...starters.map(({ playerId, index }) => ({
           teamExternalId: String(r.roster_id),
-          externalPlayerId: p,
+          externalPlayerId: playerId,
           // Sleeper's starters array is positionally ordered against
           // roster_positions minus bench slots. Index → slot name.
-          slot: `S${i}`, // resolved to QB/RB/FLEX in the normalizer using rosterSlots
+          slot: `S${index}`, // resolved to QB/RB/FLEX in the normalizer using rosterSlots
           isStarter: true,
           week: week ?? null,
         })),
@@ -390,14 +408,20 @@ export const sleeperAdapter: PlatformAdapter = {
       .map((m) => {
         const pair = byMatchup.get(m.matchup_id!) ?? [];
         const opp = pair.find((x) => x.roster_id !== m.roster_id);
+        const starters = uniqueSleeperPlayerIds(m.starters);
         return {
           week,
           matchupKey: `${week}-${m.matchup_id}`,
           teamExternalId: String(m.roster_id),
           opponentExternalId: opp ? String(opp.roster_id) : null,
           points: m.points,
-          projectedPoints: projectTeam(m.starters ?? [], proj, key),
+          projectedPoints: projectTeam(starters, proj, key),
           isFinal: false, // set by the sync job from NFL game state, not Sleeper
+          starterStats: starters.map((playerId) => ({
+            externalPlayerId: playerId,
+            currentPoints: m.players_points?.[playerId] ?? null,
+            projectedPoints: proj.get(playerId)?.[key] ?? null,
+          })),
         };
       });
   },

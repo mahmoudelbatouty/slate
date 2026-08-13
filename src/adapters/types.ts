@@ -61,6 +61,30 @@ export interface CanonicalMatchup {
   points: number | null;
   projectedPoints: number | null;
   isFinal: boolean;
+  starterStats?: CanonicalStarterStat[];
+}
+
+export interface CanonicalStarterStat {
+  externalPlayerId: string;
+  currentPoints: number | null;
+  projectedPoints: number | null;
+}
+
+export interface CanonicalGameState {
+  gameId: string;
+  sport: Sport;
+  season: number;
+  week: number;
+  seasonType: string;
+  startTime: string | null;
+  status: string | null;
+  homeTeam: string | null;
+  awayTeam: string | null;
+  isOver: boolean;
+  inProgress: boolean;
+  canceled: boolean;
+  quarter: string | null;
+  raw: unknown;
 }
 
 export interface CanonicalTransaction {
@@ -120,6 +144,9 @@ export interface PlatformAdapter {
 
   /** Only Sleeper implements this meaningfully — it's the crosswalk spine. */
   getPlayerDirectory?(sport: Sport): Promise<CanonicalPlayerRef[]>;
+
+  /** Shared real-life game state; one source serves every fantasy platform. */
+  getGameState?(sport: Sport, season: number, week: number): Promise<CanonicalGameState[]>;
 }
 
 // ============================================================

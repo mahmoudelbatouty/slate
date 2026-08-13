@@ -211,6 +211,11 @@ ESPN and Yahoo adapters must populate the same tables and types so they inherit
 the same cadence, weekly status model, full lineup display, and automatic UI
 refresh without provider-specific dashboard branches.
 
+Matchup-card ordering is also canonical and cross-platform. Drama order is the
+default only; the user's saved `platform:externalLeagueId` order wins across
+weeks and reloads, with newly connected leagues appended. Every future adapter
+must feed the shared sortable card list rather than create provider-only order.
+
 ---
 
 ## Build order

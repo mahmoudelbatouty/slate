@@ -146,8 +146,11 @@ app that happens to open in a browser.
 └──────────────────────────────┘
 ```
 
-Cards are ordered by *drama*, not alphabetically: closest margin first, finals
-last. A blowout you already won doesn't need to be at the top.
+Cards default to *drama* order, not alphabetical order: closest margin first,
+finals last. A visible drag handle lets the user override that default. The
+platform-qualified league order persists across reloads and weeks, while newly
+discovered leagues append after the saved order. The same sortable list must
+wrap Sleeper, ESPN, and Yahoo cards; provider-specific ordering UIs are forbidden.
 
 ### Week selection
 

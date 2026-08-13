@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { type MatchupCard, type MatchupPlayer, type Side } from "@/lib/matchup";
 import type { StarterSummary } from "@/lib/game-state";
 import { playerGameLabel } from "@/lib/player-state";
@@ -11,7 +11,13 @@ import { PlatformMark } from "@/components/PlatformMark";
  * stays neutral: an official monochrome mark where available, otherwise the
  * compact monogram fallback.
  */
-export function LeagueCard({ card }: { card: MatchupCard }) {
+export function LeagueCard({
+  card,
+  reorderHandle,
+}: {
+  card: MatchupCard;
+  reorderHandle?: ReactNode;
+}) {
   const [expanded, setExpanded] = useState(false);
   const mine = card.mine.points ?? 0;
   const theirs = card.opponent?.points ?? 0;
@@ -23,6 +29,7 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
   return (
     <article className={`${expanded ? "" : "group/card"} border border-ink-line bg-ink-raised px-4 pt-[15px] pb-[13px]`}>
       <div className="mb-[15px] flex items-center gap-[10px]">
+        {reorderHandle}
         <PlatformMark platform={card.platform} />
         <span className="display min-w-0 flex-1 truncate text-sm font-bold">
           {card.leagueName}

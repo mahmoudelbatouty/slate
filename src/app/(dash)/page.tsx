@@ -1,5 +1,5 @@
 import { getDashboard } from "@/lib/dashboard";
-import { LeagueCard } from "@/components/LeagueCard";
+import { SortableLeagueCards } from "@/components/SortableLeagueCards";
 import { SyncedAt } from "@/components/SyncedAt";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Today } from "@/components/Today";
@@ -72,11 +72,7 @@ export default async function Dashboard({
           </Empty>
         )
       ) : (
-        <section className="mt-[22px] flex flex-col gap-3">
-          {cards.map((card) => (
-            <LeagueCard key={card.leagueId} card={card} />
-          ))}
-        </section>
+        <SortableLeagueCards cards={cards} />
       )}
     </main>
   );

@@ -62,6 +62,10 @@ Slate remains the one browser screen used during fantasy game day. A user can:
   starter rows preserve empty-slot gaps and bench rows carry native current
   points/projections; IR and taxi players remain stored but do not masquerade
   as bench players. Apply this same canonical order field to Yahoo and ESPN.
+- Dashboard matchup cards have a visible drag handle with pointer and keyboard
+  reordering. The preference uses `platform:externalLeagueId`, persists across
+  reloads and selected weeks, and preserves temporarily hidden leagues. Future
+  ESPN/Yahoo cards must enter this same shared sortable list automatically.
 - Routine provider deep-link buttons were removed once inline inspection
   existed. The expanded lineup is a two-column head-to-head comparison at all
   widths so the user never has to remember a roster shown further up-screen.

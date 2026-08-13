@@ -1,4 +1,25 @@
 export type LeagueFormat = "head_to_head" | "chopped";
+export type LeagueType = "redraft" | "keeper" | "dynasty";
+
+/** Sleeper settings.type: 0 redraft, 1 keeper, 2 dynasty, 3 Chopped/redraft. */
+export function sleeperLeagueType(settings: unknown): LeagueType {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    return "redraft";
+  }
+
+  switch ((settings as Record<string, unknown>).type) {
+    case 1:
+      return "keeper";
+    case 2:
+      return "dynasty";
+    default:
+      return "redraft";
+  }
+}
+
+export function canonicalLeagueType(value: unknown): LeagueType {
+  return value === "keeper" || value === "dynasty" ? value : "redraft";
+}
 
 /** Sleeper currently identifies its native Chopped format with settings.type 3. */
 export function sleeperLeagueFormat(settings: unknown): LeagueFormat {

@@ -6,7 +6,7 @@
 
 import type { Database } from "@/db/types.gen";
 import type { StarterSummary } from "./game-state";
-import type { ChoppedSummary, LeagueFormat } from "./league-format";
+import type { ChoppedSummary, LeagueFormat, LeagueType } from "./league-format";
 
 export type Platform = Database["public"]["Enums"]["platform"];
 export type LeagueStatus = "pre_draft" | "in_season" | "complete";
@@ -54,6 +54,7 @@ export interface MatchupCard {
   platform: Platform;
   leagueStatus: LeagueStatus;
   leagueFormat: LeagueFormat;
+  leagueType: LeagueType;
   teamCount: number | null;
   season: number;
   week: number;

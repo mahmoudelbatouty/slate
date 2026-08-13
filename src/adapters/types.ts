@@ -35,6 +35,7 @@ export interface CanonicalLeague {
   currentWeek: number | null;
   status: "pre_draft" | "in_season" | "complete";
   format: "head_to_head" | "chopped";
+  leagueType: "redraft" | "keeper" | "dynasty";
 }
 
 export interface CanonicalTeam {

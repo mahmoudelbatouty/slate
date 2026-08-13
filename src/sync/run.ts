@@ -556,6 +556,7 @@ async function upsertLeague(
         team_count: league.teamCount,
         scoring_type: league.scoringType,
         format: league.format,
+        league_type: league.leagueType,
         scoring_raw: league.scoringRaw as Json,
         roster_slots: league.rosterSlots as Json,
         current_week: league.currentWeek,

@@ -8,7 +8,7 @@ import {
   winProbability,
   type StarterGame,
 } from "./game-state";
-import { choppedSummary } from "./league-format";
+import { canonicalLeagueType, choppedSummary } from "./league-format";
 
 export type { WeekOption } from "./weeks";
 
@@ -46,7 +46,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   const { data: leagues, error } = await client
     .from("leagues")
-    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw, format");
+    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw, format, league_type");
 
   if (error) throw new Error(`leagues read: ${error.message}`);
   if (!leagues?.length) return { ...EMPTY, configured: true };
@@ -252,6 +252,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         platform: league.platform,
         leagueStatus: "pre_draft",
         leagueFormat: league.format === "chopped" ? "chopped" : "head_to_head",
+        leagueType: canonicalLeagueType(league.league_type),
         teamCount: league.team_count,
         season: league.season,
         week,
@@ -334,6 +335,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
       platform: league.platform,
       leagueStatus: league.status === "complete" ? "complete" : "in_season",
       leagueFormat,
+      leagueType: canonicalLeagueType(league.league_type),
       teamCount: league.team_count,
       season: league.season,
       week,

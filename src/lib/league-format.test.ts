@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { choppedSummary, sleeperLeagueFormat } from "./league-format";
+import { choppedSummary, sleeperLeagueFormat, sleeperLeagueType } from "./league-format";
+
+describe("sleeperLeagueType", () => {
+  it.each([
+    [0, "redraft"],
+    [1, "keeper"],
+    [2, "dynasty"],
+    [3, "redraft"],
+  ] as const)("maps settings.type %s to %s", (type, expected) => {
+    expect(sleeperLeagueType({ type })).toBe(expected);
+  });
+
+  it("defaults missing settings safely to redraft", () => {
+    expect(sleeperLeagueType(null)).toBe("redraft");
+  });
+});
 
 describe("sleeperLeagueFormat", () => {
   it("recognizes Sleeper's native Chopped type", () => {

@@ -207,6 +207,12 @@ is the provider-sourced Chopping Block ordered lowest-to-highest. Do not show an
 opponent, head-to-head win odds, or manufacture a matchup pairing. Apply this
 format distinction to Yahoo and ESPN if they expose equivalent contests.
 
+League cards keep roster lifecycle separate from season state. Show the
+canonical lifecycle (`REDRAFT`, `KEEPER`, or `DYNASTY`) beneath the league
+name, while state such as `PRE-DRAFT` stays right-aligned in the header. A
+Chopped league preserves both dimensions and reads `CHOPPED · REDRAFT`.
+Normalize the corresponding provider fields when Yahoo and ESPN are added.
+
 ---
 
 ## Motion

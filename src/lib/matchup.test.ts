@@ -19,6 +19,7 @@ function card(
     platform: "sleeper",
     leagueStatus: "in_season",
     leagueFormat: "head_to_head",
+    leagueType: "redraft",
     teamCount: 12,
     season: 2026,
     week: 11,

@@ -18,7 +18,7 @@ import type {
   CanonicalTransaction,
   CanonicalPlayerRef,
 } from "./types";
-import { sleeperLeagueFormat } from "@/lib/league-format";
+import { sleeperLeagueFormat, sleeperLeagueType } from "@/lib/league-format";
 import { getSleeperGameState } from "./sleeper/scores";
 
 const BASE = "https://api.sleeper.app/v1";
@@ -338,6 +338,7 @@ export const sleeperAdapter: PlatformAdapter = {
         currentWeek: state.week,
         status: mapStatus(l.status),
         format: sleeperLeagueFormat(l.settings),
+        leagueType: sleeperLeagueType(l.settings),
       };
     });
   },

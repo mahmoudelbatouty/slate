@@ -241,6 +241,9 @@ league-setting operations are out of scope until lineup edits are reliable.
 - A new user never copies a key, password, cookie, or token.
 - The dashboard shows Connect/Connected/Reconnect separately for each platform.
 - Week selection is visible on first load even if only week 1 has data.
+- Every league stores a canonical `league_type` (`redraft`, `keeper`, or
+  `dynasty`) independently from its competition `format`; future Yahoo/ESPN
+  adapters must normalize their equivalent values into the same field.
 - A matchup expands inline at 360px without horizontal page overflow.
 - Yahoo lineup changes use official OAuth/API and are verified by re-read.
 - Sleeper/ESPN edits are labeled Experimental at the action point.

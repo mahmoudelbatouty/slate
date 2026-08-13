@@ -34,17 +34,15 @@ export function LeagueCard({
           <span className={`display block text-sm font-bold ${card.leagueFormat === "chopped" ? "leading-tight" : "truncate"}`}>
             {card.leagueName}
           </span>
-          {card.leagueFormat === "chopped" ? (
-            <span className="mono mt-1 block text-[9px] tracking-[0.12em] text-bone-dim">
-              CHOPPED{card.leagueStatus === "pre_draft" ? " · PRE-DRAFT" : ""}
-            </span>
-          ) : null}
+          <span className="mono mt-1 block text-[9px] tracking-[0.12em] text-bone-dim">
+            {card.leagueFormat === "chopped" ? "CHOPPED · " : ""}{card.leagueType.toUpperCase()}
+          </span>
         </div>
-        {card.leagueFormat !== "chopped" && card.leagueStatus === "pre_draft" ? (
+        {card.leagueStatus === "pre_draft" ? (
           <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">PRE-DRAFT</span>
-        ) : card.leagueFormat !== "chopped" ? (
+        ) : (
           <StateLabel isFinal={card.isFinal} isLive={card.isLive} hasScore={total > 0} />
-        ) : null}
+        )}
       </div>
 
       {card.leagueStatus === "pre_draft" ? (

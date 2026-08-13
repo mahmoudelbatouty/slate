@@ -138,6 +138,7 @@ export type Database = {
           external_id: string
           format: string
           id: string
+          league_type: string
           name: string
           platform: Database["public"]["Enums"]["platform"]
           roster_slots: Json | null
@@ -154,6 +155,7 @@ export type Database = {
           external_id: string
           format?: string
           id?: string
+          league_type?: string
           name: string
           platform: Database["public"]["Enums"]["platform"]
           roster_slots?: Json | null
@@ -170,6 +172,7 @@ export type Database = {
           external_id?: string
           format?: string
           id?: string
+          league_type?: string
           name?: string
           platform?: Database["public"]["Enums"]["platform"]
           roster_slots?: Json | null

@@ -8,7 +8,13 @@ import { useClock } from "@/lib/useClock";
  * context at 1pm on a Sunday, noise on a Wednesday in August, and never
  * worth the hero position either way.
  */
-export function Today({ week, isCurrent }: { week: number | null; isCurrent: boolean }) {
+export function Today({
+  week,
+  context,
+}: {
+  week: number | null;
+  context: "preseason" | "current" | "past" | "upcoming";
+}) {
   const tick = useClock();
   const now = tick === null ? null : new Date();
 
@@ -22,10 +28,10 @@ export function Today({ week, isCurrent }: { week: number | null; isCurrent: boo
   return (
     <div className="flex items-baseline justify-between gap-3">
       <h1 className="display text-[34px] leading-none">
-        {week ? `Week ${week}` : "Slate"}
+        {week ? `Week ${week}` : "Preseason"}
       </h1>
       <div className="mono shrink-0 text-[13px] tracking-[0.06em] text-bone-dim">
-        {week && !isCurrent ? "PAST" : day}
+        {context === "past" ? "PAST" : context === "upcoming" ? "UPCOMING" : day}
         {time && ` · ${time}`}
       </div>
     </div>

@@ -70,23 +70,6 @@ export function deepLink(card: MatchupCard): { href: string; label: string } {
   }
 }
 
-/**
- * Clamp a week off the URL to something real.
- *
- * ?week= is user-typeable and link-shareable, so it gets everything:
- * out-of-range numbers, zero, negatives, garbage. All of it falls back to
- * the current week rather than erroring or rendering an empty page that
- * looks like a sync failure.
- */
-export function resolveWeek(
-  requested: number | undefined,
-  available: number[],
-  currentWeek: number | null
-): number | null {
-  if (requested !== undefined && available.includes(requested)) return requested;
-  return currentWeek;
-}
-
 export function margin(card: MatchupCard): number {
   const mine = card.mine.points ?? 0;
   const theirs = card.opponent?.points ?? 0;

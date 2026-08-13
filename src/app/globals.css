@@ -4,7 +4,7 @@
 @import "tailwindcss";
 
 /* Slate — design tokens. See DESIGN.md.
-   Rule: color encodes game state only. Platform is a mono monogram. */
+   Rule: color encodes game state only. Platform identity stays neutral. */
 
 @theme {
   --font-display: "Archivo", system-ui, sans-serif;
@@ -109,6 +109,23 @@
 
 .pulse {
   animation: slate-pulse 2s ease-in-out infinite;
+}
+
+.week-rail {
+  scrollbar-color: var(--color-ink-line) transparent;
+  scrollbar-width: thin;
+}
+
+.week-rail::-webkit-scrollbar {
+  height: 4px;
+}
+
+.week-rail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.week-rail::-webkit-scrollbar-thumb {
+  background: var(--color-ink-line);
 }
 
 @media (prefers-reduced-motion: reduce) {

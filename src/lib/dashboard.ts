@@ -1,6 +1,7 @@
 import "server-only";
 import { db, dbConfigured } from "@/db/client";
-import { byDrama, resolveWeek, type MatchupCard } from "./matchup";
+import { byDrama, type MatchupCard } from "./matchup";
+import { buildWeekOptions, resolveWeek, type WeekOption } from "./weeks";
 import {
   buildLeftToPlay,
   remainingStarters,
@@ -9,12 +10,7 @@ import {
   type StarterGame,
 } from "./game-state";
 
-export interface WeekOption {
-  week: number;
-  /** False when nothing has been synced for this week yet. */
-  hasData: boolean;
-  isCurrent: boolean;
-}
+export type { WeekOption } from "./weeks";
 
 export interface Dashboard {
   configured: boolean;
@@ -42,7 +38,7 @@ const EMPTY: Dashboard = {
   lastSyncedAt: null,
   leagueCount: 0,
   week: null,
-  weeks: [],
+  weeks: buildWeekOptions([], []),
   spine: EMPTY_SPINE,
 };
 
@@ -61,7 +57,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   const { data: leagues, error } = await client
     .from("leagues")
-    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count");
+    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw");
 
   if (error) throw new Error(`leagues read: ${error.message}`);
   if (!leagues?.length) return { ...EMPTY, configured: true };
@@ -106,17 +102,15 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     ])
   );
 
-  // Every week up to now is selectable, whether or not it's been synced —
-  // an unsynced week shows an empty state rather than vanishing from the
-  // filter, because "nothing here yet" is the useful answer.
-  const weeksWithData = new Set((rows ?? []).map((r) => r.week));
-  const weeks: WeekOption[] = currentWeek
-    ? Array.from({ length: currentWeek }, (_, i) => i + 1).map((week) => ({
-        week,
-        hasData: weeksWithData.has(week),
-        isCurrent: week === currentWeek,
-      }))
-    : [];
+  // The full season remains selectable, including future/unsynced weeks and
+  // preseason. Provider settings can narrow or extend the normal 18-week rail.
+  const weeks = buildWeekOptions(
+    leagues.map((league) => ({
+      currentWeek: league.current_week,
+      scoringRaw: league.scoring_raw,
+    })),
+    (rows ?? []).map((row) => row.week)
+  );
 
   const week = resolveWeek(
     requestedWeek,

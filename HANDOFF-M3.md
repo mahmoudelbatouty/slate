@@ -39,7 +39,11 @@ Slate remains the one browser screen used during fantasy game day. A user can:
   stores the ingest token locally and opens Sleeper for normal provider login.
 - A provider is shown as connected only after a validated capture exists.
 - The manual connector-token input has been removed from the extension popup.
-- Next implementation slice: the always-visible full-season week selector.
+- The always-visible full-season week selector is implemented on
+  `codex/m3-week-selector`. It remains server-rendered and shareable through
+  `?week=N`, supports preseason and provider season-end metadata, and labels
+  current/synced/unsynced states without relying on color.
+- Next implementation slice: the complete inline matchup view.
 - Sleeper cards use the official monochrome Sleeper wordmark instead of `SL`.
 - Pre-draft leagues now render as cards even before a matchup exists. This is
   driven by canonical league status, so ESPN and Yahoo receive the same

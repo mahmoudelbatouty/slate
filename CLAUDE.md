@@ -243,12 +243,13 @@ Ship each milestone working before starting the next.
 large: fetch once daily, cache, never call it from a request path.
 
 *Projections are on a different host* — `https://api.sleeper.com/projections/nfl/{season}/{week}`,
-undocumented but publicly readable. Returns `pts_ppr`, `pts_half_ppr`, `pts_std`
-per player, so **one call serves every league**; you just read the field matching
-each league's scoring type. Fetch once per week in the sync job and pass the map
-down to each league, rather than calling it per league. Treat it as unstable:
-on failure return an empty map and render projections as "—". A missing
-projection must never fail a score sync.
+undocumented but publicly readable. It returns Sleeper's projected stat line.
+Apply the complete `league.scoring_settings` map as a dot product, exactly as
+Sleeper's web client does; never substitute the generic `pts_ppr`,
+`pts_half_ppr`, or `pts_std` convenience fields. Sum unrounded player values
+before rounding the team total. One weekly call still serves every league.
+Treat the host as unstable: on failure return an empty map and render
+projections as "—". A missing projection must never fail a score sync.
 
 **Yahoo** — `https://fantasysports.yahooapis.com/fantasy/v2`. Always append
 `?format=json`. The JSON is XML translated literally: numeric string keys,

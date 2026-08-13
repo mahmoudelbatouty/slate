@@ -11,8 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearProjectionCache,
   getProjections,
+  projectPlayer,
   projectTeam,
-  scoringKey,
   sleeperAdapter,
   uniqueSleeperPlayerIds,
 } from "./sleeper";
@@ -34,8 +34,8 @@ const creds: Credentials = { platform: "sleeper", username: "mahmoudtariq" };
 
 /** Synthetic projections — small, and enough to prove the sum works. */
 const PROJECTIONS = [
-  { player_id: "p1", stats: { pts_ppr: 20, pts_half_ppr: 18, pts_std: 16 } },
-  { player_id: "p2", stats: { pts_ppr: 10.5, pts_half_ppr: 9, pts_std: 7.5 } },
+  { player_id: "p1", stats: { pass_yd: 250, pass_td: 2, pass_int: 1, rush_yd: 20 } },
+  { player_id: "p2", stats: { rec: 5, rec_yd: 80, rec_td: 0.5 } },
 ];
 
 let projectionStatus = 200;
@@ -239,9 +239,9 @@ describe("getMatchups", () => {
 });
 
 describe("projections", () => {
-  it("maps player ids to every scoring flavour", async () => {
+  it("keeps Sleeper's raw projected stat line for league scoring", async () => {
     const proj = await getProjections(meta.season, meta.week);
-    expect(proj.get("p1")).toEqual({ pts_ppr: 20, pts_half_ppr: 18, pts_std: 16 });
+    expect(proj.get("p1")).toEqual({ pass_yd: 250, pass_td: 2, pass_int: 1, rush_yd: 20 });
   });
 
   it("degrades to an empty map instead of throwing", async () => {
@@ -275,24 +275,48 @@ describe("projections", () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it("sums only the starters it has data for", () => {
-    const proj = new Map([
-      ["p1", { pts_ppr: 20, pts_half_ppr: 18, pts_std: 16 }],
-      ["p2", { pts_ppr: 10.5, pts_half_ppr: 9, pts_std: 7.5 }],
+  it("applies every league scoring category and sums unrounded starters", () => {
+    const proj = new Map<string, Record<string, number>>([
+      ["p1", { pass_yd: 245.34, pass_td: 1.6, pass_int: 0.78, rush_yd: 17.15 }],
+      ["p2", { rec: 5.25, rec_yd: 80, rec_td: 0.5 }],
     ]);
+    const scoring = { pass_yd: 0.04, pass_td: 4, pass_int: -2, rush_yd: 0.1, rec: 0.5, rec_yd: 0.1, rec_td: 6 };
 
-    expect(projectTeam(["p1", "p2"], proj, "pts_ppr")).toBe(30.5);
-    expect(projectTeam(["p1", "unknown"], proj, "pts_ppr")).toBe(20);
+    expect(projectPlayer(proj.get("p1"), scoring)).toBeCloseTo(16.3686, 4);
+    expect(projectTeam(["p1", "p2"], proj, scoring)).toBe(29.99);
+    expect(projectTeam(["p1", "unknown"], proj, scoring)).toBe(16.37);
     // An empty projection map means "no data", not "zero points".
-    expect(projectTeam(["p1"], new Map(), "pts_ppr")).toBeNull();
-    expect(projectTeam(["unknown"], proj, "pts_ppr")).toBeNull();
+    expect(projectTeam(["p1"], new Map(), scoring)).toBeNull();
+    expect(projectTeam(["unknown"], proj, scoring)).toBeNull();
   });
 
-  it("reads the field matching the league's scoring", () => {
-    expect(scoringKey("ppr")).toBe("pts_ppr");
-    expect(scoringKey("half_ppr")).toBe("pts_half_ppr");
-    expect(scoringKey("standard")).toBe("pts_std");
-    expect(scoringKey("custom")).toBe("pts_std");
+  it("matches a verified Sleeper custom-scoring projection", () => {
+    const maye = {
+      pass_yd: 245.34,
+      pass_td: 1.6,
+      pass_int: 0.78,
+      pass_sack: 2.39,
+      rush_yd: 17.15,
+      rush_td: 0.13,
+      rush_fd: 1.71,
+      pass_2pt: 0.09,
+      rush_2pt: 0.01,
+      fum_lost: 0.16,
+    };
+    const scoring = {
+      pass_yd: 0.04,
+      pass_td: 4,
+      pass_int: -2,
+      pass_sack: -0.25,
+      rush_yd: 0.1,
+      rush_td: 6,
+      rush_fd: 0.5,
+      pass_2pt: 2,
+      rush_2pt: 2,
+      fum_lost: -2,
+    };
+
+    expect(projectPlayer(maye, scoring)).toBeCloseTo(17.2861, 4);
   });
 });
 

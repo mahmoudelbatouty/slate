@@ -49,23 +49,18 @@ function creds(c: Credentials): { username: string } {
 
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
 
-export type ScoringKey = "pts_ppr" | "pts_half_ppr" | "pts_std";
-
-export function scoringKey(t: CanonicalLeague["scoringType"]): ScoringKey {
-  if (t === "ppr") return "pts_ppr";
-  if (t === "half_ppr") return "pts_half_ppr";
-  return "pts_std"; // 'custom' falls back to std; league-specific math is a later problem
-}
-
 /**
  * Weekly projections for every player, keyed by Sleeper player_id.
- * One call covers all your leagues — you just read a different
- * scoring field per league. Cache per (season, week) for ~1h.
+ * One call covers all your leagues. Sleeper publishes the projected stat
+ * line here, then its client applies each league's scoring_settings. Slate
+ * mirrors that calculation so bonuses and custom categories match Sleeper.
+ * Cache per (season, week) for ~1h.
  *
  * Returns an empty map on failure rather than throwing: a missing
  * projection should grey out a number, not fail the sync.
  */
-type ProjectionMap = Map<string, Record<ScoringKey, number | null>>;
+type ProjectionStats = Record<string, number>;
+type ProjectionMap = Map<string, ProjectionStats>;
 
 // One call serves every league, so memoize per (season, week) for the life
 // of the process. A sync run touching six leagues hits the host once.
@@ -102,12 +97,13 @@ export async function getProjections(
 
     const out: ProjectionMap = new Map();
     for (const r of rows) {
-      if (!r.player_id) continue;
-      out.set(r.player_id, {
-        pts_ppr: r.stats?.pts_ppr ?? null,
-        pts_half_ppr: r.stats?.pts_half_ppr ?? null,
-        pts_std: r.stats?.pts_std ?? null,
-      });
+      if (!r.player_id || !r.stats) continue;
+      const stats = Object.fromEntries(
+        Object.entries(r.stats).filter((entry): entry is [string, number] =>
+          Number.isFinite(entry[1])
+        )
+      );
+      out.set(r.player_id, stats);
     }
     projectionCache.set(cacheKey, { at: Date.now(), map: out });
     return out;
@@ -116,17 +112,36 @@ export async function getProjections(
   }
 }
 
-/** Team projection = sum of starters' projections in the league's scoring. */
+/** Sleeper's projected stat line scored with this league's rules. */
+export function projectPlayer(
+  stats: ProjectionStats | undefined,
+  scoringSettings: Record<string, number> | null
+): number | null {
+  if (!stats || !scoringSettings) return null;
+
+  let total = 0;
+  let hits = 0;
+  for (const [category, multiplier] of Object.entries(scoringSettings)) {
+    const value = stats[category];
+    if (!Number.isFinite(value) || !Number.isFinite(multiplier) || multiplier === 0) continue;
+    total += value * multiplier;
+    hits++;
+  }
+
+  return hits === 0 ? null : total;
+}
+
+/** Team projection = sum of the unrounded native projections for its starters. */
 export function projectTeam(
   starters: string[],
-  proj: Map<string, Record<ScoringKey, number | null>>,
-  key: ScoringKey
+  proj: ProjectionMap,
+  scoringSettings: Record<string, number> | null
 ): number | null {
   if (proj.size === 0) return null;
   let total = 0;
   let hits = 0;
   for (const id of starters) {
-    const v = proj.get(id)?.[key];
+    const v = projectPlayer(proj.get(id), scoringSettings);
     if (typeof v === "number") {
       total += v;
       hits++;
@@ -392,7 +407,7 @@ export const sleeperAdapter: PlatformAdapter = {
     // sync job so you fetch it once per week, not once per league.
     const proj = await getProjections(season, week);
     const league = zLeague.parse(await get(`/league/${leagueId}`));
-    const key = scoringKey(scoringType(league.scoring_settings));
+    const scoringSettings = league.scoring_settings;
 
     // Two rows share a matchup_id. Pair them to fill in opponents.
     const byMatchup = new Map<number, typeof raw>();
@@ -415,12 +430,15 @@ export const sleeperAdapter: PlatformAdapter = {
           teamExternalId: String(m.roster_id),
           opponentExternalId: opp ? String(opp.roster_id) : null,
           points: m.points,
-          projectedPoints: projectTeam(starters, proj, key),
+          projectedPoints: projectTeam(starters, proj, scoringSettings),
           isFinal: false, // set by the sync job from NFL game state, not Sleeper
           starterStats: starters.map((playerId) => ({
             externalPlayerId: playerId,
             currentPoints: m.players_points?.[playerId] ?? null,
-            projectedPoints: proj.get(playerId)?.[key] ?? null,
+            projectedPoints: (() => {
+              const value = projectPlayer(proj.get(playerId), scoringSettings);
+              return value === null ? null : Math.round(value * 100) / 100;
+            })(),
           })),
         };
       });

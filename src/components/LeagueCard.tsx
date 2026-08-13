@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { type MatchupCard, type MatchupPlayer, type Side } from "@/lib/matchup";
 import type { StarterSummary } from "@/lib/game-state";
+import { playerGameLabel } from "@/lib/player-state";
 import { PlatformMark } from "@/components/PlatformMark";
 
 /**
@@ -263,19 +264,6 @@ function PlayerCell({ player, side }: { player: MatchupPlayer | undefined; side:
   );
 }
 
-function playerGameLabel(player: MatchupPlayer): string {
-  const game = player.game;
-  if (!game) return "BYE / TBD";
-  if (game.canceled) return "CANCELED";
-  if (game.isOver) return "FINAL";
-  if (game.inProgress) return game.quarter ? `LIVE ${game.quarter}` : "LIVE";
-  if (!game.startTime) return game.opponent ? `vs ${game.opponent}` : "TBD";
-  const date = new Date(game.startTime);
-  const day = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "America/New_York" }).format(date).toUpperCase();
-  const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).format(date);
-  return `${game.opponent ? `vs ${game.opponent} · ` : ""}${day} ${time}`;
-}
-
 function meaningfulStatus(status: string | null): string | null {
   if (!status || status.toLowerCase() === "active") return null;
   return status.toUpperCase();
@@ -290,7 +278,7 @@ function slotLabel(slot: string | null): string {
 }
 
 function numberLabel(value: number | null): string {
-  return value === null ? "—" : value.toFixed(1);
+  return value === null ? "—" : value.toFixed(2);
 }
 
 function syncLabel(iso: string | null): string {

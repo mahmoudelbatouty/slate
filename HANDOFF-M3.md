@@ -51,6 +51,13 @@ Slate remains the one browser screen used during fantasy game day. A user can:
   points, projections, injury/lock state, NFL opponent/game state, and provider
   sync time render without leaving Slate. The shared platform mark is reused
   in both card states and the layout is verified at 360px.
+- Sleeper player projections use Sleeper's own weekly projected stat lines
+  scored through the league's complete `scoring_settings`. This matches the
+  value shown by Sleeper, including custom categories and bonuses; generic
+  PPR/half-PPR/standard totals must not be used as a shortcut.
+- Every expanded player row states the selected-week game state explicitly:
+  `PLAYED`, `LIVE`, `TO PLAY`, `BYE / TBD`, or `CANCELED`. This comes from the
+  provider game feed and is not inferred from the current calendar day.
 - Routine provider deep-link buttons were removed once inline inspection
   existed. The expanded lineup is a two-column head-to-head comparison at all
   widths so the user never has to remember a roster shown further up-screen.
@@ -238,6 +245,5 @@ league-setting operations are out of scope until lineup edits are reliable.
 
 ## Verification baseline
 
-At handoff time: 66 tests pass, lint passes, production build passes, and the
-Sleeper native-projection path was verified end to end against the live
-Supabase project. No active test connector remains paired.
+The Sleeper native-projection path has been verified against Sleeper's web UI
+and the live Supabase project. No active test connector remains paired.

@@ -169,6 +169,11 @@ context extends toward the outside while the score columns meet at the center:
 the user's current points and projection sit immediately left of the divide,
 and the opponent's sit immediately right. Current points are larger, with the
 smaller projection immediately underneath and no redundant suffix.
+Show player projections to two decimals so the value can be compared directly
+with the provider. Each player row must also say `PLAYED`, `LIVE`, `TO PLAY`,
+`BYE / TBD`, or `CANCELED` for the selected fantasy week; kickoff and opponent
+remain supporting context. Other adapters must normalize their provider's
+native projection and game-state source into the same presentation.
 
 When lineup changes are supported, show **Edit lineup** inside the expanded
 card. Selection happens inline, but the final action always uses a confirmation

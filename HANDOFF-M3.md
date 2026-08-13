@@ -201,8 +201,8 @@ Before enabling a write action, record response fixtures and verify the current
 Yahoo documentation. Do not infer an endpoint from old samples.
 
 The dashboard connection surface is one compact `LOGIN` rectangle on the
-header's right side containing the official Sleeper, Yahoo, and ESPN logos—no
-explanatory descriptions. Each logo is the connection target and exposes its
+header's right side containing the compact official Sleeper, Yahoo `y!`, and
+ESPN `E` marks—no explanatory descriptions. Each mark is the connection target and exposes its
 state through an accessible label/title, never a provider password field. The
 Yahoo and ESPN marks are stored locally in `public/brands`. Yahoo uses its
 hosted OAuth consent screen; ESPN/Sleeper must retain the approved password-free

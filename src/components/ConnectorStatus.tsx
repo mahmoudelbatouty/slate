@@ -82,12 +82,12 @@ export function ConnectorStatus({
   const message = error ?? connectionNotice(notice);
 
   return (
-    <section className="relative w-[166px] border border-ink-line bg-ink-raised px-2 py-1.5" aria-label="Platform login">
-      <p className="mono text-[9px] tracking-[0.12em] text-bone">LOGIN</p>
-      <div className="mt-0.5 flex items-center justify-between">
+    <section className="relative w-[142px] border border-ink-line bg-ink-raised" aria-label="Platform login">
+      <p className="mono border-b border-ink-line px-2 py-1.5 text-center text-[9px] tracking-[0.16em] text-bone">LOGIN</p>
+      <div className="grid grid-cols-3 divide-x divide-ink-line">
         {!current.installationId ? (
           <button
-            className="inline-flex min-h-10 min-w-11 items-center justify-center opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait"
+            className="inline-flex h-10 items-center justify-center opacity-70 transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait"
             type="button"
             disabled={pairing}
             onClick={pair}
@@ -98,7 +98,7 @@ export function ConnectorStatus({
           </button>
         ) : (
           <span
-            className="inline-flex min-h-10 min-w-11 items-center justify-center"
+            className="inline-flex h-10 items-center justify-center bg-ink/25"
             aria-label={`Sleeper ${sleeperState}`}
             title={`Sleeper ${sleeperState}`}
           >
@@ -143,7 +143,7 @@ function ProviderLogo({
 }) {
   const provider = platform === "espn" ? "ESPN" : "Yahoo";
   const label = `${provider} ${state}`;
-  const className = `inline-flex min-h-10 min-w-11 items-center justify-center transition-opacity focus-visible:outline-2 focus-visible:outline-amber ${href ? "opacity-70 hover:opacity-100" : "opacity-45"}`;
+  const className = `inline-flex h-10 items-center justify-center transition-opacity focus-visible:outline-2 focus-visible:outline-amber ${href ? "opacity-70 hover:bg-ink hover:opacity-100" : "bg-ink/25 opacity-45"}`;
 
   return href ? (
     <a className={className} href={href} aria-label={`${label}. Connect.`} title={`Connect ${provider}`}>

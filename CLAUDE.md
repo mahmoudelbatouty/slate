@@ -270,6 +270,9 @@ than throw.
 - Tests run against `fixtures/`, recorded once. No test hits a live API.
 - Times stored UTC, rendered in the user's local zone.
 - No `any`. No client-side data fetching from platform APIs.
+- Enabled platforms use official, accessible Sleeper, ESPN, and Yahoo marks in
+  the shared card/header logo component. Monograms are failure fallbacks only,
+  and brand colors never encode game state.
 
 ## Definition of done for v1
 

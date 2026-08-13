@@ -25,10 +25,11 @@ happening recedes.
 Not team identity, not platform. The reason is concrete: Sleeper's brand purple
 and Yahoo's brand purple are close enough to be indistinguishable on a phone in
 sunlight, so brand color can't carry provenance reliably anyway. Platform is
-shown as a two-character monogram in a hairline box — `SL` `ES` `YH` — set in
-mono. It's unambiguous, colorblind-safe, and it frees the entire color budget
-for the thing you actually need to see fast: am I winning, is it live, is it
-final.
+shown with the current official Sleeper, ESPN, or Yahoo mark in a consistent
+hairline container. Normalize each mark's size and contrast, give it an
+accessible name, and use `SL`, `ES`, or `YH` only as a resilient loading/error
+fallback—not as the finished UI. This frees the color budget for the thing you
+actually need to see fast: am I winning, is it live, is it final.
 
 ---
 
@@ -80,7 +81,7 @@ Three faces, three jobs. All on Google Fonts.
 |---|---|---|
 | Display | **Archivo** (variable, width axis) | Scores, league names. `wdth: 118`, weight 700–800, uppercase, tracking `-0.01em`. The width axis is the move — extended grotesques are the native language of scoreboards without dipping into jersey-number kitsch. |
 | Body | **Public Sans** | Player names, prose, buttons. 400/600. Quiet on purpose. |
-| Data | **DM Mono** | Timestamps, platform monograms, stat lines, sync status. 400/500, `font-variant-numeric: tabular-nums`. |
+| Data | **DM Mono** | Timestamps, platform-mark fallbacks, stat lines, sync status. 400/500, `font-variant-numeric: tabular-nums`. |
 
 Scale (mobile-first): 44 / 28 / 20 / 16 / 14 / 12 / 11.
 
@@ -131,7 +132,7 @@ app that happens to open in a browser.
 │ [═══ window spine ═══]       │
 ├──────────────────────────────┤
 │ ┌──────────────────────────┐ │
-│ │ SL │ DYNASTY DEGENERATES │ │  monogram + league, Archivo
+│ │logo│ DYNASTY DEGENERATES │ │  platform mark + league, Archivo
 │ │                          │ │
 │ │ Mahmoud's Team    ● 87.4 │ │  amber dot = live
 │ │ proj 121.2               │ │

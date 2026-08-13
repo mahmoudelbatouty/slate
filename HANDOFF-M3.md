@@ -45,6 +45,19 @@ Slate remains the one browser screen used during fantasy game day. A user can:
   driven by canonical league status, so ESPN and Yahoo receive the same
   behavior when their adapters are enabled.
 
+### Platform logo requirement for the next slices
+
+- Add the current official ESPN and Yahoo marks when those adapters are
+  enabled, using the same neutral treatment as the Sleeper wordmark.
+- Keep approved assets local or use a narrowly allowlisted official CDN. Never
+  render arbitrary provider-supplied asset URLs.
+- Give every mark an accessible platform name and a fixed-size container that
+  stays legible at 360px without shifting or truncating the league title.
+- Prefer monochrome/high-contrast variants where the platform permits them.
+  Brand color identifies the provider but must never encode game state.
+- `ES` and `YH` are loading/error fallbacks only. The completed enabled-
+  platform UI should show official Sleeper, ESPN, and Yahoo marks consistently.
+
 ## Non-negotiable security boundary
 
 - Never accept or store a Sleeper/ESPN/Yahoo password.
@@ -118,6 +131,10 @@ Show:
 Fetch platform data only through sync/connector ingestion. Page rendering still
 reads Postgres only. Use a small client component for expansion state and keep
 the data server-sourced.
+
+The collapsed card and expanded matchup header must use the same shared,
+accessible platform-logo component. Expanding a matchup must not regress to a
+two-letter monogram.
 
 ### 4. Yahoo official connection and writes
 

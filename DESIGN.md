@@ -165,10 +165,10 @@ expanded state shows a persistent two-column head-to-head view: each of the
 user's players stays beside the corresponding opponent player. It includes
 both starting lineups, benches, player-level scores and native projections,
 game status, and remaining players. Inside each player half, identity/game
-context faces inward while the score columns mirror outward: the user's current
-points and projection sit on the far left, and the opponent's sit on the far
-right. Current points are larger, with the smaller projection immediately
-underneath and no redundant suffix.
+context extends toward the outside while the score columns meet at the center:
+the user's current points and projection sit immediately left of the divide,
+and the opponent's sit immediately right. Current points are larger, with the
+smaller projection immediately underneath and no redundant suffix.
 
 When lineup changes are supported, show **Edit lineup** inside the expanded
 card. Selection happens inline, but the final action always uses a confirmation

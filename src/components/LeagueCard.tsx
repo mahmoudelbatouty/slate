@@ -226,7 +226,7 @@ function PairedPlayerRows({ mine, opponent, emptyLabel }: { mine: MatchupPlayer[
   if (length === 0) return <p className="border-t border-ink-line py-2 text-xs text-bone-dim">{emptyLabel}</p>;
 
   return Array.from({ length }, (_, index) => (
-    <div className="grid grid-cols-2 gap-2 border-t border-ink-line py-2" key={`${mine[index]?.externalPlayerId ?? "empty"}:${opponent[index]?.externalPlayerId ?? "empty"}`}>
+    <div className="grid grid-cols-2 border-t border-ink-line py-2" key={`${mine[index]?.externalPlayerId ?? "empty"}:${opponent[index]?.externalPlayerId ?? "empty"}`}>
       <PlayerCell player={mine[index]} side="left" />
       <PlayerCell player={opponent[index]} side="right" />
     </div>
@@ -237,17 +237,17 @@ function PlayerCell({ player, side }: { player: MatchupPlayer | undefined; side:
   if (!player) return <div className={`min-h-12 min-w-0 text-xs text-stone ${side === "left" ? "text-left" : "text-right"}`}>—</div>;
   const game = playerGameLabel(player);
   const score = (
-    <div className={`mono self-center tabular-nums ${side === "left" ? "text-left" : "text-right"}`}>
+    <div className={`mono self-center tabular-nums ${side === "left" ? "text-right" : "text-left"}`}>
       <p className="text-[15px] font-medium leading-none text-bone">{numberLabel(player.currentPoints)}</p>
       <p className="mt-1 text-[10px] leading-none text-stone">{numberLabel(player.projectedPoints)}</p>
     </div>
   );
   const identity = (
-    <div className={`min-w-0 self-center ${side === "left" ? "text-right" : "text-left"}`}>
-      <div className={`flex min-w-0 items-baseline gap-1 ${side === "left" ? "justify-end" : "justify-start"}`}>
-        {side === "right" ? <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span> : null}
-        <p className="truncate text-xs text-bone">{player.name}</p>
+    <div className={`min-w-0 self-center ${side === "left" ? "text-left" : "text-right"}`}>
+      <div className={`flex min-w-0 items-baseline gap-1 ${side === "left" ? "justify-start" : "justify-end"}`}>
         {side === "left" ? <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span> : null}
+        <p className="truncate text-xs text-bone">{player.name}</p>
+        {side === "right" ? <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span> : null}
       </div>
       <p className={`mono mt-0.5 truncate text-[8px] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}>
         {[player.nflTeam, game, lockLabel(player), meaningfulStatus(player.injuryStatus)].filter(Boolean).join(" · ")}
@@ -256,9 +256,9 @@ function PlayerCell({ player, side }: { player: MatchupPlayer | undefined; side:
   );
 
   return (
-    <div className={`grid min-h-12 min-w-0 items-stretch gap-2 ${side === "left" ? "grid-cols-[42px_minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)_42px]"}`}>
-      {side === "left" ? score : identity}
+    <div className={`grid min-h-12 min-w-0 items-stretch gap-2 ${side === "left" ? "grid-cols-[minmax(0,1fr)_42px] pr-2" : "grid-cols-[42px_minmax(0,1fr)] border-l border-ink-line pl-2"}`}>
       {side === "left" ? identity : score}
+      {side === "left" ? score : identity}
     </div>
   );
 }

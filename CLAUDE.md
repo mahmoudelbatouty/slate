@@ -2,9 +2,10 @@
 
 One dashboard for fantasy leagues spread across Sleeper, ESPN, and Yahoo.
 
-**Single user.** This runs for one person (the repo owner). No signup, no
-multi-tenancy, no RLS in v1. Auth is a single hardcoded password or a Supabase
-magic link to one allowlisted email. Do not build a user system.
+**Single user for the current prototype.** This runs for the repo owner today.
+Do not build general multi-tenancy until the provider-connection and write
+flows are proven. Auth is a single hardcoded password or a Supabase magic link
+to one allowlisted email.
 
 ---
 
@@ -62,7 +63,7 @@ src/
     (dash)/league/[id]/page.tsx
     (dash)/team/[id]/page.tsx
     admin/unmatched/page.tsx  # crosswalk failures, manual mapping
-    admin/connections/page.tsx# credential status, re-paste ESPN cookies
+    admin/connections/page.tsx# OAuth and browser-connector status
     api/cron/sync/route.ts
   adapters/
     types.ts                  # PlatformAdapter contract — provided
@@ -83,22 +84,30 @@ fixtures/                     # recorded API responses for tests
 
 ---
 
-## Scope: read-only
+## Scope: unified read/write hub
 
-**This app never writes to a platform.** Yahoo's API does support lineup edits
-and add/drops, and ESPN has undocumented write endpoints — both are explicitly
-out of scope. Do not build them, do not scaffold for them, do not add a
-disabled "Swap" button.
+The approved direction is an all-in-one hub. Users should be able to inspect a
+complete matchup and, where the provider permits it, adjust their lineup from
+Slate without navigating away.
 
-Consequences, all of them good:
-- Yahoo OAuth requests the **read scope only** (`fspt-r`).
-- No server actions, no optimistic updates, no rollback logic, no write-path
-  error handling. Every route is a pure read from Postgres.
-- Pages can be cached hard and revalidated on sync.
+Writes are deliberately narrower than reads:
 
-Every team card carries an "Open in Sleeper / ESPN / Yahoo" deep link. That is
-the entire action surface. Copy should be matter-of-fact about it — the hub is
-where you look, the platform is where you act.
+- **Yahoo:** use its documented OAuth authorization flow and request Fantasy
+  Read/Write access. Prefer the official API for lineup changes.
+- **Sleeper and ESPN:** no supported third-party Fantasy write API is known.
+  Writes may use the local browser connector only as an explicitly labeled
+  experimental capability. Never collect a password, cookie, or session token.
+- Every write requires an exact preview, an explicit final confirmation, an
+  idempotency key, an audit record, and a provider read-back before Slate claims
+  success. No optimistic success state.
+- The extension may implement only allowlisted operations with validated
+  request/response shapes. It must not become a generic authenticated request
+  proxy or arbitrary script runner.
+- A platform write failure must leave the other platforms and the read-only
+  dashboard working.
+
+Deep links remain as a fallback when a write is unsupported, the connector is
+offline, or provider verification fails.
 
 Deep link patterns:
 - Sleeper: `https://sleeper.com/leagues/{league_id}/team`
@@ -151,9 +160,30 @@ APP_PASSWORD=
 - **Yahoo**: one-time OAuth consent at `/admin/connections`. Store the refresh
   token; mint access tokens on demand (1hr life). Refresh tokens are long-lived
   but not eternal — surface a reconnect banner when `last_ok_at` goes stale.
-- **ESPN**: `espn_s2` + `SWID`, pasted by hand into `/admin/connections`. These
-  cannot be obtained programmatically. They rotate silently, so the health check
-  matters. When ESPN 401s, show a banner with copy-paste instructions, not a stack trace.
+- **ESPN**: browser connector. The user signs into ESPN directly; Slate never
+  receives the password, cookies, or session token. Surface a reconnect banner
+  when approved captures stop arriving.
+
+### Browser connector
+
+For private data that a provider does not expose through a supported API,
+prefer the local browser connector over collecting passwords or copying
+cookies. The user signs into the provider directly. The extension may observe
+only explicitly allowlisted fantasy response bodies and must never read
+password fields, cookies, local storage, request headers, or platform tokens.
+
+The extension authenticates to Slate with a random ingest-only token. Store
+only its SHA-256 hash, make it revocable, validate and sanitize every payload at
+the server boundary, and keep connector tables inaccessible to `anon` and
+`authenticated`. Native projections live separately from the scheduled sync
+cache so a routine sync cannot overwrite them.
+
+The production UX must not ask the user to copy that token. Pairing is a
+short-lived, one-time handshake initiated from **Connect Sleeper** or **Connect
+ESPN**. The raw connector token is delivered directly to the installed
+extension and is never rendered in the page. The existing copy/paste token UI
+is development-only scaffolding and should be removed once automatic pairing
+works.
 
 ---
 
@@ -185,10 +215,11 @@ Ship each milestone working before starting the next.
   architecture works.* No auth complexity to fight while you validate it.
 - **M2 — the "Left to play" view.** The signature feature (see `DESIGN.md`).
   Needs only Sleeper data, so build it before adding platforms.
-- **M3 — Yahoo.** OAuth flow (read scope), adapter, JSON flattener helper.
-  Dashboard now shows two platforms side by side.
-- **M4 — ESPN.** Cookie paste flow, adapter, graceful degradation. Expect this
-  one to be the flakiest; it must never break the other two.
+- **M3 — Connections + complete matchup.** Automatic connector pairing,
+  always-visible week selection, expandable player-level matchups, and Yahoo
+  OAuth with Fantasy Read/Write access.
+- **M4 — Lineup actions.** Official Yahoo lineup edits, followed by explicitly
+  experimental Sleeper/ESPN connector actions with confirmation and read-back.
 - **M5 — full-league expansion.** Whole-league scoreboard toggle on every card,
   player-level breakdowns, league standings view.
 
@@ -218,7 +249,8 @@ fixtures, then never think about it again. Keys look like `nfl.l.123456` and
 by Yahoo Fantasy" linking to Yahoo on any screen showing Yahoo data.
 
 **ESPN** — `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/leagues/{id}`.
-Cookies `espn_s2` and `SWID`. Data is selected with stackable `?view=` params:
+The browser connector accesses the signed-in session locally; Slate never
+stores `espn_s2` or `SWID`. Data is selected with stackable `?view=` params:
 `mTeam`, `mRoster`, `mMatchup`, `mSettings`, `mTransactions2`. Undocumented and
 unversioned — treat every response as untrusted, validate with Zod at the
 adapter boundary, and let a failure write to `sync_runs` and return empty rather

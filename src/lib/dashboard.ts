@@ -91,6 +91,21 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
   const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
   const rowByTeam = new Map((rows ?? []).map((r) => [`${r.week}:${r.team_id}`, r]));
 
+  const { data: nativeRows, error: nativeError } = await client
+    .from("native_projections")
+    .select("platform, external_league_id, external_team_id, week, projected_points")
+    .in(
+      "external_league_id",
+      leagues.map((league) => league.external_id)
+    );
+  if (nativeError) throw new Error(`native projections read: ${nativeError.message}`);
+  const nativeByTeam = new Map(
+    (nativeRows ?? []).map((row) => [
+      `${row.platform}:${row.external_league_id}:${row.external_team_id}:${row.week}`,
+      row.projected_points,
+    ])
+  );
+
   // Every week up to now is selectable, whether or not it's been synced —
   // an unsynced week shows an empty state rather than vanishing from the
   // filter, because "nothing here yet" is the useful answer.
@@ -164,6 +179,14 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     const oppRow = mineRow.opponent_team_id
       ? rowByTeam.get(`${week}:${mineRow.opponent_team_id}`)
       : undefined;
+    const nativeMine = nativeByTeam.get(
+      `${league.platform}:${league.external_id}:${mineTeam.external_id}:${week}`
+    );
+    const nativeOpponent = oppTeam
+      ? nativeByTeam.get(
+          `${league.platform}:${league.external_id}:${oppTeam.external_id}:${week}`
+        )
+      : undefined;
     const mineStarters = startersByTeam.get(mineTeam.id) ?? [];
     const opponentStarters = oppTeam ? startersByTeam.get(oppTeam.id) ?? [] : [];
     const probability = oppTeam && oppRow
@@ -193,7 +216,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         externalId: mineTeam.external_id,
         name: mineTeam.name ?? "My team",
         points: mineRow.points,
-        projected: mineRow.projected_points,
+        projected: nativeMine ?? mineRow.projected_points,
       },
       opponent:
         oppTeam && oppRow
@@ -202,7 +225,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
               externalId: oppTeam.external_id,
               name: oppTeam.name ?? "Opponent",
               points: oppRow.points,
-              projected: oppRow.projected_points,
+              projected: nativeOpponent ?? oppRow.projected_points,
             }
           : null,
     });

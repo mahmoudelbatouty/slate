@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Slate Fantasy Connector",
+  "version": "0.1.0",
+  "description": "Sends approved fantasy matchup data to your Slate dashboard without reading passwords or cookies.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "https://sleeper.com/*"
+  ],
+  "optional_host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "Slate Connector",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://sleeper.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-bridge.js"],
+      "matches": ["https://sleeper.com/*"]
+    }
+  ]
+}

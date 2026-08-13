@@ -5,6 +5,7 @@
  */
 
 import type { Database } from "@/db/types.gen";
+import type { StarterSummary } from "./game-state";
 
 export type Platform = Database["public"]["Enums"]["platform"];
 export type LeagueStatus = "pre_draft" | "in_season" | "complete";
@@ -29,7 +30,10 @@ export interface MatchupCard {
   isFinal: boolean;
   isLive: boolean;
   winProbability: number | null;
-  remaining: number;
+  starterStatus: {
+    mine: StarterSummary;
+    opponent: StarterSummary | null;
+  };
   syncedAt: string | null;
   mine: Side;
   opponent: Side | null;
@@ -68,23 +72,6 @@ export function deepLink(card: MatchupCard): { href: string; label: string } {
         label: "Open in Yahoo",
       };
   }
-}
-
-/**
- * Clamp a week off the URL to something real.
- *
- * ?week= is user-typeable and link-shareable, so it gets everything:
- * out-of-range numbers, zero, negatives, garbage. All of it falls back to
- * the current week rather than erroring or rendering an empty page that
- * looks like a sync failure.
- */
-export function resolveWeek(
-  requested: number | undefined,
-  available: number[],
-  currentWeek: number | null
-): number | null {
-  if (requested !== undefined && available.includes(requested)) return requested;
-  return currentWeek;
 }
 
 export function margin(card: MatchupCard): number {

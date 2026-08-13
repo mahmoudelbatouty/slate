@@ -2,11 +2,11 @@
  * Runs a sync from the command line, same code path as the cron route.
  *
  *   npm run sync -- players    # Sleeper directory + crosswalk (do this first)
- *   npm run sync -- daily      # leagues, teams, rosters, transactions
+ *   npm run sync -- daily      # leagues, teams, rosters, transactions + full schedule
  *   npm run sync -- live       # matchups + scores, current week only
- *   npm run sync -- backfill   # every week 1..current, for the week filter
+ *   npm run sync -- backfill   # every published week, including future matchups
  *
- * Order matters on a cold database: players, then daily, then backfill.
+ * Order matters on a cold database: players, then daily. Backfill is a repair tool.
  */
 
 import { config } from "dotenv";

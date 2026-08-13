@@ -4,7 +4,7 @@
 @import "tailwindcss";
 
 /* Slate — design tokens. See DESIGN.md.
-   Rule: color encodes game state only. Platform is a mono monogram. */
+   Rule: color encodes game state only. Platform identity stays neutral. */
 
 @theme {
   --font-display: "Archivo", system-ui, sans-serif;
@@ -33,7 +33,7 @@
   --color-amber: #f2a33c; /* LIVE only. ration it. */
   --color-turf: #4e9b6e; /* winning / positive */
   --color-flag: #cc5847; /* losing / negative */
-  --color-stone: #5a6670; /* final, settled, inert */
+  --color-stone: #73808a; /* final, settled, inert — readable at small sizes */
 }
 
 /* Floodlight — default */
@@ -46,7 +46,7 @@
   --color-amber: #f2a33c;
   --color-turf: #4e9b6e;
   --color-flag: #cc5847;
-  --color-stone: #5a6670;
+  --color-stone: #73808a;
 }
 
 /* Daybreak — light alternate */
@@ -59,7 +59,7 @@
   --color-amber: #c77a16;
   --color-turf: #2f7a4e;
   --color-flag: #b0402f;
-  --color-stone: #8b939a;
+  --color-stone: #60686e;
 }
 
 @layer base {
@@ -109,6 +109,32 @@
 
 .pulse {
   animation: slate-pulse 2s ease-in-out infinite;
+}
+
+.week-rail {
+  scrollbar-color: var(--color-ink-line) transparent;
+  scrollbar-width: thin;
+}
+
+.week-rail::-webkit-scrollbar {
+  height: 4px;
+}
+
+.week-rail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.week-rail::-webkit-scrollbar-thumb {
+  background: var(--color-ink-line);
+}
+
+.platform-mark-image {
+  opacity: 0.8;
+}
+
+[data-theme="daybreak"] .platform-mark-image {
+  filter: invert(1);
+  opacity: 0.82;
 }
 
 @media (prefers-reduced-motion: reduce) {

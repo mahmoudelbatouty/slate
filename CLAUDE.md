@@ -189,18 +189,22 @@ single-use challenge pattern.
 
 ## Sync cadence
 
-Driven by one cron route that takes a `mode` param.
+Daily maintenance uses the cron route. Live scoring is demand-driven while an
+authenticated dashboard is open so the prototype remains compatible with
+Vercel Hobby's once-per-day cron limit.
 
 | Mode | Schedule | Does |
 |---|---|---|
-| `live` | every 5 min, Sun 12:45–23:59 ET + Thu/Mon 20:00–23:59 ET | matchups + scores only |
+| `live` | browser checks every 30s; provider pull at most once/minute during a scheduled/in-progress NFL game | matchups + scores only |
 | `daily` | 06:00 ET | leagues, teams, rosters, transactions, standings |
 | `players` | 04:00 ET | Sleeper player directory + crosswalk rebuild |
 
-Guard the route with `CRON_SECRET`. Every run writes a `sync_runs` row —
-success or failure. Sleeper allows generous throughput but stay well under
-1000 requests/minute; batch by league and cache the player dump for 24h (it's
-several MB, never fetch it per-request).
+Guard the cron route with `CRON_SECRET`; the live route stays behind the app's
+password gate and rejects cross-origin POSTs. Every provider run writes a
+`sync_runs` row — success or failure. The live route uses recent score runs as
+a database-backed cooldown and also coalesces same-instance requests, so
+multiple tabs do not normally multiply provider traffic. Batch by league and
+cache the player dump for 24h (it's several MB, never fetch it per-request).
 
 ---
 
@@ -213,8 +217,9 @@ Ship each milestone working before starting the next.
 - **M1 — Sleeper end to end.** Adapter, sync job, player crosswalk, dashboard
   rendering one real league's live matchup. *This is the proof the whole
   architecture works.* No auth complexity to fight while you validate it.
-- **M2 — the "Left to play" view.** The signature feature (see `DESIGN.md`).
-  Needs only Sleeper data, so build it before adding platforms.
+- **M2 — matchup-level "Left to play."** Compact weekly you-vs-opponent
+  remaining counts on each card; detailed player state belongs in the inline
+  matchup rather than a global field of starter dots (see `DESIGN.md`).
 - **M3 — Connections + complete matchup.** Automatic connector pairing,
   always-visible week selection, expandable player-level matchups, and Yahoo
   OAuth with Fantasy Read/Write access.

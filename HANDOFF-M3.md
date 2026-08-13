@@ -39,7 +39,14 @@ Slate remains the one browser screen used during fantasy game day. A user can:
   stores the ingest token locally and opens Sleeper for normal provider login.
 - A provider is shown as connected only after a validated capture exists.
 - The manual connector-token input has been removed from the extension popup.
-- Next implementation slice: the always-visible full-season week selector.
+- The always-visible full-season week selector is implemented on
+  `codex/m3-week-selector`. It remains server-rendered and shareable through
+  `?week=N`, supports preseason and provider season-end metadata, and labels
+  current/synced/unsynced states without relying on color.
+- Daily sync now imports every provider-published season matchup, including
+  future pairings. Users never need to open individual provider matchups to
+  populate Slate; private/native fields may arrive separately when published.
+- Next implementation slice: the complete inline matchup view.
 - Sleeper cards use the official monochrome Sleeper wordmark instead of `SL`.
 - Pre-draft leagues now render as cards even before a matchup exists. This is
   driven by canonical league status, so ESPN and Yahoo receive the same
@@ -122,6 +129,8 @@ the spine, but add queries/storage needed for both teams' player rows.
 
 Show:
 
+- a weekly you-vs-opponent starter summary at the top (played, live, and to
+  play), reusing the collapsed card counts and never filtering to "today";
 - starters and bench for both sides;
 - player name, slot, NFL opponent/game state;
 - current points and provider-native projected points;
@@ -132,9 +141,21 @@ Fetch platform data only through sync/connector ingestion. Page rendering still
 reads Postgres only. Use a small client component for expansion state and keep
 the data server-sourced.
 
+Live score freshness is implemented through `LiveRefresh` and
+`POST /api/live/sync`: visible dashboards check every 30 seconds, provider
+pulls are limited to once per minute and only during real NFL game windows,
+and successful pulls call `router.refresh()`. The endpoint is protected by the
+existing password proxy, rejects cross-origin POSTs, checks recent `sync_runs`
+for cross-instance cooldown, and coalesces in-flight work in one instance.
+Vercel cron is deliberately daily-only so the prototype deploys on Hobby.
+
 The collapsed card and expanded matchup header must use the same shared,
 accessible platform-logo component. Expanding a matchup must not regress to a
 two-letter monogram.
+
+Do not restore the global dot/blinker field. It becomes unreadable across many
+leagues and omits opponent context. The collapsed card uses compact counts with
+a hover/keyboard-focus table; the expanded view owns player-level status.
 
 ### 4. Yahoo official connection and writes
 

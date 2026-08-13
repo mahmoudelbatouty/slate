@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,11 +23,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-theme="floodlight">
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
-      </head>
-      <body className="bg-ink text-bone">{children}</body>
+    <html lang="en" data-theme="floodlight" suppressHydrationWarning>
+      <body className="bg-ink text-bone">
+        {children}
+        <Script
+          id="slate-theme-boot"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: THEME_BOOT }}
+        />
+      </body>
     </html>
   );
 }

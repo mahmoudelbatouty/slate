@@ -116,7 +116,7 @@ export function ConnectorStatus({ status }: { status: Status }) {
                 ? `Approved fantasy data received ${new Date(timestamp).toLocaleString()}`
                 : "Connected to approved Sleeper data"
               : waiting
-                ? "Sign in to Sleeper normally, then open a matchup to finish connecting."
+                ? "League schedules sync automatically. Slate is waiting for Sleeper's private native fields."
                 : "Use Sleeper's native projections without sharing your password."}
           </p>
         </div>

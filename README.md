@@ -57,10 +57,11 @@ npm run sync -- daily
 npm run sync -- live
 ```
 
-`players` builds the ~11k-row directory and the crosswalk, `daily` pulls
-leagues/teams/rosters/transactions, and `live` writes fantasy scores plus NFL
-game state. Order matters on
-a cold database. Then:
+`players` builds the ~11k-row directory and the crosswalk. `daily` pulls
+leagues, teams, rosters, transactions, and every provider-published matchup
+week—including future pairings. `live` refreshes current scores plus NFL game
+state. Order matters on a cold database; a separate `backfill` is only a repair
+tool because normal daily sync already covers the full schedule. Then:
 
 ```bash
 npm run dev
@@ -88,11 +89,18 @@ schema change.
 
 ## Sync cadence
 
-`vercel.json` schedules the cron route in UTC (Vercel Cron has no timezone,
-and no DST awareness — the windows are set for EDT and drift an hour after
-the November changeover). **Vercel Hobby caps cron jobs**, so if the 5-minute
-live schedule is rejected, move the `live` entries to a GitHub Action and
-keep `daily` + `players` on Vercel.
+`vercel.json` keeps the two maintenance jobs (`players` and `daily`) at a
+once-per-day cadence supported by Vercel Hobby. Live scoring does not depend on
+paid cron: while an authenticated dashboard is visible, it checks every 30
+seconds and pulls Sleeper at most once per minute only from 15 minutes before a
+scheduled NFL kickoff until the game is final. Hidden tabs and off-window games
+fall back to a five-minute, database-only check. A successful pull refreshes
+the Server Component automatically, so current scores update without a reload.
+
+This demand-driven path is intended to remain $0 for the single-user prototype.
+It uses ordinary Vercel Function and Supabase database quotas; revisit the
+cadence and hosting plan before opening the dashboard to many simultaneous
+users.
 
 ## Order of operations
 

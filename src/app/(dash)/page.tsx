@@ -42,7 +42,7 @@ export default async function Dashboard({
   return (
     <main className="mx-auto max-w-app px-[18px] pb-16">
       <header className="sticky top-0 z-10 border-b border-ink-line bg-ink pt-[22px] pb-[14px]">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
           <Today week={week} />
           <ConnectorStatus statuses={connector} notice={connection} />
         </div>

@@ -12,6 +12,41 @@ export interface ConnectorStatus {
   lastCaptureAt: string | null;
 }
 
+export interface PlatformConnectionStatuses {
+  sleeper: ConnectorStatus;
+  yahoo: { configured: boolean; connected: boolean; lastOkAt: string | null };
+  espn: { configured: false; connected: false };
+}
+
+export async function getPlatformConnectionStatuses(): Promise<PlatformConnectionStatuses> {
+  const sleeper = await getConnectorStatus();
+  const yahooConfigured = Boolean(
+    process.env.YAHOO_CLIENT_ID
+      && process.env.YAHOO_CLIENT_SECRET
+      && process.env.YAHOO_REDIRECT_URI
+      && process.env.PLATFORM_TOKEN_ENCRYPTION_KEY
+  );
+  let yahooAccount: { last_ok_at: string | null } | null = null;
+  if (dbConfigured()) {
+    const { data, error } = await db()
+      .from("platform_accounts")
+      .select("last_ok_at")
+      .eq("platform", "yahoo")
+      .maybeSingle();
+    if (error) throw new Error(`Yahoo connection status: ${error.message}`);
+    yahooAccount = data;
+  }
+  return {
+    sleeper,
+    yahoo: {
+      configured: yahooConfigured,
+      connected: yahooConfigured && Boolean(yahooAccount?.last_ok_at),
+      lastOkAt: yahooAccount?.last_ok_at ?? null,
+    },
+    espn: { configured: false, connected: false },
+  };
+}
+
 export async function getConnectorStatus(): Promise<ConnectorStatus> {
   if (!dbConfigured()) {
     return {

@@ -7,7 +7,7 @@ import { WeekPicker } from "@/components/WeekPicker";
 import { ConnectorStatus } from "@/components/ConnectorStatus";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
-import { getConnectorStatus } from "@/lib/connector-status";
+import { getPlatformConnectionStatuses } from "@/lib/connector-status";
 
 // Reads Postgres on every request. The data is already local, so there's
 // nothing to cache around — and a stale score is worse than a query.
@@ -16,14 +16,14 @@ export const dynamic = "force-dynamic";
 export default async function Dashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; connection?: string }>;
 }) {
-  const { week: raw } = await searchParams;
+  const { week: raw, connection } = await searchParams;
   const requested = Number(raw);
 
   const [dashboard, connector] = await Promise.all([
     getDashboard(Number.isInteger(requested) ? requested : undefined),
-    getConnectorStatus(),
+    getPlatformConnectionStatuses(),
   ]);
   const { configured, cards, lastSyncedAt, leagueCount, week, weeks } = dashboard;
 
@@ -53,7 +53,7 @@ export default async function Dashboard({
         <WeekPicker weeks={weeks} selected={week} />
       </header>
 
-      <ConnectorStatus status={connector} />
+      <ConnectorStatus statuses={connector} notice={connection} />
 
       {configured && isUnsynced && week && (
         <UnsyncedWeek week={week} isCurrent={isCurrent} />

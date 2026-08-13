@@ -200,6 +200,12 @@ attribution. Use Yahoo's documented roster update resource for lineup changes.
 Before enabling a write action, record response fixtures and verify the current
 Yahoo documentation. Do not infer an endpoint from old samples.
 
+The dashboard connection surface is one shared rectangle containing Sleeper,
+Yahoo, and ESPN tiles. Each tile has its own connection state but no provider
+password field. Yahoo uses its hosted OAuth consent screen; ESPN/Sleeper must
+retain the approved password-free connector pattern. Provider refresh tokens
+are encrypted at rest and authorization codes/access tokens are never stored.
+
 ### 5. Experimental Sleeper/ESPN lineup actions
 
 Only begin after read-only capture and expanded matchups work for that provider.

@@ -10,76 +10,49 @@ export interface StarterGame {
   projectedPoints: number | null;
 }
 
-export type DotState = "played" | "live" | "upcoming";
-
-export interface GameWindow {
-  startTime: string;
-  label: string;
-  dots: DotState[];
-}
-
-export interface LeftToPlay {
+export interface StarterSummary {
   total: number;
   remaining: number;
   played: number;
   live: number;
+  upcoming: number;
   unassigned: number;
-  windows: GameWindow[];
 }
 
-export function formatGameWindow(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
+export const EMPTY_STARTER_SUMMARY: StarterSummary = {
+  total: 0,
+  remaining: 0,
+  played: 0,
+  live: 0,
+  upcoming: 0,
+  unassigned: 0,
+};
 
-function easternDateKey(value: string | number | Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(value));
-}
-
-export function buildLeftToPlay(rows: StarterGame[], now: string | number | Date = new Date()): LeftToPlay {
-  const today = easternDateKey(now);
-  const owned = rows.filter((row) => row.isMine);
-  const hasGamesToday = owned.some(
-    (row) => row.startTime && !row.canceled && easternDateKey(row.startTime) === today
-  );
-  const mine = hasGamesToday
-    ? owned.filter(
-        (row) => !row.startTime || row.canceled || easternDateKey(row.startTime) === today
-      )
-    : [];
-  const byStart = new Map<string, DotState[]>();
+/** Counts a team's starters across the selected fantasy week, not today. */
+export function summarizeStarterStates(rows: StarterGame[]): StarterSummary {
   let played = 0;
   let live = 0;
-  let remaining = 0;
+  let upcoming = 0;
   let unassigned = 0;
 
-  for (const row of mine) {
+  for (const row of rows) {
     if (!row.startTime || row.canceled) {
       unassigned++;
       continue;
     }
-    const state: DotState = row.isOver ? "played" : row.inProgress ? "live" : "upcoming";
-    if (state === "played") played++;
-    if (state === "live") live++;
-    if (state === "upcoming") remaining++;
-    const dots = byStart.get(row.startTime) ?? [];
-    dots.push(state);
-    byStart.set(row.startTime, dots);
+    if (row.isOver) played++;
+    else if (row.inProgress) live++;
+    else upcoming++;
   }
 
-  const windows = [...byStart.entries()]
-    .sort(([a], [b]) => Date.parse(a) - Date.parse(b))
-    .map(([startTime, dots]) => ({ startTime, label: formatGameWindow(startTime), dots }));
-
-  return { total: mine.length, remaining, played, live, unassigned, windows };
+  return {
+    total: rows.length,
+    remaining: live + upcoming,
+    played,
+    live,
+    upcoming,
+    unassigned,
+  };
 }
 
 function remainingFraction(row: StarterGame): number {
@@ -145,5 +118,5 @@ export function winProbability(
 }
 
 export function remainingStarters(rows: StarterGame[]): number {
-  return rows.filter((row) => remainingFraction(row) > 0).length;
+  return summarizeStarterStates(rows).remaining;
 }

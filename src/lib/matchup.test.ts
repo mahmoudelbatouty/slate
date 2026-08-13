@@ -6,6 +6,7 @@ import {
   type MatchupCard,
   type Platform,
 } from "./matchup";
+import { EMPTY_STARTER_SUMMARY } from "./game-state";
 
 function card(
   over: Omit<Partial<MatchupCard>, "mine"> & { mine?: number; theirs?: number }
@@ -23,7 +24,10 @@ function card(
     isFinal: false,
     isLive: false,
     winProbability: null,
-    remaining: 0,
+    starterStatus: {
+      mine: EMPTY_STARTER_SUMMARY,
+      opponent: EMPTY_STARTER_SUMMARY,
+    },
     syncedAt: null,
     mine: { teamId: "t1", externalId: "1", name: "Mine", points: mine, projected: null },
     opponent: {

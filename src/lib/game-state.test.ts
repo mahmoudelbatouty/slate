@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLeftToPlay, formatGameWindow, winProbability, type StarterGame } from "./game-state";
+import { summarizeStarterStates, winProbability, type StarterGame } from "./game-state";
 
 const row = (overrides: Partial<StarterGame> = {}): StarterGame => ({
   leagueId: "league",
@@ -14,37 +14,32 @@ const row = (overrides: Partial<StarterGame> = {}): StarterGame => ({
   ...overrides,
 });
 
-describe("buildLeftToPlay", () => {
-  it("groups duplicate starters across leagues into derived kickoff windows", () => {
-    const spine = buildLeftToPlay([
+describe("summarizeStarterStates", () => {
+  it("summarizes the whole selected gameweek for one matchup side", () => {
+    expect(summarizeStarterStates([
       row({ isOver: true }),
-      row({ leagueId: "other", inProgress: true, quarter: "2" }),
+      row({ inProgress: true, quarter: "2" }),
       row({ startTime: "2025-11-17T01:20:00.000Z" }),
       row({ startTime: null }),
-      row({ isMine: false }),
-    ], "2025-11-16T17:00:00.000Z");
-
-    expect(spine).toMatchObject({ total: 4, played: 1, live: 1, remaining: 1, unassigned: 1 });
-    expect(spine.windows.map((window) => window.label)).toEqual(["1:00 PM", "8:20 PM"]);
-    expect(spine.windows[0].dots).toEqual(["played", "live"]);
+      row({ canceled: true }),
+    ])).toEqual({
+      total: 5,
+      remaining: 2,
+      played: 1,
+      live: 1,
+      upcoming: 1,
+      unassigned: 2,
+    });
   });
 
-  it("formats windows in Eastern time regardless of server timezone", () => {
-    expect(formatGameWindow("2025-11-16T21:25:00.000Z")).toBe("4:25 PM");
-  });
-
-  it("shows only today's Eastern-time slate", () => {
-    const spine = buildLeftToPlay([
-      row(),
-      row({ startTime: "2025-11-17T01:20:00.000Z" }),
-      row({ startTime: "2025-11-18T01:15:00.000Z" }),
-    ], "2025-11-16T17:00:00.000Z");
-    expect(spine.total).toBe(2);
-    expect(spine.windows.map((window) => window.label)).toEqual(["1:00 PM", "8:20 PM"]);
-  });
-
-  it("renders empty when there are no games today", () => {
-    expect(buildLeftToPlay([row()], "2025-11-12T17:00:00.000Z").total).toBe(0);
+  it("shows that nobody has played an upcoming gameweek", () => {
+    expect(summarizeStarterStates([row(), row()])).toMatchObject({
+      total: 2,
+      played: 0,
+      live: 0,
+      upcoming: 2,
+      remaining: 2,
+    });
   });
 });
 

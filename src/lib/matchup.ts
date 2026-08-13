@@ -5,6 +5,7 @@
  */
 
 import type { Database } from "@/db/types.gen";
+import type { StarterSummary } from "./game-state";
 
 export type Platform = Database["public"]["Enums"]["platform"];
 export type LeagueStatus = "pre_draft" | "in_season" | "complete";
@@ -29,7 +30,10 @@ export interface MatchupCard {
   isFinal: boolean;
   isLive: boolean;
   winProbability: number | null;
-  remaining: number;
+  starterStatus: {
+    mine: StarterSummary;
+    opponent: StarterSummary | null;
+  };
   syncedAt: string | null;
   mine: Side;
   opponent: Side | null;

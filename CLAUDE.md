@@ -213,8 +213,9 @@ Ship each milestone working before starting the next.
 - **M1 — Sleeper end to end.** Adapter, sync job, player crosswalk, dashboard
   rendering one real league's live matchup. *This is the proof the whole
   architecture works.* No auth complexity to fight while you validate it.
-- **M2 — the "Left to play" view.** The signature feature (see `DESIGN.md`).
-  Needs only Sleeper data, so build it before adding platforms.
+- **M2 — matchup-level "Left to play."** Compact weekly you-vs-opponent
+  remaining counts on each card; detailed player state belongs in the inline
+  matchup rather than a global field of starter dots (see `DESIGN.md`).
 - **M3 — Connections + complete matchup.** Automatic connector pairing,
   always-visible week selection, expandable player-level matchups, and Yahoo
   OAuth with Fantasy Read/Write access.

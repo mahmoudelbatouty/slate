@@ -3,10 +3,9 @@ import { db, dbConfigured } from "@/db/client";
 import { byDrama, type MatchupCard } from "./matchup";
 import { buildWeekOptions, resolveWeek, type WeekOption } from "./weeks";
 import {
-  buildLeftToPlay,
-  remainingStarters,
+  EMPTY_STARTER_SUMMARY,
+  summarizeStarterStates,
   winProbability,
-  type LeftToPlay,
   type StarterGame,
 } from "./game-state";
 
@@ -20,17 +19,7 @@ export interface Dashboard {
   /** The week actually being shown, after clamping whatever was asked for. */
   week: number | null;
   weeks: WeekOption[];
-  spine: LeftToPlay;
 }
-
-const EMPTY_SPINE: LeftToPlay = {
-  total: 0,
-  remaining: 0,
-  played: 0,
-  live: 0,
-  unassigned: 0,
-  windows: [],
-};
 
 const EMPTY: Dashboard = {
   configured: false,
@@ -39,7 +28,6 @@ const EMPTY: Dashboard = {
   leagueCount: 0,
   week: null,
   weeks: buildWeekOptions([], []),
-  spine: EMPTY_SPINE,
 };
 
 /**
@@ -181,7 +169,10 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         isFinal: false,
         isLive: false,
         winProbability: null,
-        remaining: 0,
+        starterStatus: {
+          mine: EMPTY_STARTER_SUMMARY,
+          opponent: null,
+        },
         syncedAt: league.synced_at,
         mine: {
           teamId: mineTeamForLeague?.id ?? "",
@@ -236,7 +227,10 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
       isFinal: mineRow.is_final,
       isLive: [...mineStarters, ...opponentStarters].some((starter) => starter.inProgress),
       winProbability: probability,
-      remaining: remainingStarters(mineStarters),
+      starterStatus: {
+        mine: summarizeStarterStates(mineStarters),
+        opponent: oppTeam ? summarizeStarterStates(opponentStarters) : null,
+      },
       syncedAt: league.synced_at,
       mine: {
         teamId: mineTeam.id,
@@ -272,6 +266,5 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     leagueCount: leagues.length,
     week,
     weeks,
-    spine: buildLeftToPlay(starterGames),
   };
 }

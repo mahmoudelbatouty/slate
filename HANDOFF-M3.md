@@ -129,6 +129,8 @@ the spine, but add queries/storage needed for both teams' player rows.
 
 Show:
 
+- a weekly you-vs-opponent starter summary at the top (played, live, and to
+  play), reusing the collapsed card counts and never filtering to "today";
 - starters and bench for both sides;
 - player name, slot, NFL opponent/game state;
 - current points and provider-native projected points;
@@ -142,6 +144,10 @@ the data server-sourced.
 The collapsed card and expanded matchup header must use the same shared,
 accessible platform-logo component. Expanding a matchup must not regress to a
 two-letter monogram.
+
+Do not restore the global dot/blinker field. It becomes unreadable across many
+leagues and omits opponent context. The collapsed card uses compact counts with
+a hover/keyboard-focus table; the expanded view owns player-level status.
 
 ### 4. Yahoo official connection and writes
 

@@ -4,7 +4,6 @@ import { SyncedAt } from "@/components/SyncedAt";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Today } from "@/components/Today";
 import { WeekPicker } from "@/components/WeekPicker";
-import { LeftToPlay } from "@/components/LeftToPlay";
 import { ConnectorStatus } from "@/components/ConnectorStatus";
 import Link from "next/link";
 import { getConnectorStatus } from "@/lib/connector-status";
@@ -25,7 +24,7 @@ export default async function Dashboard({
     getDashboard(Number.isInteger(requested) ? requested : undefined),
     getConnectorStatus(),
   ]);
-  const { configured, cards, lastSyncedAt, leagueCount, week, weeks, spine } = dashboard;
+  const { configured, cards, lastSyncedAt, leagueCount, week, weeks } = dashboard;
 
   const currentWeek = weeks.find((option) => option.isCurrent)?.week ?? null;
   const isCurrent = week === currentWeek;
@@ -51,8 +50,6 @@ export default async function Dashboard({
       </header>
 
       <ConnectorStatus status={connector} />
-
-      {configured && <LeftToPlay spine={spine} />}
 
       {configured && isUnsynced && week && (
         <UnsyncedWeek week={week} isCurrent={isCurrent} />

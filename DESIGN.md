@@ -91,28 +91,28 @@ poll is genuinely annoying.
 
 ---
 
-## Signature: the "Left to play" spine
+## Signature: matchup-level "Left to play"
 
 The one thing no platform gives you, and the reason to build this at all.
 
-A horizontal band across the top of the dashboard representing today's game
-windows — 1:00, 4:05, 4:25, 8:20 — with a dot for each of your starters across
-*all* leagues, positioned in the window their real-life game falls in. Played
-dots go stone. In-progress dots go amber. Not-yet-played dots stay bone.
+A global dot for every starter does not scale across many leagues and omits the
+opponent context needed to judge a matchup. Keep the homepage quiet. Each
+matchup card instead shows one compact weekly comparison:
 
 ```
-  LEFT TO PLAY                                    9 of 27 remaining
-  ┌────────────┬────────────┬────────────┬────────────┐
-  │   1:00     │   4:05     │   4:25     │   8:20     │
-  │ ●●●●●●●●●● │ ●●●●●      │ ●●●●       │ ●          │
-  │ ○○○        │ ○○         │            │            │
-  └────────────┴────────────┴────────────┴────────────┘
-    ● played      ◐ live      ○ yet to play
+  YOU 6 LEFT · OPP 4 LEFT
+
+  hover / keyboard focus:
+  WEEK 11 STARTERS       YOU  OPP
+  PLAYED                   3    5
+  LIVE                     1    0
+  TO PLAY                  5    4
 ```
 
-At a glance: your afternoon isn't over, you have four bodies left in the 4:25
-window, and a down-by-12 matchup isn't lost. That's the insight the hub exists
-to deliver, and it's only possible *because* you aggregated three platforms.
+The counts cover the entire selected fantasy week, never only the current
+calendar day. The expanded matchup repeats this comparison at the top, then
+provides player names, kickoff/game state, scores, projections, and benches.
+This preserves the insight without rendering dozens or hundreds of blinkers.
 
 Everything else on the page stays quiet so this lands.
 
@@ -128,9 +128,6 @@ app that happens to open in a browser.
 │ SUNDAY          WEEK 11      │  sticky header, Archivo extended
 │ synced 2m ago                │  DM Mono, bone-dim
 ├──────────────────────────────┤
-│ LEFT TO PLAY        9 of 27  │  the signature band
-│ [═══ window spine ═══]       │
-├──────────────────────────────┤
 │ ┌──────────────────────────┐ │
 │ │logo│ DYNASTY DEGENERATES │ │  platform mark + league, Archivo
 │ │                          │ │
@@ -140,7 +137,8 @@ app that happens to open in a browser.
 │ │ Sofa Kings          71.9 │ │
 │ │ proj 108.0               │ │
 │ │                          │ │
-│ │ 6 to play    Open in ↗   │ │
+│ │ YOU 6 · OPP 4 LEFT       │ │  hover/focus for weekly counts
+│ │                 Open in ↗ │ │
 │ └──────────────────────────┘ │
 │ ┌──────────────────────────┐ │
 │ │ YH │ THE WORK LEAGUE     │ │  Yahoo card gets inline swap
@@ -180,7 +178,7 @@ Almost none, deliberately. Three exceptions:
 
 1. Live dot: 2s opacity pulse, `prefers-reduced-motion` disables it.
 2. Score changes: 400ms color flash in turf or flag on the delta, then settle.
-3. Left-to-play dots: 200ms fade to stone when a player's game ends.
+3. Matchup availability tooltip: a short opacity transition on hover/focus.
 
 No page transitions, no scroll reveals, no skeleton shimmer. Data comes from
 your own Postgres — it's already there.

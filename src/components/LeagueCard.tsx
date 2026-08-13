@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deepLink, type MatchupCard, type MatchupPlayer, type Side } from "@/lib/matchup";
+import { type MatchupCard, type MatchupPlayer, type Side } from "@/lib/matchup";
 import type { StarterSummary } from "@/lib/game-state";
 import { PlatformMark } from "@/components/PlatformMark";
 
@@ -12,7 +12,6 @@ import { PlatformMark } from "@/components/PlatformMark";
  */
 export function LeagueCard({ card }: { card: MatchupCard }) {
   const [expanded, setExpanded] = useState(false);
-  const link = deepLink(card);
   const mine = card.mine.points ?? 0;
   const theirs = card.opponent?.points ?? 0;
   const diff = mine - theirs;
@@ -35,7 +34,7 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
       </div>
 
       {card.leagueStatus === "pre_draft" ? (
-        <PreDraft card={card} link={link} />
+        <PreDraft card={card} />
       ) : (
         <>
 
@@ -63,17 +62,9 @@ export function LeagueCard({ card }: { card: MatchupCard }) {
               mine={card.starterStatus.mine}
               opponent={card.starterStatus.opponent}
             />
-            <a
-              className="ml-auto border-b border-ink-line pb-[2px] text-2xs text-bone"
-              href={link.href}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {link.label} ↗
-            </a>
             <button
               type="button"
-              className="basis-full border border-ink-line px-3 py-2 text-left text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
+              className="ml-auto border border-ink-line px-3 py-2 text-left text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
               aria-expanded={expanded}
               aria-controls={`matchup-detail-${card.leagueId}`}
               onClick={() => setExpanded((value) => !value)}
@@ -155,8 +146,7 @@ function MatchupDetail({ card }: { card: MatchupCard }) {
       </div>
 
       <WeeklySummary mine={card.starterStatus.mine} opponent={card.starterStatus.opponent} />
-      <Lineup side={card.mine} label="YOU" />
-      {card.opponent ? <Lineup side={card.opponent} label="OPPONENT" /> : null}
+      <HeadToHeadLineups mine={card.mine} opponent={card.opponent} />
       <p className="mono mt-4 text-[9px] leading-relaxed text-stone">
         SCORES AND LINEUPS SYNC FROM {card.platform.toUpperCase()} · LAST PROVIDER SYNC {syncLabel(card.syncedAt)}
       </p>
@@ -188,69 +178,76 @@ function SummaryCell({ label, mine, opponent, live = false }: { label: string; m
   );
 }
 
-function Lineup({ side, label }: { side: Side; label: string }) {
-  const starters = side.lineup?.starters ?? [];
-  const bench = side.lineup?.bench ?? [];
+function HeadToHeadLineups({ mine, opponent }: { mine: Side; opponent: Side | null }) {
+  const mineStarters = mine.lineup?.starters ?? [];
+  const opponentStarters = opponent?.lineup?.starters ?? [];
+  const mineBench = mine.lineup?.bench ?? [];
+  const opponentBench = opponent?.lineup?.bench ?? [];
 
   return (
-    <section className="mt-5" aria-label={`${label} lineup`}>
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h3 className="display truncate text-xs text-bone">{label} · {side.name}</h3>
-        <span className="mono shrink-0 text-[9px] text-stone">{starters.length} STARTERS</span>
+    <section className="mt-5" aria-label="Head-to-head lineups">
+      <div className="grid grid-cols-2 gap-2 border-b border-ink-line pb-2">
+        <TeamColumnHeader label="YOU" side={mine} />
+        <TeamColumnHeader label="OPP" side={opponent} />
       </div>
-      <PlayerGroup label="STARTERS" players={starters} />
-      <PlayerGroup label="BENCH" players={bench} collapsible />
+      <PairedPlayerGroup label="STARTERS" mine={mineStarters} opponent={opponentStarters} />
+      <details className="group/bench mt-3 border-t border-ink-line">
+        <summary className="mono flex min-h-11 cursor-pointer list-none items-center justify-between text-[9px] tracking-[0.1em] text-stone focus-visible:outline-2 focus-visible:outline-amber">
+          <span>BENCH · YOU {mineBench.length} / OPP {opponentBench.length}</span>
+          <span aria-hidden className="group-open/bench:hidden">SHOW ↓</span>
+          <span aria-hidden className="hidden group-open/bench:inline">HIDE ↑</span>
+        </summary>
+        <PairedPlayerRows mine={mineBench} opponent={opponentBench} emptyLabel="No bench synced." />
+      </details>
     </section>
   );
 }
 
-function PlayerGroup({ label, players, collapsible = false }: { label: string; players: MatchupPlayer[]; collapsible?: boolean }) {
-  if (collapsible) {
-    return (
-      <details className="group/bench mt-3 border-t border-ink-line">
-        <summary className="mono flex min-h-11 cursor-pointer list-none items-center justify-between text-[9px] tracking-[0.1em] text-stone focus-visible:outline-2 focus-visible:outline-amber">
-          <span>{label} · {players.length}</span>
-          <span aria-hidden className="group-open/bench:hidden">SHOW ↓</span>
-          <span aria-hidden className="hidden group-open/bench:inline">HIDE ↑</span>
-        </summary>
-        <PlayerRows label={label} players={players} />
-      </details>
-    );
-  }
-
+function TeamColumnHeader({ label, side }: { label: string; side: Side | null }) {
   return (
-    <div className="mt-3">
-      <p className="mono mb-1 text-[9px] tracking-[0.1em] text-stone">{label}</p>
-      <PlayerRows label={label} players={players} />
+    <div className="min-w-0">
+      <p className="mono text-[9px] tracking-[0.1em] text-stone">{label}</p>
+      <p className="display truncate text-xs text-bone">{side?.name ?? "No opponent"}</p>
     </div>
   );
 }
 
-function PlayerRows({ label, players }: { label: string; players: MatchupPlayer[] }) {
-  return players.length === 0 ? (
-    <p className="border-t border-ink-line py-2 text-xs text-bone-dim">No {label.toLowerCase()} synced.</p>
-  ) : players.map((player) => <PlayerRow key={player.externalPlayerId} player={player} />);
+function PairedPlayerGroup({ label, mine, opponent }: { label: string; mine: MatchupPlayer[]; opponent: MatchupPlayer[] }) {
+  return (
+    <div className="mt-3">
+      <p className="mono mb-1 text-[9px] tracking-[0.1em] text-stone">{label} · YOU {mine.length} / OPP {opponent.length}</p>
+      <PairedPlayerRows mine={mine} opponent={opponent} emptyLabel={`No ${label.toLowerCase()} synced.`} />
+    </div>
+  );
 }
 
-function PlayerRow({ player }: { player: MatchupPlayer }) {
+function PairedPlayerRows({ mine, opponent, emptyLabel }: { mine: MatchupPlayer[]; opponent: MatchupPlayer[]; emptyLabel: string }) {
+  const length = Math.max(mine.length, opponent.length);
+  if (length === 0) return <p className="border-t border-ink-line py-2 text-xs text-bone-dim">{emptyLabel}</p>;
+
+  return Array.from({ length }, (_, index) => (
+    <div className="grid grid-cols-2 gap-2 border-t border-ink-line py-2" key={`${mine[index]?.externalPlayerId ?? "empty"}:${opponent[index]?.externalPlayerId ?? "empty"}`}>
+      <PlayerCell player={mine[index]} />
+      <PlayerCell player={opponent[index]} />
+    </div>
+  ));
+}
+
+function PlayerCell({ player }: { player: MatchupPlayer | undefined }) {
+  if (!player) return <div className="min-w-0 text-xs text-stone">—</div>;
   const game = playerGameLabel(player);
   return (
-    <div className="grid grid-cols-[34px_minmax(0,1fr)_44px_44px] items-center gap-2 border-t border-ink-line py-2">
-      <span className="mono text-[9px] text-stone">{slotLabel(player.slot)}</span>
-      <div className="min-w-0">
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-baseline gap-1">
+        <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span>
         <p className="truncate text-xs text-bone">{player.name}</p>
-        <p className={`mono mt-0.5 truncate text-[9px] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}>
-          {[player.position, player.nflTeam, game, lockLabel(player), meaningfulStatus(player.injuryStatus)].filter(Boolean).join(" · ")}
-        </p>
       </div>
-      <div className="text-right">
-        <p className="mono text-[8px] text-stone">PTS</p>
-        <p className="mono text-xs text-bone">{numberLabel(player.currentPoints)}</p>
-      </div>
-      <div className="text-right">
-        <p className="mono text-[8px] text-stone">PROJ</p>
-        <p className="mono text-xs text-bone-dim">{numberLabel(player.projectedPoints)}</p>
-      </div>
+      <p className={`mono mt-0.5 truncate text-[8px] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}>
+        {[player.nflTeam, game, lockLabel(player), meaningfulStatus(player.injuryStatus)].filter(Boolean).join(" · ")}
+      </p>
+      <p className="mono mt-1 text-[9px] text-bone">
+        {numberLabel(player.currentPoints)} <span className="text-stone">PTS · {numberLabel(player.projectedPoints)} PROJ</span>
+      </p>
     </div>
   );
 }
@@ -318,29 +315,15 @@ function StatusRow({
   );
 }
 
-function PreDraft({
-  card,
-  link,
-}: {
-  card: MatchupCard;
-  link: ReturnType<typeof deepLink>;
-}) {
+function PreDraft({ card }: { card: MatchupCard }) {
   return (
     <div>
       <p className="text-sm font-semibold text-bone">Draft not started</p>
       <p className="mt-1 text-xs text-bone-dim">
         {card.teamCount ? `${card.teamCount} teams · ` : ""}Matchups and projections will appear after the draft.
       </p>
-      <div className="mt-[14px] flex items-center justify-between border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
+      <div className="mt-[14px] border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
         <span className="mono">{card.mine.teamId ? card.mine.name : "ROSTER PENDING"}</span>
-        <a
-          className="border-b border-ink-line pb-[2px] text-2xs text-bone"
-          href={link.href}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {link.label} ↗
-        </a>
       </div>
     </div>
   );

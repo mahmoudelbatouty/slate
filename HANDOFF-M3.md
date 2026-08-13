@@ -51,6 +51,9 @@ Slate remains the one browser screen used during fantasy game day. A user can:
   points, projections, injury/lock state, NFL opponent/game state, and provider
   sync time render without leaving Slate. The shared platform mark is reused
   in both card states and the layout is verified at 360px.
+- Routine provider deep-link buttons were removed once inline inspection
+  existed. The expanded lineup is a two-column head-to-head comparison at all
+  widths so the user never has to remember a roster shown further up-screen.
 - Next implementation slice after this branch: add the first official Yahoo
   connection/read path, then feed it into the same canonical UI before writes.
 - Sleeper cards use the official monochrome Sleeper wordmark instead of `SL`.

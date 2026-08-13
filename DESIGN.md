@@ -138,7 +138,7 @@ app that happens to open in a browser.
 │ │ proj 108.0               │ │
 │ │                          │ │
 │ │ YOU 6 · OPP 4 LEFT       │ │  hover/focus for weekly counts
-│ │                 Open in ↗ │ │
+│ │ VIEW MATCHUP ↓           │ │  inline; no routine provider detour
 │ └──────────────────────────┘ │
 │ ┌──────────────────────────┐ │
 │ │ YH │ THE WORK LEAGUE     │ │  Yahoo card gets inline swap
@@ -160,8 +160,11 @@ just because only one week currently has data.
 ### Matchup expansion and lineup editing
 
 Pressing a matchup card expands it inline. Do not navigate away from the Slate
-screen. The expanded state shows both starting lineups, benches, player-level
-scores and native projections, game status, and remaining players.
+screen and do not show routine “Open in provider” buttons on matchup cards. The
+expanded state shows a persistent two-column head-to-head view: each of the
+user's players stays beside the corresponding opponent player. It includes
+both starting lineups, benches, player-level scores and native projections,
+game status, and remaining players.
 
 When lineup changes are supported, show **Edit lineup** inside the expanded
 card. Selection happens inline, but the final action always uses a confirmation

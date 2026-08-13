@@ -48,12 +48,13 @@ export default async function Dashboard({
             <SyncedAt iso={lastSyncedAt} leagueCount={leagueCount} />
             <LiveRefresh enabled={configured && leagueCount > 0} />
           </div>
-          <ThemeToggle />
+          <div className="flex flex-col items-end gap-2">
+            <ThemeToggle />
+            <ConnectorStatus statuses={connector} notice={connection} />
+          </div>
         </div>
         <WeekPicker weeks={weeks} selected={week} />
       </header>
-
-      <ConnectorStatus statuses={connector} notice={connection} />
 
       {configured && isUnsynced && week && (
         <UnsyncedWeek week={week} isCurrent={isCurrent} />

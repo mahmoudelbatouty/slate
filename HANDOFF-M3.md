@@ -200,10 +200,11 @@ attribution. Use Yahoo's documented roster update resource for lineup changes.
 Before enabling a write action, record response fixtures and verify the current
 Yahoo documentation. Do not infer an endpoint from old samples.
 
-The dashboard connection surface is a compact horizontal row containing only
-the Sleeper, Yahoo, and ESPN logos—no large surrounding box or explanatory
-descriptions. Each logo is the connection target and exposes its state through
-an accessible label/title, never a provider password field. Yahoo uses its
+The dashboard connection surface is one compact `LOGIN` rectangle on the
+header's right side containing the official Sleeper, Yahoo, and ESPN logos—no
+explanatory descriptions. Each logo is the connection target and exposes its
+state through an accessible label/title, never a provider password field. The
+Yahoo and ESPN marks are stored locally in `public/brands`. Yahoo uses its
 hosted OAuth consent screen; ESPN/Sleeper must retain the approved password-free
 connector pattern. Provider refresh tokens are encrypted at rest and
 authorization codes/access tokens are never stored.

@@ -82,26 +82,27 @@ export function ConnectorStatus({
   const message = error ?? connectionNotice(notice);
 
   return (
-    <section className="mt-4" aria-label="Platform connections">
-      <div className="flex items-center gap-3">
+    <section className="relative w-[166px] border border-ink-line bg-ink-raised px-2 py-1.5" aria-label="Platform login">
+      <p className="mono text-[9px] tracking-[0.12em] text-bone">LOGIN</p>
+      <div className="mt-0.5 flex items-center justify-between">
         {!current.installationId ? (
           <button
-            className="inline-flex min-h-11 min-w-[72px] items-center justify-center opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait"
+            className="inline-flex min-h-10 min-w-11 items-center justify-center opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait"
             type="button"
             disabled={pairing}
             onClick={pair}
             aria-label={`Sleeper ${sleeperState}. ${pairing ? "Connecting" : "Connect Sleeper"}.`}
             title={pairing ? "Connecting Sleeper" : "Connect Sleeper"}
           >
-            <PlatformMark platform="sleeper" />
+            <PlatformMark platform="sleeper" variant="login" />
           </button>
         ) : (
           <span
-            className="inline-flex min-h-11 min-w-[72px] items-center justify-center"
+            className="inline-flex min-h-10 min-w-11 items-center justify-center"
             aria-label={`Sleeper ${sleeperState}`}
             title={`Sleeper ${sleeperState}`}
           >
-            <PlatformMark platform="sleeper" />
+            <PlatformMark platform="sleeper" variant="login" />
           </span>
         )}
 
@@ -121,7 +122,7 @@ export function ConnectorStatus({
 
       {message ? (
         <p
-          className={`mt-2 text-xs ${error || notice === "yahoo-error" || notice === "yahoo-invalid-state" ? "text-flag" : "text-bone-dim"}`}
+          className={`absolute top-[calc(100%+6px)] right-0 z-30 w-[250px] border border-ink-line bg-ink-raised px-3 py-2 text-xs shadow-lg ${error || notice === "yahoo-error" || notice === "yahoo-invalid-state" ? "text-flag" : "text-bone-dim"}`}
           role="status"
         >
           {message}
@@ -142,15 +143,15 @@ function ProviderLogo({
 }) {
   const provider = platform === "espn" ? "ESPN" : "Yahoo";
   const label = `${provider} ${state}`;
-  const className = `inline-flex min-h-11 min-w-[72px] items-center justify-center transition-opacity focus-visible:outline-2 focus-visible:outline-amber ${href ? "opacity-70 hover:opacity-100" : "opacity-45"}`;
+  const className = `inline-flex min-h-10 min-w-11 items-center justify-center transition-opacity focus-visible:outline-2 focus-visible:outline-amber ${href ? "opacity-70 hover:opacity-100" : "opacity-45"}`;
 
   return href ? (
     <a className={className} href={href} aria-label={`${label}. Connect.`} title={`Connect ${provider}`}>
-      <PlatformMark platform={platform} />
+      <PlatformMark platform={platform} variant="login" />
     </a>
   ) : (
     <span className={className} aria-label={label} title={label}>
-      <PlatformMark platform={platform} />
+      <PlatformMark platform={platform} variant="login" />
     </span>
   );
 }

@@ -1,11 +1,20 @@
 import Image from "next/image";
-import { MONOGRAM, type Platform } from "@/lib/matchup";
+import type { Platform } from "@/lib/matchup";
 
-/** Shared by collapsed and expanded matchup headers across every provider. */
-export function PlatformMark({ platform }: { platform: Platform }) {
+/** Shared by matchup headers and the compact provider-login control. */
+export function PlatformMark({
+  platform,
+  variant = "card",
+}: {
+  platform: Platform;
+  variant?: "card" | "login";
+}) {
+  const frame = variant === "card" ? "border border-ink-line px-[5px]" : "px-1";
+  const width = variant === "card" ? "w-[58px]" : "w-11";
+
   if (platform === "sleeper") {
     return (
-      <span className="flex h-[24px] w-[58px] shrink-0 items-center border border-ink-line px-[5px]">
+      <span className={`flex h-[24px] ${width} shrink-0 items-center ${frame}`}>
         <Image
           src="https://sleepercdn.com/landing/web2026/img/logos/logo-full-horizontal-white.png"
           alt="Sleeper"
@@ -18,11 +27,14 @@ export function PlatformMark({ platform }: { platform: Platform }) {
   }
 
   return (
-    <span
-      className="mono shrink-0 border border-ink-line px-[6px] py-[3px] text-2xs tracking-[0.05em] text-bone-dim"
-      aria-label={platform === "espn" ? "ESPN" : "Yahoo"}
-    >
-      {MONOGRAM[platform]}
+    <span className={`flex h-[24px] ${width} shrink-0 items-center ${frame}`}>
+      <Image
+        src={`/brands/${platform}.svg`}
+        alt={platform === "espn" ? "ESPN" : "Yahoo"}
+        width={platform === "espn" ? 456 : 100}
+        height={platform === "espn" ? 113 : 28}
+        className="h-auto w-full"
+      />
     </span>
   );
 }

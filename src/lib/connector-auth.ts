@@ -8,8 +8,16 @@ export function createConnectorToken(): string {
   return `slate_${randomBytes(TOKEN_BYTES).toString("base64url")}`;
 }
 
+export function createPairingSecret(): string {
+  return `slate_pair_${randomBytes(TOKEN_BYTES).toString("base64url")}`;
+}
+
+export function hashSecret(secret: string): string {
+  return createHash("sha256").update(secret, "utf8").digest("hex");
+}
+
 export function hashConnectorToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
+  return hashSecret(token);
 }
 
 export function bearerToken(request: Request): string | null {

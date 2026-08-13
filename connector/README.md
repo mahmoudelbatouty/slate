@@ -11,18 +11,28 @@ ingest-only token.
 1. Open `chrome://extensions` in Chrome or Edge.
 2. Enable **Developer mode**.
 3. Choose **Load unpacked** and select this `connector/` directory.
-4. In Slate, press **Pair** in the Browser Connector panel.
-5. Open the extension popup and paste the dashboard URL and the one-time token.
-6. Sign into Sleeper normally, open a matchup, then press **Sync open Sleeper tabs**.
+4. Reload the extension after pulling connector changes.
+5. Open Slate and press **Connect Sleeper**.
+6. Sign into Sleeper normally and open a matchup when the connector opens it.
+
+Localhost is approved automatically. For another dashboard origin, open the
+extension popup once, enter that dashboard URL, and press **Approve dashboard**.
+The URL is not a credential; the popup requests access only to that exact
+origin. No key or token is copied by the user.
 
 The unified Slate dashboard remains the everyday screen. Provider tabs only
 need to be opened or refreshed when their native private data should be synced.
 
-This copy/paste pairing sequence is development scaffolding. The next milestone
-replaces it with automatic, short-lived pairing launched by a platform-specific
-**Connect** button; users must never handle a connector token in production.
+## Pairing security
 
-## Security boundary
+- Slate creates a random pairing challenge that expires after five minutes.
+- The installed extension claims it once through the active Slate page.
+- The long-lived ingest token is returned only to the extension and stored in
+  extension-local storage. It is never rendered into the dashboard.
+- Postgres stores only hashes of both the challenge secret and ingest token.
+- Replaying a consumed or expired challenge fails closed.
+
+## Data security boundary
 
 - Provider credentials stay with the provider.
 - The extension cannot read or modify the Slate database.

@@ -30,6 +30,34 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 - Supabase migrations through `20260813005306_native_projection_overrides.sql`
   are already applied to project `qqxceojybbacughapnom`.
 
+## M3 progress
+
+- Automatic Sleeper pairing is implemented on `codex/m3-auto-pairing`.
+- Pairing challenges expire after five minutes, are single-use, and are
+  consumed atomically by a server-role-only Postgres function.
+- The dashboard never renders the claim secret or ingest token. The extension
+  stores the ingest token locally and opens Sleeper for normal provider login.
+- A provider is shown as connected only after a validated capture exists.
+- The manual connector-token input has been removed from the extension popup.
+- Next implementation slice: the always-visible full-season week selector.
+- Sleeper cards use the official monochrome Sleeper wordmark instead of `SL`.
+- Pre-draft leagues now render as cards even before a matchup exists. This is
+  driven by canonical league status, so ESPN and Yahoo receive the same
+  behavior when their adapters are enabled.
+
+### Platform logo requirement for the next slices
+
+- Add the current official ESPN and Yahoo marks when those adapters are
+  enabled, using the same neutral treatment as the Sleeper wordmark.
+- Keep approved assets local or use a narrowly allowlisted official CDN. Never
+  render arbitrary provider-supplied asset URLs.
+- Give every mark an accessible platform name and a fixed-size container that
+  stays legible at 360px without shifting or truncating the league title.
+- Prefer monochrome/high-contrast variants where the platform permits them.
+  Brand color identifies the provider but must never encode game state.
+- `ES` and `YH` are loading/error fallbacks only. The completed enabled-
+  platform UI should show official Sleeper, ESPN, and Yahoo marks consistently.
+
 ## Non-negotiable security boundary
 
 - Never accept or store a Sleeper/ESPN/Yahoo password.
@@ -103,6 +131,10 @@ Show:
 Fetch platform data only through sync/connector ingestion. Page rendering still
 reads Postgres only. Use a small client component for expansion state and keep
 the data server-sourced.
+
+The collapsed card and expanded matchup header must use the same shared,
+accessible platform-logo component. Expanding a matchup must not regress to a
+two-letter monogram.
 
 ### 4. Yahoo official connection and writes
 

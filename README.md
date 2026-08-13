@@ -20,9 +20,9 @@ and ESPN can be added to the same protocol after recording and testing their
 approved response shapes; Yahoo OAuth remains the preferred production path
 where it supplies equivalent data.
 
-The copy/paste connector token is temporary developer setup. The approved
-product flow is one **Connect** button per platform, automatic pairing with the
-installed connector, and provider login on the provider's own page.
+Sleeper now uses one-click automatic pairing with the installed connector. A
+five-minute, single-use challenge is exchanged in the background; no connector
+token is rendered or copied. Provider login remains on the provider's own page.
 
 - `CLAUDE.md` — the build brief. Point your coding agent at this first.
 - `DESIGN.md` — visual direction, tokens, the signature feature.

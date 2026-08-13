@@ -1,13 +1,12 @@
 "use strict";
 
 const dashboardInput = document.querySelector("#dashboardUrl");
-const tokenInput = document.querySelector("#connectorToken");
 const status = document.querySelector("#status");
 
 function normalizedOrigin(value) {
   const url = new URL(value);
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("Dashboard must use http or https");
+    throw new Error("Dashboard must use HTTP or HTTPS");
   }
   return url.origin;
 }
@@ -21,27 +20,29 @@ async function renderStatus() {
     "lastError",
   ]);
   dashboardInput.value = stored.dashboardUrl || "http://localhost:3000";
-  tokenInput.value = stored.connectorToken || "";
   if (stored.lastError) status.textContent = stored.lastError;
   else if (stored.lastCaptureAt) {
     status.textContent = `Last synced ${new Date(stored.lastCaptureAt).toLocaleString()} · ${stored.lastUpdated || 0} matchups updated`;
-  } else if (stored.connectorToken) status.textContent = "Paired. Open or refresh a Sleeper matchup.";
-  else status.textContent = "Not paired.";
+  } else if (stored.connectorToken) status.textContent = "Connected. Open or refresh a Sleeper matchup.";
+  else status.textContent = "Dashboard approved. Press Connect Sleeper in Slate.";
 }
 
 document.querySelector("#save").addEventListener("click", async () => {
   try {
     const dashboardUrl = normalizedOrigin(dashboardInput.value.trim());
-    const connectorToken = tokenInput.value.trim();
-    if (!connectorToken.startsWith("slate_")) throw new Error("Invalid connector token");
-
     const granted = await chrome.permissions.request({ origins: [`${dashboardUrl}/*`] });
     if (!granted) throw new Error("Dashboard access was not granted");
 
-    await chrome.storage.local.set({ dashboardUrl, connectorToken, lastError: null });
-    status.textContent = "Paired. Open or refresh a Sleeper matchup.";
+    const registered = await chrome.runtime.sendMessage({
+      type: "SLATE_REGISTER_DASHBOARD",
+      dashboardUrl,
+    });
+    if (!registered?.ok) throw new Error(registered?.error || "Could not approve dashboard");
+
+    await chrome.storage.local.set({ dashboardUrl, lastError: null });
+    status.textContent = "Dashboard approved. Press Connect Sleeper in Slate.";
   } catch (error) {
-    status.textContent = error instanceof Error ? error.message : "Could not save connection";
+    status.textContent = error instanceof Error ? error.message : "Could not approve dashboard";
   }
 });
 

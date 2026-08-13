@@ -181,9 +181,9 @@ cache so a routine sync cannot overwrite them.
 The production UX must not ask the user to copy that token. Pairing is a
 short-lived, one-time handshake initiated from **Connect Sleeper** or **Connect
 ESPN**. The raw connector token is delivered directly to the installed
-extension and is never rendered in the page. The existing copy/paste token UI
-is development-only scaffolding and should be removed once automatic pairing
-works.
+extension and is never rendered in the page. The old copy/paste token UI has
+been removed; future platform connections must use the same short-lived,
+single-use challenge pattern.
 
 ---
 
@@ -270,6 +270,9 @@ than throw.
 - Tests run against `fixtures/`, recorded once. No test hits a live API.
 - Times stored UTC, rendered in the user's local zone.
 - No `any`. No client-side data fetching from platform APIs.
+- Enabled platforms use official, accessible Sleeper, ESPN, and Yahoo marks in
+  the shared card/header logo component. Monograms are failure fallbacks only,
+  and brand colors never encode game state.
 
 ## Definition of done for v1
 

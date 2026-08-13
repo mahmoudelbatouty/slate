@@ -7,6 +7,7 @@
 import type { Database } from "@/db/types.gen";
 
 export type Platform = Database["public"]["Enums"]["platform"];
+export type LeagueStatus = "pre_draft" | "in_season" | "complete";
 
 export interface Side {
   teamId: string;
@@ -21,6 +22,8 @@ export interface MatchupCard {
   leagueName: string;
   leagueExternalId: string;
   platform: Platform;
+  leagueStatus: LeagueStatus;
+  teamCount: number | null;
   season: number;
   week: number;
   isFinal: boolean;
@@ -44,19 +47,24 @@ export function deepLink(card: MatchupCard): { href: string; label: string } {
   switch (card.platform) {
     case "sleeper":
       return {
-        href: `https://sleeper.com/leagues/${card.leagueExternalId}/team`,
+        href: card.leagueStatus === "pre_draft"
+          ? `https://sleeper.com/leagues/${card.leagueExternalId}`
+          : `https://sleeper.com/leagues/${card.leagueExternalId}/team`,
         label: "Open in Sleeper",
       };
     case "espn":
       return {
-        href:
-          `https://fantasy.espn.com/football/team?leagueId=${card.leagueExternalId}` +
-          `&teamId=${card.mine.externalId}&seasonId=${card.season}`,
+        href: card.leagueStatus === "pre_draft"
+          ? `https://fantasy.espn.com/football/league?leagueId=${card.leagueExternalId}`
+          : `https://fantasy.espn.com/football/team?leagueId=${card.leagueExternalId}` +
+            `&teamId=${card.mine.externalId}&seasonId=${card.season}`,
         label: "Open in ESPN",
       };
     case "yahoo":
       return {
-        href: `https://football.fantasysports.yahoo.com/f1/${card.leagueExternalId}/${card.mine.externalId}`,
+        href: card.leagueStatus === "pre_draft"
+          ? `https://football.fantasysports.yahoo.com/f1/${card.leagueExternalId}`
+          : `https://football.fantasysports.yahoo.com/f1/${card.leagueExternalId}/${card.mine.externalId}`,
         label: "Open in Yahoo",
       };
   }
@@ -90,6 +98,8 @@ export function margin(card: MatchupCard): number {
  * closest margin. A blowout you already won doesn't need to be at the top.
  */
 export function byDrama(a: MatchupCard, b: MatchupCard): number {
+  if (a.leagueStatus === "pre_draft" && b.leagueStatus !== "pre_draft") return 1;
+  if (a.leagueStatus !== "pre_draft" && b.leagueStatus === "pre_draft") return -1;
   if (a.isFinal !== b.isFinal) return a.isFinal ? 1 : -1;
   return margin(a) - margin(b);
 }

@@ -13,7 +13,10 @@
 export type Platform = "sleeper" | "espn" | "yahoo";
 export type Sport = "nfl" | "nba" | "mlb" | "nhl";
 
-// ---------- credentials (shape differs per platform) ----------
+// ---------- credentials (transitional server adapter shapes) ----------
+// Browser-connector sessions never enter these DTOs. Yahoo OAuth remains
+// server-side; the ESPN cookie shape is legacy scaffolding to remove when its
+// connector adapter lands.
 export type Credentials =
   | { platform: "sleeper"; username: string }
   | { platform: "yahoo"; refreshToken: string }

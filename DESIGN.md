@@ -150,6 +150,27 @@ app that happens to open in a browser.
 Cards are ordered by *drama*, not alphabetically: closest margin first, finals
 last. A blowout you already won doesn't need to be at the top.
 
+### Week selection
+
+The week control is always visible, including preseason and before historical
+weeks have been synced. Use a compact horizontal selector for the full fantasy
+season. Current week gets the dot; selected week gets the border. Unsynced
+weeks remain selectable and show a specific empty state. Never hide the control
+just because only one week currently has data.
+
+### Matchup expansion and lineup editing
+
+Pressing a matchup card expands it inline. Do not navigate away from the Slate
+screen. The expanded state shows both starting lineups, benches, player-level
+scores and native projections, game status, and remaining players.
+
+When lineup changes are supported, show **Edit lineup** inside the expanded
+card. Selection happens inline, but the final action always uses a confirmation
+sheet naming the exact players, slots, league, platform, and lock status.
+Pending, verified, and rejected states must be textual as well as visual.
+Experimental Sleeper/ESPN actions must say **Experimental** beside the action;
+do not bury that qualification in settings or help copy.
+
 ---
 
 ## Motion

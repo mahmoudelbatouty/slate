@@ -1,5 +1,10 @@
 # Handoff — M2: the "Left to play" spine
 
+> Historical handoff: M2 is complete. For current work, read `HANDOFF-M3.md`.
+> The repo owner has approved automatic provider connections, inline matchup
+> expansion, and carefully confirmed lineup writes, superseding this file's
+> older read-only/session guidance.
+
 You're picking up Slate after M0 and M1. Read `CLAUDE.md` and `DESIGN.md`
 first — they are the brief and they win any argument with this document.
 This file covers what's already true, what M2 needs, and the things that

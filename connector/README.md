@@ -18,6 +18,10 @@ ingest-only token.
 The unified Slate dashboard remains the everyday screen. Provider tabs only
 need to be opened or refreshed when their native private data should be synced.
 
+This copy/paste pairing sequence is development scaffolding. The next milestone
+replaces it with automatic, short-lived pairing launched by a platform-specific
+**Connect** button; users must never handle a connector token in production.
+
 ## Security boundary
 
 - Provider credentials stay with the provider.

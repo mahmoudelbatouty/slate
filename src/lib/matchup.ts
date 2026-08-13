@@ -39,7 +39,7 @@ export const MONOGRAM: Record<Platform, string> = {
   yahoo: "YH",
 };
 
-/** The entire action surface: look here, act there. */
+/** Provider fallback when an inline action is unavailable or unverified. */
 export function deepLink(card: MatchupCard): { href: string; label: string } {
   switch (card.platform) {
     case "sleeper":

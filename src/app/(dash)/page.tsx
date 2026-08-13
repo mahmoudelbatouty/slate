@@ -2,7 +2,7 @@ import { getDashboard } from "@/lib/dashboard";
 import { SortableLeagueCards } from "@/components/SortableLeagueCards";
 import { SyncedAt } from "@/components/SyncedAt";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Today } from "@/components/Today";
+import { Today, TodayContext } from "@/components/Today";
 import { WeekPicker } from "@/components/WeekPicker";
 import { ConnectorStatus } from "@/components/ConnectorStatus";
 import { LiveRefresh } from "@/components/LiveRefresh";
@@ -42,15 +42,18 @@ export default async function Dashboard({
   return (
     <main className="mx-auto max-w-app px-[18px] pb-16">
       <header className="sticky top-0 z-10 border-b border-ink-line bg-ink pt-[22px] pb-[14px]">
-        <Today week={week} context={weekContext} />
-        <div className="flex items-end justify-between gap-3">
-          <div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <Today week={week} />
+          <ConnectorStatus statuses={connector} notice={connection} />
+        </div>
+        <div className="mt-2 flex items-end justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
             <SyncedAt iso={lastSyncedAt} leagueCount={leagueCount} />
             <LiveRefresh enabled={configured && leagueCount > 0} />
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex min-h-7 shrink-0 items-center gap-2">
+            <TodayContext context={weekContext} />
             <ThemeToggle />
-            <ConnectorStatus statuses={connector} notice={connection} />
           </div>
         </div>
         <WeekPicker weeks={weeks} selected={week} />

@@ -116,6 +116,13 @@ This preserves the insight without rendering dozens or hundreds of blinkers.
 
 Everything else on the page stays quiet so this lands.
 
+Each active matchup also shows a mirrored win-probability bar immediately
+below the two team scores. Label both sides explicitly (`YOU 38%` and
+`OPP 62%`): the higher-probability segment is turf green and the lower is flag
+red. A 50/50 tie is neutral stone. Never infer a percentage when the normalized
+provider data is incomplete; show `WIN ODDS UNAVAILABLE` instead. The remaining
+starter counts sit on their own aligned row below the odds bar.
+
 ---
 
 ## Layout

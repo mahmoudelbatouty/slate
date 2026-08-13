@@ -24,7 +24,6 @@ export function LeagueCard({
   const diff = mine - theirs;
 
   const total = mine + theirs;
-  const share = card.winProbability ?? (total > 0 ? Math.round((mine / total) * 100) : 50);
 
   return (
     <article className={`${expanded ? "" : "group/card"} border border-ink-line bg-ink-raised px-4 pt-[15px] pb-[13px]`}>
@@ -48,22 +47,16 @@ export function LeagueCard({
 
           <Row side={card.mine} isMine diff={diff} isFinal={card.isFinal} />
 
-          <div className="relative my-[14px] h-[2px] bg-ink-line">
-        <i
-          className={`absolute inset-y-0 left-0 block ${diff < 0 ? "bg-flag" : "bg-turf"}`}
-          style={{ width: `${share}%` }}
-        />
-        <u className="absolute top-[-3px] left-1/2 h-2 w-px bg-bone-dim opacity-70" />
-          </div>
+          <div className="my-[14px] h-px bg-ink-line" />
 
           <Row side={card.opponent} isMine={false} diff={0} isFinal={card.isFinal} />
 
-          <div className="mt-[14px] flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
-            <span className="mono">
-              {card.winProbability === null
-                ? marginLabel(diff, card.isFinal, total)
-                : `${card.winProbability}% win`}
-            </span>
+          <WinProbabilityBar
+            probability={card.winProbability}
+            fallback={marginLabel(diff, card.isFinal, total)}
+          />
+
+          <div className="mt-[12px] grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-ink-line pt-[10px] text-2xs text-bone-dim">
             <StarterAvailability
               leagueId={card.leagueId}
               week={card.week}
@@ -72,7 +65,7 @@ export function LeagueCard({
             />
             <button
               type="button"
-              className="ml-auto border border-ink-line px-3 py-2 text-left text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
+              className="min-h-11 shrink-0 border border-ink-line px-3 py-2 text-left text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
               aria-expanded={expanded}
               aria-controls={`matchup-detail-${card.leagueId}`}
               onClick={() => setExpanded((value) => !value)}
@@ -84,6 +77,47 @@ export function LeagueCard({
         </>
       )}
     </article>
+  );
+}
+
+function WinProbabilityBar({
+  probability,
+  fallback,
+}: {
+  probability: number | null;
+  fallback: string;
+}) {
+  if (probability === null) {
+    return (
+      <div className="mono mt-[14px]" aria-label={`Win probability unavailable, ${fallback}`}>
+        <div className="mb-1.5 flex items-center justify-between text-[9px] text-bone-dim">
+          <span>WIN ODDS UNAVAILABLE</span>
+          <span>{fallback.toUpperCase()}</span>
+        </div>
+        <div className="h-1 bg-ink-line" />
+      </div>
+    );
+  }
+
+  const mine = Math.max(0, Math.min(100, Math.round(probability)));
+  const opponent = 100 - mine;
+  const tied = mine === opponent;
+  const mineTone = tied ? "text-stone" : mine > opponent ? "text-turf" : "text-flag";
+  const opponentTone = tied ? "text-stone" : opponent > mine ? "text-turf" : "text-flag";
+  const mineBar = tied ? "bg-stone" : mine > opponent ? "bg-turf" : "bg-flag";
+  const opponentBar = tied ? "bg-stone" : opponent > mine ? "bg-turf" : "bg-flag";
+
+  return (
+    <div className="mono mt-[14px]" aria-label={`Win probability: you ${mine}%, opponent ${opponent}%`}>
+      <div className="mb-1.5 flex items-center justify-between text-[10px] font-medium">
+        <span className={mineTone}>YOU {mine}%</span>
+        <span className={opponentTone}>OPP {opponent}%</span>
+      </div>
+      <div className="flex h-1 gap-px bg-ink-line" aria-hidden>
+        <i className={`block ${mineBar}`} style={{ width: `${mine}%` }} />
+        <i className={`block ${opponentBar}`} style={{ width: `${opponent}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -103,7 +137,7 @@ function StarterAvailability({
   return (
     <button
       type="button"
-      className="group/status relative -m-2 inline-flex min-h-11 cursor-help items-center p-2"
+      className="group/status relative inline-flex min-h-11 min-w-0 cursor-help items-center py-2"
       aria-describedby={tooltipId}
       aria-label={`Week ${week} starters: you ${mine.remaining} left, opponent ${opponent?.remaining ?? "unknown"} left`}
     >

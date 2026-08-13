@@ -164,7 +164,10 @@ screen and do not show routine “Open in provider” buttons on matchup cards. 
 expanded state shows a persistent two-column head-to-head view: each of the
 user's players stays beside the corresponding opponent player. It includes
 both starting lineups, benches, player-level scores and native projections,
-game status, and remaining players.
+game status, and remaining players. Inside each player half, identity/game
+context stays left while current points form a fixed right-aligned column with
+the projection immediately underneath; score digits therefore remain easy to
+compare without consuming another horizontal table column.
 
 When lineup changes are supported, show **Edit lineup** inside the expanded
 card. Selection happens inline, but the final action always uses a confirmation

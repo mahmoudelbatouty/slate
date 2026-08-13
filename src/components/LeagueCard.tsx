@@ -237,17 +237,20 @@ function PlayerCell({ player }: { player: MatchupPlayer | undefined }) {
   if (!player) return <div className="min-w-0 text-xs text-stone">—</div>;
   const game = playerGameLabel(player);
   return (
-    <div className="min-w-0">
-      <div className="flex min-w-0 items-baseline gap-1">
-        <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span>
-        <p className="truncate text-xs text-bone">{player.name}</p>
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_38px] gap-1.5">
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-baseline gap-1">
+          <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span>
+          <p className="truncate text-xs text-bone">{player.name}</p>
+        </div>
+        <p className={`mono mt-0.5 truncate text-[8px] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}>
+          {[player.nflTeam, game, lockLabel(player), meaningfulStatus(player.injuryStatus)].filter(Boolean).join(" · ")}
+        </p>
       </div>
-      <p className={`mono mt-0.5 truncate text-[8px] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}>
-        {[player.nflTeam, game, lockLabel(player), meaningfulStatus(player.injuryStatus)].filter(Boolean).join(" · ")}
-      </p>
-      <p className="mono mt-1 text-[9px] text-bone">
-        {numberLabel(player.currentPoints)} <span className="text-stone">PTS · {numberLabel(player.projectedPoints)} PROJ</span>
-      </p>
+      <div className="mono text-right tabular-nums">
+        <p className="text-xs leading-none text-bone">{numberLabel(player.currentPoints)}</p>
+        <p className="mt-1 text-[8px] leading-none text-stone">{numberLabel(player.projectedPoints)} P</p>
+      </div>
     </div>
   );
 }

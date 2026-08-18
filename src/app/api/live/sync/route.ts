@@ -1,19 +1,22 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/db/client";
 import {
-  hasRecentScoreSync,
   IDLE_POLL_MS,
   isLiveSyncWindow,
   LIVE_POLL_MS,
+  platformsNeedingScoreSync,
   type LiveGame,
   type SyncRun,
 } from "@/lib/live-refresh";
 import { runSync, type SyncResult } from "@/sync/run";
+import type { Platform } from "@/adapters/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 let inFlight: Promise<SyncResult[]> | null = null;
+
+const LIVE_PLATFORMS = new Set<Platform>(["sleeper", "yahoo"]);
 
 function sameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
@@ -25,15 +28,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid origin" }, { status: 403 });
   }
 
-  if (!process.env.SLEEPER_USERNAME) {
-    return NextResponse.json({ state: "idle", live: false, nextPollMs: IDLE_POLL_MS });
-  }
-
   const client = db();
   const { data: leagues, error: leagueError } = await client
     .from("leagues")
-    .select("season, current_week, status")
-    .eq("platform", "sleeper")
+    .select("platform, season, current_week, status")
+    .in("platform", [...LIVE_PLATFORMS])
     .neq("status", "pre_draft");
 
   if (leagueError) {
@@ -42,12 +41,18 @@ export async function POST(request: NextRequest) {
 
   const active = leagues ?? [];
   const season = Math.max(...active.map((league) => league.season), 0);
+  const currentSeasonLeagues = active.filter((league) => league.season === season);
+  const platforms = [...new Set(
+    currentSeasonLeagues.flatMap((league) =>
+      LIVE_PLATFORMS.has(league.platform) ? [league.platform] : []
+    )
+  )] as Platform[];
   const week = Math.max(
-    ...active.filter((league) => league.season === season).map((league) => league.current_week ?? 0),
+    ...currentSeasonLeagues.map((league) => league.current_week ?? 0),
     0
   );
 
-  if (!season || !week) {
+  if (!platforms.length || !season || !week) {
     return NextResponse.json({ state: "idle", live: false, nextPollMs: IDLE_POLL_MS });
   }
 
@@ -68,20 +73,24 @@ export async function POST(request: NextRequest) {
 
   const { data: recentRuns, error: runError } = await client
     .from("sync_runs")
-    .select("started_at, status, stats")
-    .eq("platform", "sleeper")
+    .select("platform, started_at, status, stats")
+    .in("platform", platforms)
     .order("started_at", { ascending: false })
-    .limit(10);
+    .limit(10 * platforms.length);
 
   if (runError) {
     return NextResponse.json({ error: runError.message }, { status: 500 });
   }
 
-  if (hasRecentScoreSync((recentRuns ?? []) as SyncRun[])) {
+  const duePlatforms = platformsNeedingScoreSync(
+    platforms,
+    (recentRuns ?? []) as SyncRun[]
+  ) as Platform[];
+  if (!duePlatforms.length) {
     return NextResponse.json({ state: "current", live: true, nextPollMs: LIVE_POLL_MS });
   }
 
-  inFlight ??= runSync(client, "live", season).finally(() => {
+  inFlight ??= runSync(client, "live", season, duePlatforms).finally(() => {
     inFlight = null;
   });
   const results = await inFlight;

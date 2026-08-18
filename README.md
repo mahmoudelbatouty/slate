@@ -24,6 +24,31 @@ Sleeper now uses one-click automatic pairing with the installed connector. A
 five-minute, single-use challenge is exchanged in the background; no connector
 token is rendered or copied. Provider login remains on the provider's own page.
 
+Yahoo uses its official OAuth Authorization Code flow with S256 PKCE. Slate
+stores only an AES-256-GCM encrypted refresh token, mints access tokens in
+server-side sync jobs, saves refresh-token rotation before continuing, and
+imports Yahoo leagues, teams, weekly rosters, matchup scores, and provider
+projections into the same canonical tables and dashboard used by Sleeper. Once
+connected, Yahoo also participates in the shared live-refresh loop; cooldowns
+are tracked per provider so a recent Sleeper pull cannot suppress Yahoo.
+
+### Yahoo developer setup
+
+Yahoo must approve the Slate developer application before real accounts can be
+connected. Configure these values only in the local/deployment environment:
+
+```text
+YAHOO_CLIENT_ID
+YAHOO_CLIENT_SECRET
+YAHOO_REDIRECT_URI
+PLATFORM_TOKEN_ENCRYPTION_KEY
+```
+
+The redirect URI must end at `/api/auth/yahoo/callback` and exactly match the
+URI registered with Yahoo. Never commit the values above. End users only click
+the Yahoo mark and sign in on Yahoo's hosted consent page; Slate never accepts
+or stores their Yahoo password.
+
 - `CLAUDE.md` — the build brief. Point your coding agent at this first.
 - `DESIGN.md` — visual direction, tokens, the signature feature.
 - `HANDOFF-M2.md` — current state, and everything needed to build M2.
@@ -83,7 +108,7 @@ role key is set.
 npm test
 ```
 
-66 tests, all against local fixtures and synthetic connector payloads. No test hits a live API. Re-record
+109 tests, all against local fixtures and synthetic connector payloads. No test hits a live API. Re-record
 with `npm run fixtures` only when you deliberately want to refresh against a
 schema change.
 
@@ -92,8 +117,9 @@ schema change.
 `vercel.json` keeps the two maintenance jobs (`players` and `daily`) at a
 once-per-day cadence supported by Vercel Hobby. Live scoring does not depend on
 paid cron: while an authenticated dashboard is visible, it checks every 30
-seconds and pulls Sleeper at most once per minute only from 15 minutes before a
-scheduled NFL kickoff until the game is final. Hidden tabs and off-window games
+seconds and pulls each connected read adapter at most once per minute only from
+15 minutes before a scheduled NFL kickoff until the game is final. Provider
+cooldowns are independent. Hidden tabs and off-window games
 fall back to a five-minute, database-only check. A successful pull refreshes
 the Server Component automatically, so current scores update without a reload.
 
@@ -108,7 +134,7 @@ users.
 2. ~~**M1** Sleeper adapter → sync job → crosswalk → one league rendering live~~ — done
 3. **M2** the "Left to play" band â€” code/schema complete; awaiting initial data sync
 4. **M3** automatic connections, persistent week selector, and complete inline matchups
-5. **M4** confirmed lineup editing (Yahoo official; Sleeper/ESPN experimental connector)
+5. **M4** Yahoo official read path, then confirmed lineup editing (Yahoo official; Sleeper/ESPN experimental connector)
 6. **M5** whole-league scoreboard expansion
 
 Don't start a milestone until the previous one works against real data.

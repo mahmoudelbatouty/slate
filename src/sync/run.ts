@@ -18,6 +18,7 @@
 import type { Db } from "@/db/admin";
 import type { Json } from "@/db/types.gen";
 import { sleeperAdapter } from "@/adapters/sleeper";
+import { yahooAdapter } from "@/adapters/yahoo";
 import type {
   CanonicalLeague,
   CanonicalTeam,
@@ -29,6 +30,11 @@ import type {
 import { CrosswalkIndex, type CanonicalPlayerRow } from "./crosswalk";
 import { resolveSlot, rosterPositionsFromRaw } from "./slots";
 import { seasonEndWeek } from "@/lib/weeks";
+import {
+  decryptYahooRefreshToken,
+  encryptYahooRefreshToken,
+  yahooOAuthConfigured,
+} from "@/lib/yahoo-oauth";
 
 export type SyncMode = "live" | "daily" | "players" | "backfill";
 
@@ -42,9 +48,13 @@ export interface SyncResult {
 
 const SPORT: Sport = "nfl";
 
-/** Only Sleeper is wired in M1. Yahoo lands in M3, ESPN in M4. */
-function enabledPlatforms(): { adapter: PlatformAdapter; creds: Credentials }[] {
-  const out: { adapter: PlatformAdapter; creds: Credentials }[] = [];
+interface EnabledPlatform {
+  adapter: PlatformAdapter;
+  creds: Credentials | Error;
+}
+
+async function enabledPlatforms(db: Db): Promise<EnabledPlatform[]> {
+  const out: EnabledPlatform[] = [];
 
   const username = process.env.SLEEPER_USERNAME;
   if (username) {
@@ -54,17 +64,51 @@ function enabledPlatforms(): { adapter: PlatformAdapter; creds: Credentials }[] 
     });
   }
 
+  if (yahooOAuthConfigured()) {
+    const { data, error } = await db
+      .from("platform_accounts")
+      .select("secrets")
+      .eq("platform", "yahoo")
+      .maybeSingle();
+    if (error) {
+      out.push({ adapter: yahooAdapter, creds: new Error(`Yahoo account read: ${error.message}`) });
+    } else if (data) {
+      const secrets = data.secrets && typeof data.secrets === "object" && !Array.isArray(data.secrets)
+        ? data.secrets as Record<string, unknown>
+        : {};
+      const sealed = typeof secrets.refresh_token_enc === "string"
+        ? secrets.refresh_token_enc
+        : null;
+      try {
+        if (!sealed) throw new Error("Yahoo refresh token is missing. Reconnect Yahoo.");
+        out.push({
+          adapter: yahooAdapter,
+          creds: { platform: "yahoo", refreshToken: decryptYahooRefreshToken(sealed) },
+        });
+      } catch (cause) {
+        out.push({
+          adapter: yahooAdapter,
+          creds: cause instanceof Error ? cause : new Error("Yahoo credentials could not be decrypted."),
+        });
+      }
+    }
+  }
+
   return out;
 }
 
 export async function runSync(
   db: Db,
   mode: SyncMode,
-  season: number
+  season: number,
+  platforms?: Platform[]
 ): Promise<SyncResult[]> {
   const results: SyncResult[] = [];
 
-  for (const { adapter, creds } of enabledPlatforms()) {
+  for (const { adapter, creds } of (await enabledPlatforms(db)).filter(
+    ({ adapter }) => !platforms || platforms.includes(adapter.platform)
+  )) {
+    if (mode === "players" && !adapter.getPlayerDirectory) continue;
     const { data: run } = await db
       .from("sync_runs")
       .insert({ platform: adapter.platform, status: "running" })
@@ -74,11 +118,32 @@ export async function runSync(
     const stats: Record<string, number> = {};
 
     try {
+      if (creds instanceof Error) throw creds;
+      const activeCreds = adapter.refreshCredentials
+        ? await adapter.refreshCredentials(creds)
+        : creds;
+      if (
+        activeCreds.platform === "yahoo"
+        && creds.platform === "yahoo"
+        && activeCreds.refreshToken !== creds.refreshToken
+      ) {
+        const { error } = await db
+          .from("platform_accounts")
+          .update({
+            secrets: {
+              version: 1,
+              refresh_token_enc: encryptYahooRefreshToken(activeCreds.refreshToken),
+            },
+            expires_at: new Date(Date.now() + 60 * 60 * 1_000).toISOString(),
+          })
+          .eq("platform", "yahoo");
+        if (error) throw new Error(`Yahoo refresh token rotation save: ${error.message}`);
+      }
       if (mode === "players") {
         Object.assign(stats, await syncPlayers(db, adapter));
       } else if (mode === "daily") {
-        Object.assign(stats, await syncDaily(db, adapter, creds, season));
-        const schedule = await syncScores(db, adapter, creds, season, "backfill");
+        Object.assign(stats, await syncDaily(db, adapter, activeCreds, season));
+        const schedule = await syncScores(db, adapter, activeCreds, season, "backfill");
         Object.assign(stats, {
           matchup_leagues: schedule.leagues,
           matchups: schedule.matchups,
@@ -87,7 +152,7 @@ export async function runSync(
           game_state_errors: schedule.game_state_errors,
         });
       } else {
-        Object.assign(stats, await syncScores(db, adapter, creds, season, mode));
+        Object.assign(stats, await syncScores(db, adapter, activeCreds, season, mode));
       }
 
       results.push({ platform: adapter.platform, mode, status: "ok", stats });
@@ -255,6 +320,7 @@ async function syncDaily(
 ): Promise<Record<string, number>> {
   const leagues = await adapter.listLeagues(creds, SPORT, season);
   const crosswalk = await loadCrosswalk(db, adapter.platform);
+  const crosswalkIndex = adapter.platform === "sleeper" ? null : await buildIndex(db);
 
   let teamCount = 0;
   let rosterCount = 0;
@@ -274,6 +340,26 @@ async function syncDaily(
       season,
       league.currentWeek ?? undefined
     );
+    if (crosswalkIndex) {
+      const newLinks = entries.flatMap((entry) => {
+        if (crosswalk.has(entry.externalPlayerId) || !entry.playerRef) return [];
+        const match = crosswalkIndex.match(entry.playerRef);
+        if (!match) return [];
+        crosswalk.set(entry.externalPlayerId, match.playerId);
+        return [{
+          platform: adapter.platform,
+          external_id: entry.externalPlayerId,
+          player_id: match.playerId,
+          confidence: match.confidence,
+        }];
+      });
+      if (newLinks.length) {
+        const { error } = await db
+          .from("player_ids")
+          .upsert(newLinks, { onConflict: "platform,external_id" });
+        if (error) throw new Error(`player_ids crosswalk: ${error.message}`);
+      }
+    }
     const positions = rosterPositionsFromRaw(league.scoringRaw);
 
     const rows = entries

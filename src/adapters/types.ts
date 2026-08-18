@@ -19,7 +19,7 @@ export type Sport = "nfl" | "nba" | "mlb" | "nhl";
 // connector adapter lands.
 export type Credentials =
   | { platform: "sleeper"; username: string }
-  | { platform: "yahoo"; refreshToken: string }
+  | { platform: "yahoo"; refreshToken: string; accessToken?: string }
   | { platform: "espn"; espnS2: string; swid: string };
 
 // ---------- canonical DTOs (mirror the SQL tables) ----------
@@ -57,6 +57,8 @@ export interface CanonicalRosterEntry {
   isStarter: boolean;
   lineupOrder: number;              // provider order within starters or bench
   week: number | null;
+  /** Non-canonical provider metadata used only to establish the player crosswalk. */
+  playerRef?: CanonicalPlayerRef;
 }
 
 export interface CanonicalMatchup {

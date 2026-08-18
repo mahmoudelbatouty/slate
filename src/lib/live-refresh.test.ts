@@ -4,6 +4,7 @@ import {
   isLiveSyncWindow,
   isScoreRun,
   LIVE_SYNC_MIN_GAP_MS,
+  platformsNeedingScoreSync,
 } from "./live-refresh";
 
 const NOW = Date.parse("2026-09-13T17:00:00Z");
@@ -80,5 +81,26 @@ describe("score sync cooldown", () => {
         { ...scoreRun, started_at: new Date(NOW - LIVE_SYNC_MIN_GAP_MS).toISOString() },
       ], NOW)
     ).toBe(false);
+  });
+
+  it("keeps cooldown leases isolated per provider", () => {
+    expect(
+      platformsNeedingScoreSync(
+        ["sleeper", "yahoo"],
+        [{ ...scoreRun, platform: "sleeper" }],
+        NOW
+      )
+    ).toEqual(["yahoo"]);
+
+    expect(
+      platformsNeedingScoreSync(
+        ["sleeper", "yahoo"],
+        [
+          { ...scoreRun, platform: "sleeper" },
+          { ...scoreRun, platform: "yahoo", status: "running", stats: null },
+        ],
+        NOW
+      )
+    ).toEqual([]);
   });
 });

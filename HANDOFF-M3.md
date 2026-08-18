@@ -69,8 +69,16 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 - Routine provider deep-link buttons were removed once inline inspection
   existed. The expanded lineup is a two-column head-to-head comparison at all
   widths so the user never has to remember a roster shown further up-screen.
-- Next implementation slice after this branch: add the first official Yahoo
-  connection/read path, then feed it into the same canonical UI before writes.
+- The Yahoo read adapter now covers leagues, teams, weekly rosters, matchup
+  scores, and Yahoo projections. OAuth uses state + S256 PKCE, refresh tokens
+  are encrypted and rotation-aware, access tokens remain transient, and the
+  callback triggers a Yahoo-only canonical sync. A real-account verification
+  still requires Yahoo developer credentials in the deployment environment.
+- The dashboard live endpoint now discovers connected Sleeper/Yahoo leagues
+  and refreshes each due provider through the shared sync pipeline. Cooldown
+  leases are provider-specific, so one recent provider pull cannot hide stale
+  data from another. ESPN must join this same allowlist when its read adapter
+  lands; do not add a provider-specific browser timer.
 - Sleeper cards use the official monochrome Sleeper wordmark instead of `SL`.
 - Pre-draft leagues now render as cards even before a matchup exists. This is
   driven by canonical league status, so ESPN and Yahoo receive the same
@@ -213,6 +221,20 @@ Yahoo and ESPN marks are stored locally in `public/brands`. Yahoo uses its
 hosted OAuth consent screen; ESPN/Sleeper must retain the approved password-free
 connector pattern. Provider refresh tokens are encrypted at rest and
 authorization codes/access tokens are never stored.
+
+#### Current Yahoo checkpoint and next slice
+
+- Read-only OAuth and canonical imports are implemented on
+  `codex/m4-yahoo-read-path`, including per-provider live refresh.
+- Before enabling lineup writes, connect an approved Yahoo developer app in a
+  non-production environment and record sanitized response fixtures for
+  leagues, standings, weekly rosters, scoreboards, and roster-update read-back.
+- Validate the exact roster-update request against the current Yahoo developer
+  documentation and a disposable lineup. Do not infer it from old examples.
+- The first write remains a same-roster slot swap with preview, explicit user
+  confirmation, stale-lineup hash rejection, idempotency, provider submission,
+  and read-back verification. Transactions and commissioner actions remain
+  out of scope.
 
 ### 5. Experimental Sleeper/ESPN lineup actions
 

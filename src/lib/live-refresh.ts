@@ -13,6 +13,7 @@ export interface LiveGame {
 }
 
 export interface SyncRun {
+  platform?: string;
   started_at: string;
   status: string;
   stats: unknown;
@@ -55,4 +56,23 @@ export function hasRecentScoreSync(
     // second server instance does not launch the same provider work.
     return run.status === "running" || isScoreRun(run);
   });
+}
+
+/**
+ * Keep the live-score lease provider-specific. One healthy provider must not
+ * prevent another connected provider from refreshing its own matchup data.
+ */
+export function platformsNeedingScoreSync(
+  platforms: string[],
+  runs: SyncRun[],
+  now = Date.now(),
+  minimumGapMs = LIVE_SYNC_MIN_GAP_MS
+): string[] {
+  return platforms.filter((platform) =>
+    !hasRecentScoreSync(
+      runs.filter((run) => run.platform === platform),
+      now,
+      minimumGapMs
+    )
+  );
 }

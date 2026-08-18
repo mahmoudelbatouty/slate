@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { type MatchupCard, type MatchupPlayer, type Side } from "@/lib/matchup";
+import {
+  type LeagueScoreboardGame,
+  type MatchupCard,
+  type MatchupPlayer,
+  type Side,
+} from "@/lib/matchup";
 import type { StarterSummary } from "@/lib/game-state";
 import { playerGameLabel } from "@/lib/player-state";
 import { PlatformMark } from "@/components/PlatformMark";
@@ -18,7 +23,8 @@ export function LeagueCard({
   card: MatchupCard;
   reorderHandle?: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [matchupExpanded, setMatchupExpanded] = useState(false);
+  const [scoreboardExpanded, setScoreboardExpanded] = useState(false);
   const mine = card.mine.points ?? 0;
   const theirs = card.opponent?.points ?? 0;
   const diff = mine - theirs;
@@ -26,7 +32,7 @@ export function LeagueCard({
   const total = mine + theirs;
 
   return (
-    <article className={`${expanded ? "" : "group/card"} border border-ink-line bg-ink-raised px-4 pt-[15px] pb-[13px]`}>
+    <article className={`${matchupExpanded || scoreboardExpanded ? "" : "group/card"} border border-ink-line bg-ink-raised px-4 pt-[15px] pb-[13px]`}>
       <div className="mb-[15px] flex items-center gap-[10px]">
         {reorderHandle}
         <PlatformMark platform={card.platform} />
@@ -48,7 +54,7 @@ export function LeagueCard({
       {card.leagueStatus === "pre_draft" ? (
         <PreDraft card={card} />
       ) : card.leagueFormat === "chopped" ? (
-        <ChoppedLeague card={card} expanded={expanded} setExpanded={setExpanded} />
+        <ChoppedLeague card={card} expanded={matchupExpanded} setExpanded={setMatchupExpanded} />
       ) : (
         <>
 
@@ -63,24 +69,36 @@ export function LeagueCard({
             fallback={marginLabel(diff, card.isFinal, total)}
           />
 
-          <div className="mt-[12px] grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-ink-line pt-[10px] text-2xs text-bone-dim">
+          <div className="mt-[12px] border-t border-ink-line pt-[10px] text-2xs text-bone-dim">
             <StarterAvailability
               leagueId={card.leagueId}
               week={card.week}
               mine={card.starterStatus.mine}
               opponent={card.starterStatus.opponent}
             />
-            <button
-              type="button"
-              className="min-h-11 shrink-0 border border-ink-line px-3 py-2 text-left text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
-              aria-expanded={expanded}
-              aria-controls={`matchup-detail-${card.leagueId}`}
-              onClick={() => setExpanded((value) => !value)}
-            >
-              {expanded ? "HIDE MATCHUP ↑" : "VIEW MATCHUP ↓"}
-            </button>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="min-h-11 border border-ink-line px-3 py-2 text-center text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
+                aria-expanded={matchupExpanded}
+                aria-controls={`matchup-detail-${card.leagueId}`}
+                onClick={() => setMatchupExpanded((value) => !value)}
+              >
+                {matchupExpanded ? "HIDE MATCHUP ↑" : "VIEW MATCHUP ↓"}
+              </button>
+              <button
+                type="button"
+                className="min-h-11 border border-ink-line px-3 py-2 text-center text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
+                aria-expanded={scoreboardExpanded}
+                aria-controls={`league-scoreboard-${card.leagueId}`}
+                onClick={() => setScoreboardExpanded((value) => !value)}
+              >
+                {scoreboardExpanded ? "HIDE LEAGUE ↑" : "LEAGUE SCORES ↓"}
+              </button>
+            </div>
           </div>
-          {expanded ? <MatchupDetail card={card} /> : null}
+          {matchupExpanded ? <MatchupDetail card={card} /> : null}
+          {scoreboardExpanded ? <LeagueScoreboard card={card} /> : null}
         </>
       )}
       {card.platform === "yahoo" ? (
@@ -95,6 +113,96 @@ export function LeagueCard({
       ) : null}
     </article>
   );
+}
+
+function LeagueScoreboard({ card }: { card: MatchupCard }) {
+  return (
+    <section
+      id={`league-scoreboard-${card.leagueId}`}
+      className="mt-4 border-t border-ink-line pt-4"
+      aria-label={`${card.leagueName} Week ${card.week} league scoreboard`}
+    >
+      <div className="mb-2 flex items-end justify-between gap-3">
+        <div>
+          <p className="mono text-[9px] tracking-[0.1em] text-bone">ALL MATCHUPS</p>
+          <p className="text-xs text-bone-dim">Open any game for its synced lineup</p>
+        </div>
+        <span className="mono shrink-0 text-[9px] text-stone">WEEK {card.week}</span>
+      </div>
+      <div className="border border-ink-line bg-ink">
+        {card.scoreboard.map((game) => (
+          <ScoreboardGame key={game.key} game={game} />
+        ))}
+      </div>
+      {card.scoreboard.length === 0 ? (
+        <p className="py-3 text-xs text-bone-dim">
+          League matchups will appear when {card.platform} publishes Week {card.week}.
+        </p>
+      ) : null}
+      <p className="mono mt-3 text-[9px] leading-relaxed text-stone">
+        SCORES, PROJECTIONS, AND LINEUPS SYNC FROM {card.platform.toUpperCase()} · LAST PROVIDER SYNC {syncLabel(card.syncedAt)}
+      </p>
+    </section>
+  );
+}
+
+function ScoreboardGame({ game }: { game: LeagueScoreboardGame }) {
+  const includesMine = game.left.isMine || Boolean(game.right?.isMine);
+  const leftLabel = game.left.isMine ? "YOU" : game.right?.isMine ? "OPP" : "TEAM 1";
+  const rightLabel = game.right?.isMine ? "YOU" : game.left.isMine ? "OPP" : "TEAM 2";
+  return (
+    <details className={`group/game border-t border-ink-line first:border-t-0 ${includesMine ? "bg-bone/5" : ""}`}>
+      <summary className="grid min-h-16 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 focus-visible:outline-2 focus-visible:outline-amber">
+        <ScoreboardIdentity team={game.left} align="left" />
+        <div className="mono grid grid-cols-[42px_12px_42px] items-center text-center tabular-nums">
+          <span className="text-base text-bone">{scoreLabel(game.left.points)}</span>
+          <span className="text-[8px] text-stone">–</span>
+          <span className="text-base text-bone">{scoreLabel(game.right?.points ?? null)}</span>
+          <span className="text-[8px] text-stone">{game.isFinal ? "FINAL" : "PROJ"}</span>
+          <span />
+          <span className="text-[8px] text-stone">{game.isFinal ? "FINAL" : "PROJ"}</span>
+          {!game.isFinal ? <span className="text-[10px] text-bone-dim">{scoreLabel(game.left.projected)}</span> : <span />}
+          <span />
+          {!game.isFinal ? <span className="text-[10px] text-bone-dim">{scoreLabel(game.right?.projected ?? null)}</span> : <span />}
+        </div>
+        <ScoreboardIdentity team={game.right} align="right" />
+      </summary>
+      <div className="border-t border-ink-line px-3 pb-4">
+        <div className="mono flex items-center justify-between py-2 text-[8px] tracking-[0.08em] text-stone">
+          <span>{game.isLive ? "LIVE" : game.isFinal ? "FINAL" : "PREGAME"}</span>
+          <span className="group-open/game:hidden">OPEN LINEUPS ↓</span>
+          <span className="hidden group-open/game:inline">CLOSE LINEUPS ↑</span>
+        </div>
+        <WeeklySummary
+          mine={game.left.starterStatus}
+          opponent={game.right?.starterStatus ?? null}
+          leftLabel={leftLabel}
+          rightLabel={rightLabel}
+        />
+        <HeadToHeadLineups
+          mine={game.left}
+          opponent={game.right}
+          leftLabel={leftLabel}
+          rightLabel={rightLabel}
+        />
+      </div>
+    </details>
+  );
+}
+
+function ScoreboardIdentity({ team, align }: { team: LeagueScoreboardGame["left"] | null; align: "left" | "right" }) {
+  return (
+    <div className={`min-w-0 ${align === "right" ? "text-right" : "text-left"}`}>
+      <p className={`truncate text-xs ${team?.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
+        {team?.name ?? "Bye"}
+      </p>
+      <p className="mono mt-1 text-[8px] text-stone">{team?.isMine ? "YOU" : ""}</p>
+    </div>
+  );
+}
+
+function scoreLabel(value: number | null): string {
+  return value === null ? "—" : value.toFixed(1);
 }
 
 function ChoppedLeague({
@@ -311,12 +419,22 @@ function MatchupDetail({ card }: { card: MatchupCard }) {
   );
 }
 
-function WeeklySummary({ mine, opponent }: { mine: StarterSummary; opponent: StarterSummary | null }) {
+function WeeklySummary({
+  mine,
+  opponent,
+  leftLabel = "YOU",
+  rightLabel = "OPP",
+}: {
+  mine: StarterSummary;
+  opponent: StarterSummary | null;
+  leftLabel?: string;
+  rightLabel?: string;
+}) {
   return (
     <div className="mb-5 border border-ink-line bg-ink px-3 py-3">
       <p className="mono mb-2 text-[9px] tracking-[0.1em] text-bone">WEEKLY STARTERS</p>
       <div className="mono grid grid-cols-[1fr_42px_42px] gap-2 text-[9px]">
-        <span className="text-stone">STATE</span><span className="text-right text-stone">YOU</span><span className="text-right text-stone">OPP</span>
+        <span className="text-stone">STATE</span><span className="text-right text-stone">{leftLabel}</span><span className="text-right text-stone">{rightLabel}</span>
         <SummaryCell label="PLAYED" mine={mine.played} opponent={opponent?.played} />
         <SummaryCell label="LIVE" mine={mine.live} opponent={opponent?.live} live />
         <SummaryCell label="TO PLAY" mine={mine.upcoming} opponent={opponent?.upcoming} />
@@ -335,7 +453,17 @@ function SummaryCell({ label, mine, opponent, live = false }: { label: string; m
   );
 }
 
-function HeadToHeadLineups({ mine, opponent }: { mine: Side; opponent: Side | null }) {
+function HeadToHeadLineups({
+  mine,
+  opponent,
+  leftLabel = "YOU",
+  rightLabel = "OPP",
+}: {
+  mine: Side;
+  opponent: Side | null;
+  leftLabel?: string;
+  rightLabel?: string;
+}) {
   const mineStarters = mine.lineup?.starters ?? [];
   const opponentStarters = opponent?.lineup?.starters ?? [];
   const mineBench = mine.lineup?.bench ?? [];
@@ -344,13 +472,13 @@ function HeadToHeadLineups({ mine, opponent }: { mine: Side; opponent: Side | nu
   return (
     <section className="mt-5" aria-label="Head-to-head lineups">
       <div className="grid grid-cols-2 gap-2 border-b border-ink-line pb-2">
-        <TeamColumnHeader label="YOU" side={mine} />
-        <TeamColumnHeader label="OPP" side={opponent} />
+        <TeamColumnHeader label={leftLabel} side={mine} />
+        <TeamColumnHeader label={rightLabel} side={opponent} />
       </div>
-      <PairedPlayerGroup label="STARTERS" mine={mineStarters} opponent={opponentStarters} alignSlots />
+      <PairedPlayerGroup label="STARTERS" mine={mineStarters} opponent={opponentStarters} leftLabel={leftLabel} rightLabel={rightLabel} alignSlots />
       <details className="group/bench mt-3 border-t border-ink-line">
         <summary className="mono flex min-h-11 cursor-pointer list-none items-center justify-between text-[9px] tracking-[0.1em] text-stone focus-visible:outline-2 focus-visible:outline-amber">
-          <span>BENCH · YOU {mineBench.length} / OPP {opponentBench.length}</span>
+          <span>BENCH · {leftLabel} {mineBench.length} / {rightLabel} {opponentBench.length}</span>
           <span aria-hidden className="group-open/bench:hidden">SHOW ↓</span>
           <span aria-hidden className="hidden group-open/bench:inline">HIDE ↑</span>
         </summary>
@@ -369,10 +497,10 @@ function TeamColumnHeader({ label, side }: { label: string; side: Side | null })
   );
 }
 
-function PairedPlayerGroup({ label, mine, opponent, alignSlots = false }: { label: string; mine: MatchupPlayer[]; opponent: MatchupPlayer[]; alignSlots?: boolean }) {
+function PairedPlayerGroup({ label, mine, opponent, leftLabel, rightLabel, alignSlots = false }: { label: string; mine: MatchupPlayer[]; opponent: MatchupPlayer[]; leftLabel: string; rightLabel: string; alignSlots?: boolean }) {
   return (
     <div className="mt-3">
-      <p className="mono mb-1 text-[9px] tracking-[0.1em] text-stone">{label} · YOU {mine.length} / OPP {opponent.length}</p>
+      <p className="mono mb-1 text-[9px] tracking-[0.1em] text-stone">{label} · {leftLabel} {mine.length} / {rightLabel} {opponent.length}</p>
       <PairedPlayerRows mine={mine} opponent={opponent} emptyLabel={`No ${label.toLowerCase()} synced.`} alignSlots={alignSlots} />
     </div>
   );

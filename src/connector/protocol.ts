@@ -19,7 +19,15 @@ const sleeperEnvelope = z.object({
   kind: z.literal("matchup_legs"),
   capturedAt: z.iso.datetime(),
   matchups: z.array(sleeperMatchup).min(1).max(100),
-});
+}).strict();
+
+const sleeperAccountEnvelope = z.object({
+  version: z.literal(CONNECTOR_VERSION),
+  platform: z.literal("sleeper"),
+  kind: z.literal("account_identity"),
+  capturedAt: z.iso.datetime(),
+  userId: z.string().regex(/^\d+$/),
+}).strict();
 
 const espnPlayer = z.object({
   id: z.string(),
@@ -80,7 +88,8 @@ const espnEnvelope = z.object({
   snapshots: z.array(espnLeagueSnapshot).min(1).max(10),
 });
 
-export const connectorEnvelope = z.discriminatedUnion("platform", [
+export const connectorEnvelope = z.union([
+  sleeperAccountEnvelope,
   sleeperEnvelope,
   espnEnvelope,
 ]);
@@ -96,7 +105,7 @@ export interface NativeProjection {
 
 /** Platform-shaped data stops here; callers receive canonical projections. */
 export function nativeProjections(envelope: ConnectorEnvelope): NativeProjection[] {
-  if (envelope.platform !== "sleeper") return [];
+  if (envelope.platform !== "sleeper" || envelope.kind !== "matchup_legs") return [];
   return envelope.matchups.flatMap((row) =>
     typeof row.proj_points === "number"
       ? [{

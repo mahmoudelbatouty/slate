@@ -363,6 +363,21 @@ shows an explicit “connected and synced just now” notice. Login alone never
 triggers success, failed capture leaves the provider page available, and no
 password, cookie, header, or raw response is added to the return state.
 
+Connector 0.6.0 fixes fresh-account Sleeper onboarding. After the user signs
+in on Sleeper, the connector reads only Sleeper's non-secret numeric `user_id`
+local-storage key (never token, email, password, cookies, headers, or any other
+storage key). The server binds that ID to the authenticated Slate owner, imports
+all leagues/teams/rosters and every published matchup week through Sleeper's
+public read API, and returns to Slate only after that owner-scoped import
+succeeds. Users no longer open an individual matchup to establish the initial
+connection. Periodic/live sync and sync-run cooldown queries are owner-scoped;
+one Slate account must never read, refresh, or inherit another account's data.
+
+This remains read-only. Sleeper provides no official OAuth/write API. A future
+lineup action still requires an active signed-in Sleeper browser session and
+must be an explicit, confirmed connector command with stale-lineup protection
+and provider read-back. The public user ID alone never grants write access.
+
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application
 at `https://sports.yahoo.com/developer/access/`. The generic YDN Create

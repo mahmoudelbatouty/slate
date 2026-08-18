@@ -235,7 +235,8 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
   const cards: MatchupCard[] = [];
 
   for (const league of leagues) {
-    if (!week) continue;
+    if (!week && league.status !== "pre_draft") continue;
+    const cardWeek = week ?? 1;
 
     const mineTeamForLeague = (teams ?? []).find(
       (team) => team.league_id === league.id && team.is_mine
@@ -261,7 +262,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
         leagueType: canonicalLeagueType(league.league_type),
         teamCount: league.team_count,
         season: league.season,
-        week,
+        week: cardWeek,
         isFinal: false,
         isLive: false,
         winProbability: null,
@@ -400,7 +401,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
       leagueType: canonicalLeagueType(league.league_type),
       teamCount: league.team_count,
       season: league.season,
-      week,
+      week: cardWeek,
       isFinal: mineRow.is_final,
       isLive: [...mineStarters, ...opponentStarters, ...choppedStarters].some((starter) => starter.inProgress),
       winProbability: leagueFormat === "chopped" ? null : probability,

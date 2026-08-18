@@ -55,7 +55,7 @@ export function buildYahooAuthorizationUrl(
   return url;
 }
 
-export async function completeYahooAuthorization(code: string, codeVerifier: string): Promise<void> {
+export async function completeYahooAuthorization(code: string, codeVerifier: string, ownerId: string): Promise<void> {
   const config = getYahooOAuthConfig();
   const basic = Buffer.from(`${config.clientId}:${config.clientSecret}`, "utf8").toString("base64");
   const response = await fetch(YAHOO_TOKEN_ENDPOINT, {
@@ -75,13 +75,14 @@ export async function completeYahooAuthorization(code: string, codeVerifier: str
   await verifyYahooFantasyAccess(tokens.access_token);
   const encryptedRefreshToken = encryptToken(tokens.refresh_token, config.encryptionKey);
   const { error } = await db().from("platform_accounts").upsert({
+    owner_id: ownerId,
     platform: "yahoo",
     external_user_id: tokens.xoauth_yahoo_guid ?? null,
     username: null,
     secrets: { version: 1, refresh_token_enc: encryptedRefreshToken },
     expires_at: new Date(Date.now() + tokens.expires_in * 1_000).toISOString(),
     last_ok_at: new Date().toISOString(),
-  }, { onConflict: "platform" });
+  }, { onConflict: "owner_id,platform" });
   if (error) throw new Error(`Yahoo account save failed: ${error.message}`);
 }
 

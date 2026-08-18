@@ -87,22 +87,30 @@ export async function getConnectorStatus(ownerId: string, platform: "sleeper" | 
     };
   }
 
-  const { data: capture, error: captureError } = await client
-    .from("connector_captures")
-    .select("captured_at")
-    .eq("installation_id", installation.id)
-    .order("captured_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: capture, error: captureError }, { data: account, error: accountError }] = await Promise.all([
+    client.from("connector_captures")
+      .select("captured_at")
+      .eq("installation_id", installation.id)
+      .order("captured_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    client.from("platform_accounts")
+      .select("last_ok_at")
+      .eq("owner_id", ownerId)
+      .eq("platform", platform)
+      .maybeSingle(),
+  ]);
   if (captureError) throw new Error(`connector capture status: ${captureError.message}`);
+  if (accountError) throw new Error(`connector account status: ${accountError.message}`);
+  const connectedAt = capture?.captured_at ?? account?.last_ok_at ?? null;
 
   return {
     configured: true,
     platform,
-    paired: Boolean(capture),
-    state: capture ? "connected" : "waiting_for_data",
+    paired: Boolean(connectedAt),
+    state: connectedAt ? "connected" : "waiting_for_data",
     installationId: installation.id,
     lastSeenAt: installation.last_seen_at,
-    lastCaptureAt: capture?.captured_at ?? null,
+    lastCaptureAt: connectedAt,
   };
 }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Slate Fantasy Connector",
-  "version": "0.5.1",
-  "description": "Sends approved fantasy matchup data to your Slate dashboard without reading passwords or cookies.",
+  "version": "0.6.0",
+  "description": "Syncs approved fantasy data to Slate without reading passwords, tokens, email, or cookies.",
   "permissions": ["storage", "activeTab", "scripting", "alarms"],
   "host_permissions": [
     "https://sleeper.com/*",

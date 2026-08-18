@@ -71,10 +71,23 @@ const espnValid = {
 } as const;
 
 describe("connector protocol", () => {
+  it("accepts only Sleeper's public numeric identity", () => {
+    const identity = {
+      version: 1,
+      platform: "sleeper",
+      kind: "account_identity",
+      capturedAt: "2026-08-18T02:00:00.000Z",
+      userId: "123456789",
+    } as const;
+    expect(connectorEnvelope.parse(identity)).toEqual(identity);
+    expect(() => connectorEnvelope.parse({ ...identity, token: "forbidden" })).toThrow();
+    expect(() => connectorEnvelope.parse({ ...identity, userId: "name@example.com" })).toThrow();
+    expect(nativeProjections(connectorEnvelope.parse(identity))).toEqual([]);
+  });
   it("accepts only the approved Sleeper matchup shape", () => {
     const envelope = connectorEnvelope.parse(valid);
     expect(envelope.platform).toBe("sleeper");
-    if (envelope.platform !== "sleeper") throw new Error("Expected Sleeper envelope");
+    if (envelope.platform !== "sleeper" || envelope.kind !== "matchup_legs") throw new Error("Expected Sleeper matchup envelope");
     expect(envelope.matchups).toHaveLength(1);
     expect(() =>
       connectorEnvelope.parse({ ...valid, platform: "unknown" })

@@ -11,11 +11,12 @@ import {
 } from "@/lib/live-refresh";
 import { runSync, type SyncResult } from "@/sync/run";
 import type { Platform } from "@/adapters/types";
+import { currentUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-let inFlight: Promise<SyncResult[]> | null = null;
+const inFlightByOwner = new Map<string, Promise<SyncResult[]>>();
 
 const REFRESH_PLATFORMS = new Set<Platform>(["sleeper", "yahoo"]);
 
@@ -28,11 +29,14 @@ export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) {
     return NextResponse.json({ error: "invalid origin" }, { status: 403 });
   }
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const client = db();
   const { data: leagues, error: leagueError } = await client
     .from("leagues")
     .select("platform, season, current_week, status")
+    .eq("owner_id", user.id)
     .in("platform", [...REFRESH_PLATFORMS]);
 
   if (leagueError) {
@@ -74,6 +78,7 @@ export async function POST(request: NextRequest) {
   const { data: recentRuns, error: runError } = await client
     .from("sync_runs")
     .select("platform, started_at, status, stats")
+    .eq("owner_id", user.id)
     .in("platform", platforms)
     .order("started_at", { ascending: false })
     .limit(10 * platforms.length);
@@ -98,9 +103,13 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  inFlight ??= runSync(client, syncMode, season, duePlatforms).finally(() => {
-    inFlight = null;
-  });
+  let inFlight = inFlightByOwner.get(user.id);
+  if (!inFlight) {
+    inFlight = runSync(client, syncMode, season, duePlatforms, user.id).finally(() => {
+      inFlightByOwner.delete(user.id);
+    });
+    inFlightByOwner.set(user.id, inFlight);
+  }
   const results = await inFlight;
   const failed = results.some((result) => result.status === "error");
 

@@ -327,14 +327,22 @@ async function deliver(message, scheduleRefresh = true) {
         capturedAt: message.capturedAt,
         snapshots: (message.snapshots ?? []).slice(0, 10).map(sanitizeEspnSnapshot).filter(Boolean),
       }
-    : {
+    : message.type === "SLATE_SLEEPER_IDENTITY"
+      ? {
+          version: 1,
+          platform: "sleeper",
+          kind: "account_identity",
+          capturedAt: message.capturedAt,
+          userId: message.userId,
+        }
+      : {
         version: 1,
         platform: "sleeper",
         kind: "matchup_legs",
         capturedAt: message.capturedAt,
         matchups: (message.matchups ?? []).slice(0, MAX_MATCHUPS).map(sanitizeMatchup).filter(Boolean),
       };
-  if ((payload.snapshots ?? payload.matchups).length === 0) return { ok: false };
+  if (payload.kind !== "account_identity" && (payload.snapshots ?? payload.matchups).length === 0) return { ok: false };
 
   try {
     const response = await fetch(`${config.dashboardUrl}/api/connector/ingest`, {
@@ -388,6 +396,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message?.type === "SLATE_ESPN_DISCOVER") {
     void rememberEspnLeagues(message.leagues).catch(() => undefined);
+    return;
+  }
+
+  if (message?.type === "SLATE_SLEEPER_IDENTITY" && message.platform === "sleeper") {
+    void deliver(message);
     return;
   }
 

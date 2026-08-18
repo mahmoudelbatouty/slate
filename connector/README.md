@@ -1,10 +1,12 @@
 # Slate Fantasy Connector
 
 The connector is a Manifest V3 browser extension. It never reads password
-fields, cookies, local storage, or request headers. It observes only approved
-fantasy responses, removes every field outside the allowlist, and sends that
-sanitized data to Slate with a revocable, platform-scoped ingest token. Sleeper
-capture is implemented. ESPN pairing, sign-in, strict league capture, automatic
+fields, cookies, session tokens, email, or request headers. For Sleeper it reads
+only the signed-in account's non-secret numeric `user_id` local-storage value;
+all other storage keys are ignored. It observes only approved fantasy responses,
+removes every field outside the allowlist, and sends sanitized data to Slate
+with a revocable, platform-scoped ingest token. Sleeper capture is implemented.
+ESPN pairing, sign-in, strict league capture, automatic
 league discovery, and canonical ingestion are implemented but still require
 real-account validation.
 
@@ -15,8 +17,10 @@ real-account validation.
 3. Choose **Load unpacked** and select this `connector/` directory.
 4. Reload the extension after pulling connector changes.
 5. Open Slate and press the Sleeper or ESPN logo.
-6. Sign into that provider normally. For Sleeper, open a matchup. For ESPN,
-   land on the fantasy welcome page; connector 0.5.1 discovers up to ten leagues
+6. Sign into that provider normally. Connector 0.6.0 identifies the signed-in
+   Sleeper account and imports all of its leagues and published matchup weeks
+   automatically; no individual matchup needs to be opened. For ESPN, land on
+   the fantasy welcome page; the connector discovers up to ten leagues
    from ESPN's own visible league links and captures their approved league
    responses. Opening an individual league remains a safe fallback.
 
@@ -50,6 +54,8 @@ state. The provider tab stays available in the background for troubleshooting.
 ## Data security boundary
 
 - Provider credentials stay with the provider.
+- Sleeper account discovery transmits only the public numeric user ID. It never
+  reads or transmits Sleeper's token, email, password, or cookies.
 - ESPN background requests rely on the browser-managed session but never read,
   store, log, or transmit cookie values.
 - Only numeric ESPN league/team/season references are retained locally, capped
@@ -60,3 +66,11 @@ state. The provider tab stays available in the background for troubleshooting.
 - Each token is bound to one platform; cross-platform payloads are rejected.
 - Server validation rejects unknown platforms, capture kinds, and fields.
 - Captured payloads are protected by RLS and accessible only to the server role.
+
+## Future lineup changes
+
+Read-only sync does not grant write access. Sleeper has no official OAuth/write
+API. Any future lineup change must be a separate, explicit user-confirmed action
+performed by the connector inside the user's already signed-in Sleeper tab. Slate
+must never receive or store the provider password or session token, and no lineup
+write may happen automatically.

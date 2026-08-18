@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import type { ConnectorEnvelope } from "./protocol";
 import { nativeProjections } from "./protocol";
 import { normalizeEspnSnapshot } from "@/adapters/espn";
-import { buildIndex } from "@/sync/run";
+import { buildIndex, runSync } from "@/sync/run";
 import type { Json } from "@/db/types.gen";
 
 export async function storeConnectorCapture(
@@ -14,6 +14,35 @@ export async function storeConnectorCapture(
 ): Promise<{ updated: number }> {
   const client = db();
   const projections = nativeProjections(envelope);
+  if (envelope.platform === "sleeper" && envelope.kind === "account_identity") {
+    const { error: accountError } = await client.from("platform_accounts").upsert({
+      owner_id: ownerId,
+      platform: "sleeper",
+      external_user_id: envelope.userId,
+      username: null,
+      secrets: {},
+      last_ok_at: null,
+    }, { onConflict: "owner_id,platform" });
+    if (accountError) throw new Error(`Sleeper account save: ${accountError.message}`);
+
+    const configuredSeason = Number(process.env.DEFAULT_SEASON);
+    const season = Number.isInteger(configuredSeason) && configuredSeason >= 2000
+      ? configuredSeason
+      : new Date().getFullYear();
+    const results = await runSync(client, "account", season, ["sleeper"], ownerId);
+    const result = results[0];
+    if (!result || result.status !== "ok") {
+      throw new Error(result?.error ?? "Sleeper account sync did not run");
+    }
+
+    const { error: seenError } = await client
+      .from("connector_installations")
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq("id", installationId)
+      .eq("owner_id", ownerId);
+    if (seenError) throw new Error(`connector heartbeat: ${seenError.message}`);
+    return { updated: result.stats.leagues ?? 0 };
+  }
   if (envelope.platform === "espn") {
     for (const snapshot of envelope.snapshots) {
       const { error } = await client.from("connector_captures").upsert({

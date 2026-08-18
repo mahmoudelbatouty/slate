@@ -2,6 +2,7 @@
 
 import {
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
@@ -19,6 +20,9 @@ import {
 
 export function SortableLeagueCards({ cards }: { cards: MatchupCard[] }) {
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
+  const draggingKeyRef = useRef<string | null>(null);
+  const dropTargetKeyRef = useRef<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [sessionKeys, setSessionKeys] = useState<string[] | null>(null);
   const storedValue = useSyncExternalStore(
@@ -62,40 +66,54 @@ export function SortableLeagueCards({ cards }: { cards: MatchupCard[] }) {
   }
 
   function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (!draggingKey) return;
+    if (!draggingKeyRef.current) return;
     const target = document
       .elementFromPoint(event.clientX, event.clientY)
       ?.closest<HTMLElement>("[data-matchup-order-key]")
       ?.dataset.matchupOrderKey;
-    if (target && target !== draggingKey) move(draggingKey, target);
+    if (!target || target === dropTargetKeyRef.current) return;
+    dropTargetKeyRef.current = target;
+    setDropTargetKey(target);
   }
 
   function finishDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const activeKey = draggingKeyRef.current;
+    const targetKey = dropTargetKeyRef.current;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    if (draggingKey) {
-      const position = orderedCards.findIndex((card) => matchupOrderKey(card) === draggingKey) + 1;
-      const league = orderedCards[position - 1]?.leagueName ?? "Matchup";
-      setAnnouncement(`${league} saved at position ${position}.`);
-    }
+    if (activeKey && targetKey && activeKey !== targetKey) move(activeKey, targetKey, true);
+    draggingKeyRef.current = null;
+    dropTargetKeyRef.current = null;
     setDraggingKey(null);
+    setDropTargetKey(null);
+  }
+
+  function cancelDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    draggingKeyRef.current = null;
+    dropTargetKeyRef.current = null;
+    setDraggingKey(null);
+    setDropTargetKey(null);
   }
 
   return (
     <section className="mt-[22px] flex flex-col gap-3" aria-label="Ordered leagues">
       <p className="mono px-1 text-[9px] tracking-[0.1em] text-stone">
-        DRAG THE HANDLE TO SET YOUR LEAGUE ORDER · SAVED IN THIS BROWSER
+        DRAG, PLACE, AND RELEASE ONCE · SAVED IN THIS BROWSER
       </p>
       <p className="sr-only" aria-live="polite">{announcement}</p>
       {orderedCards.map((card, index) => {
         const key = matchupOrderKey(card);
         const dragging = draggingKey === key;
+        const dropTarget = draggingKey !== null && dropTargetKey === key && !dragging;
         return (
           <div
             key={key}
             data-matchup-order-key={key}
-            className={`transition-opacity ${dragging ? "opacity-60" : "opacity-100"}`}
+            className={`transition-[opacity,outline-color] ${dragging ? "opacity-60" : "opacity-100"} ${dropTarget ? "outline-1 outline-offset-2 outline-amber" : "outline-1 outline-transparent"}`}
           >
             <LeagueCard
               card={card}
@@ -108,11 +126,14 @@ export function SortableLeagueCards({ cards }: { cards: MatchupCard[] }) {
                   onPointerDown={(event) => {
                     if (!event.isPrimary) return;
                     event.currentTarget.setPointerCapture(event.pointerId);
+                    draggingKeyRef.current = key;
+                    dropTargetKeyRef.current = key;
                     setDraggingKey(key);
+                    setDropTargetKey(key);
                   }}
                   onPointerMove={onPointerMove}
                   onPointerUp={finishDrag}
-                  onPointerCancel={finishDrag}
+                  onPointerCancel={cancelDrag}
                   onKeyDown={(event) => {
                     const targetIndex = event.key === "ArrowUp"
                       ? index - 1

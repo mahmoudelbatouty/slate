@@ -65,7 +65,10 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 - Dashboard matchup cards have a visible drag handle with pointer and keyboard
   reordering. The preference uses `platform:externalLeagueId`, persists across
   reloads and selected weeks, and preserves temporarily hidden leagues. Future
-  ESPN/Yahoo cards must enter this same shared sortable list automatically.
+  ESPN/Yahoo cards must enter this same shared sortable list automatically. A
+  pointer drag previews the intended destination and commits exactly once on
+  release; cards must not reorder continuously beneath the pointer or require a
+  second press to keep the saved position.
 - Routine provider deep-link buttons were removed once inline inspection
   existed. The expanded lineup is a two-column head-to-head comparison at all
   widths so the user never has to remember a roster shown further up-screen.

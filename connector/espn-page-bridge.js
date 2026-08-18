@@ -9,6 +9,7 @@
   const POSITION = { 1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DEF" };
   const SLOT = { 0: "QB", 2: "RB", 4: "WR", 6: "TE", 16: "DEF", 17: "K", 20: "BN", 21: "IR", 23: "FLEX", 25: "SFLX" };
   const PRO_TEAM = { 0: "FA", 1: "ATL", 2: "BUF", 3: "CHI", 4: "CIN", 5: "CLE", 6: "DAL", 7: "DEN", 8: "DET", 9: "GB", 10: "TEN", 11: "IND", 12: "KC", 13: "LV", 14: "LAR", 15: "MIA", 16: "MIN", 17: "NE", 18: "NO", 19: "NYG", 20: "NYJ", 21: "PHI", 22: "ARI", 23: "PIT", 24: "LAC", 25: "SF", 26: "SEA", 27: "TB", 28: "WAS", 29: "CAR", 30: "JAX", 33: "BAL", 34: "HOU" };
+  const enrichedLeagues = new Set();
 
   function finite(value) {
     return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -103,13 +104,29 @@
     } catch { return false; }
   }
 
-  function publish(json, url) {
+  function publish(json, url, requestEnrichment = true) {
     const snapshot = sanitize(json, url);
     if (!snapshot) return;
     window.postMessage({ type: "SLATE_FANTASY_CAPTURE", source: "espn", capturedAt: new Date().toISOString(), snapshot }, window.location.origin);
+    const hasRosters = snapshot.teams.some((team) => team.roster.length > 0);
+    if (requestEnrichment && !hasRosters) requestFullSnapshot(url, snapshot);
   }
 
   const originalFetch = window.fetch;
+
+  function requestFullSnapshot(url, snapshot) {
+    if (enrichedLeagues.has(snapshot.leagueId)) return;
+    enrichedLeagues.add(snapshot.leagueId);
+    const enriched = new URL(url);
+    enriched.searchParams.delete("view");
+    ["mTeam", "mRoster", "mMatchup", "mMatchupScore", "mSettings"].forEach((view) => enriched.searchParams.append("view", view));
+    enriched.searchParams.set("scoringPeriodId", String(snapshot.currentWeek));
+    void originalFetch.call(window, enriched.href, { credentials: "include" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("ESPN enrichment failed")))
+      .then((json) => publish(json, enriched.href, false))
+      .catch(() => enrichedLeagues.delete(snapshot.leagueId));
+  }
+
   window.fetch = async function slateEspnFetch(input, init) {
     const url = input instanceof Request ? input.url : String(input);
     const method = init?.method ?? (input instanceof Request ? input.method : "GET");

@@ -284,6 +284,16 @@ and replaces only that platform's extension-local token. This is required after
 an unpacked extension is removed/reinstalled because Postgres may retain the
 old installation while Chrome has lost its local token.
 
+The first real ESPN capture on 2026-08-17 verified league `1885533299` without
+persisting any session secret: ownership resolved to team 4, 12 teams were
+canonicalized, and 84 scheduled games became 168 team matchup rows. The base
+league response did not include rosters or projections. Connector 0.3.3 now
+follows that response with one allowlisted in-page request combining `mTeam`,
+`mRoster`, `mMatchup`, `mMatchupScore`, and `mSettings` for the current scoring
+period. It uses the page's existing signed-in fetch context but never reads or
+transmits cookie values. Revalidate roster/player/projection counts after the
+extension is reloaded and the league page is refreshed.
+
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application
 at `https://sports.yahoo.com/developer/access/`. The generic YDN Create

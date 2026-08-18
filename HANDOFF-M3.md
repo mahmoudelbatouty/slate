@@ -218,7 +218,26 @@ Do not restore the global dot/blinker field. It becomes unreadable across many
 leagues and omits opponent context. The collapsed card uses compact counts with
 a hover/keyboard-focus table; the expanded view owns player-level status.
 
-### 4. Yahoo official connection and writes
+### Deferred final milestone: Yahoo official connection and writes
+
+Product decision recorded 2026-08-17: stop Yahoo implementation here and save
+it until the end. The next active development work is the non-Yahoo roadmap,
+starting with M5 whole-league scoreboard expansion. Do not request Yahoo keys,
+enable the Yahoo login mark, record real Yahoo data, or build provider writes
+as part of the current milestone.
+
+Yahoo's current onboarding differs from the older YDN flow described in parts
+of its documentation. Fantasy API access now starts with a reviewed application
+at `https://sports.yahoo.com/developer/access/`. The generic YDN Create
+Application form may not list Fantasy Sports at all; OpenID Connect permission
+alone is insufficient. Access is read-only by default, and a future Slate
+application must explicitly request Read/Write access in Additional Notes.
+
+When this work resumes, use `http://localhost:3000/` as the local Homepage URL
+and `http://localhost:3000/api/auth/yahoo/callback` as the Redirect URI. For
+Vercel, register the deployed callback and set the identical production
+`YAHOO_REDIRECT_URI`; the Consumer Key/Secret otherwise remain application
+credentials. They are never user-entered fields.
 
 Yahoo supports OAuth and Fantasy Read/Write authorization. Implement the
 Authorization Code flow with state + PKCE where supported, exact redirect URI,
@@ -237,7 +256,7 @@ hosted OAuth consent screen; ESPN/Sleeper must retain the approved password-free
 connector pattern. Provider refresh tokens are encrypted at rest and
 authorization codes/access tokens are never stored.
 
-#### Current Yahoo checkpoint and next slice
+#### Current Yahoo checkpoint — frozen until the final milestone
 
 - Read-only OAuth and canonical imports were merged to `main` in PR #7,
   including per-provider live refresh, five-minute account refreshes, and
@@ -294,12 +313,13 @@ creating a second provider write for the same expected lineup state.
 Lock state and the current lineup hash must be re-derived server-side during
 confirmation; values returned by the browser are preview-only and untrusted.
 
-The next implementation slice is the Yahoo provider-write boundary: record an
-approved, sanitized roster-update fixture; translate the exact two-player swap
-into Yahoo's current documented request; submit outside the database
-transaction; re-read the roster; and advance the existing command through the
-state machine. Do not render lineup controls before that end-to-end path has
-been verified against a disposable Yahoo lineup.
+When the final Yahoo milestone begins, its first slice is the provider-write
+boundary: obtain reviewed access, record approved sanitized read and
+roster-update fixtures, translate the exact two-player swap into Yahoo's then-
+current documented request, submit outside the database transaction, re-read
+the roster, and advance the existing command through the state machine. Do not
+render Yahoo lineup controls before that end-to-end path has been verified
+against a disposable Yahoo lineup.
 
 ### 5. Experimental Sleeper/ESPN lineup actions
 

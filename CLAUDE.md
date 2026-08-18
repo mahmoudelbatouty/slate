@@ -235,14 +235,20 @@ Ship each milestone working before starting the next.
   remaining counts on each card; detailed player state belongs in the inline
   matchup rather than a global field of starter dots (see `DESIGN.md`).
 - **M3 — Connections + complete matchup.** Automatic connector pairing,
-  always-visible week selection, expandable player-level matchups, and Yahoo
-  OAuth with Fantasy Read/Write access.
+  always-visible week selection, and expandable player-level matchups. Yahoo
+  OAuth/read scaffolding exists but real Yahoo access is deferred until the
+  final provider milestone because it now requires separate Yahoo review.
   Provider order is canonical data: retain starter-slot gaps and bench order,
   and sync native current/projected points for both starters and bench players.
-- **M4 — Lineup actions.** Official Yahoo lineup edits, followed by explicitly
-  experimental Sleeper/ESPN connector actions with confirmation and read-back.
+- **M4 — Lineup command foundation.** Provider-neutral exact-swap previews,
+  expiration, stale-lineup protection, idempotency, audit history, and verified
+  read-back state. Do not expose provider write controls yet.
 - **M5 — full-league expansion.** Whole-league scoreboard toggle on every card,
   player-level breakdowns, league standings view.
+- **Final provider milestone — Yahoo.** Apply through Yahoo's reviewed Fantasy
+  access process, verify real-account read fixtures, then add official lineup
+  edits with confirmation and read-back. Yahoo is not a blocker for M5 or other
+  provider work.
 
 ---
 

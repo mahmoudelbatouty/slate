@@ -4,6 +4,40 @@
 
 This section supersedes conflicting historical notes later in this file.
 
+### Sign-in screen — rebuilt 2026-08-18 (after the M6 merge)
+
+`/login` no longer mixes sign-in and sign-up in one ambiguous two-button form.
+
+- The screen has an explicit two-tab mode switch: **SIGN IN** / **CREATE
+  ACCOUNT**. One primary button, labeled for the selected mode. The typed email
+  survives a mode switch because switching is local state, not navigation.
+- Creating an account states *before* submission that a confirmation link will
+  be emailed and that the account does not work until that link is opened.
+- After signup the whole screen becomes a confirmation panel naming the exact
+  address the link went to, with a spam-folder note and a **resend** button.
+- Signing in to an unconfirmed account no longer dead-ends: the error offers an
+  inline resend.
+- **Forgot password?** sends a Supabase recovery link. Its outcome message is
+  deliberately identical for known and unknown addresses, so the screen never
+  discloses whether an account exists. `/account/password` accepts the new
+  password after the recovery link signs the user in; `auth/confirm` forces
+  `type=recovery` to that page regardless of the requested `next`.
+- Errors render inline through `useActionState`, not as `?e=` query codes, and
+  no email address is ever placed in a URL. Only redirect-borne notices
+  (`signed-out`, `unconfigured`, `confirmation`, `recovery-expired`) still use
+  query params.
+- Validation lives in `src/lib/auth-form.ts` and is unit tested; `?next=` is
+  still restricted to same-origin paths.
+- Verified locally against the real Supabase project: mode switch, signup copy,
+  reset request round trip, wrong-password error with email preserved, and the
+  signed-out redirect from `/account/password`. 152 tests, ESLint, TypeScript,
+  and the production build all pass.
+
+Before deploy, add the production origin to Supabase Auth's **Site URL** and
+**Redirect URLs** allowlist. Confirmation and recovery links are built from the
+request `origin`, so a missing allowlist entry silently sends users to
+localhost.
+
 ### Repository and verification
 
 - PR #11 (`codex/m6-espn-connector`) was merged into `main` on 2026-08-18

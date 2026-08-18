@@ -16,7 +16,7 @@ real-account validation.
 4. Reload the extension after pulling connector changes.
 5. Open Slate and press the Sleeper or ESPN logo.
 6. Sign into that provider normally. For Sleeper, open a matchup. For ESPN,
-   land on the fantasy welcome page; connector 0.5.0 discovers up to ten leagues
+   land on the fantasy welcome page; connector 0.5.1 discovers up to ten leagues
    from ESPN's own visible league links and captures their approved league
    responses. Opening an individual league remains a safe fallback.
 
@@ -30,6 +30,12 @@ discovery, Chromium can close every ESPN tab: the connector refreshes the saved
 numeric league references every five minutes, or every minute during the live
 NFL window reported by Slate. Chromium must remain open and the user's normal
 ESPN session must remain valid.
+
+Pairing records the originating Slate tab as a one-time return target. The
+provider opens in the same browser, and only after Slate confirms a sanitized
+capture was stored does the connector focus and refresh that Slate tab with a
+provider-specific success message. A login alone never produces a success
+state. The provider tab stays available in the background for troubleshooting.
 
 ## Pairing security
 

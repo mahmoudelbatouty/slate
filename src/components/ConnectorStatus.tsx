@@ -35,6 +35,13 @@ export function ConnectorStatus({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!notice?.endsWith("-connected")) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("connection");
+    window.history.replaceState(window.history.state, "", url);
+  }, [notice]);
+
+  useEffect(() => {
     if (current.state !== "waiting_for_data") return;
     const interval = window.setInterval(async () => {
       const response = await fetch("/api/connector/status", { cache: "no-store" });
@@ -179,6 +186,8 @@ function ProviderLogo({
 
 function connectionNotice(notice: string | undefined): string | null {
   switch (notice) {
+    case "sleeper-connected": return "Sleeper connected and synced just now.";
+    case "espn-connected": return "ESPN connected and synced just now.";
     case "yahoo-connected": return "Yahoo connected. Your leagues are synced.";
     case "yahoo-sync-pending": return "Yahoo connected. League sync will retry automatically.";
     case "yahoo-cancelled": return "Yahoo connection was cancelled.";

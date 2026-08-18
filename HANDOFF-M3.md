@@ -321,7 +321,7 @@ The dashboard treats canonical `pre_draft` status as authoritative even when a
 provider publishes placeholder schedule rows, so undrafted ESPN leagues render
 the pre-draft card instead of a fabricated matchup.
 
-Connector 0.5.0 adds Chromium background refresh. The content script retains
+Connector 0.5.1 adds Chromium background refresh. The content script retains
 at most ten sanitized numeric `leagueId`/`teamId`/season references in extension
 local storage. A Chrome alarm wakes the service worker, which constructs only
 the exact allowlisted ESPN league-read URL, asks Chromium to perform the request
@@ -332,7 +332,14 @@ values, headers, arbitrary URLs, or raw ESPN responses. The ingest response
 selects a five-minute idle cadence or one-minute live cadence using Slate's NFL
 game window. Chromium must remain open, but no ESPN tab is required. Firefox is
 out of scope; Safari remains an optional later distribution target. Reload and
-verify connector 0.5.0 against a signed-in ESPN account before merging PR #11.
+verify connector 0.5.1 against a signed-in ESPN account before merging PR #11.
+Pairing also stores the originating Slate tab as a one-time local return target.
+The provider opens in the same Chromium browser; only after the server confirms
+that a sanitized capture was stored does the connector focus and refresh Slate
+with `?connection=sleeper-connected` or `?connection=espn-connected`. Slate then
+shows an explicit “connected and synced just now” notice. Login alone never
+triggers success, failed capture leaves the provider page available, and no
+password, cookie, header, or raw response is added to the return state.
 
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application

@@ -256,11 +256,13 @@ Ship each milestone working before starting the next.
   connector supports independent Sleeper/ESPN pairings, ESPN-hosted sign-in, a
   strict league-response allowlist, canonical snapshot ingestion, and automatic
   discovery of up to ten leagues from ESPN's visible numeric league links.
-  Connector 0.5.0 uses Chromium alarms for five-minute background refresh and
+  Connector 0.5.1 uses Chromium alarms for five-minute background refresh and
   one-minute live refresh without requiring an ESPN tab; the browser must remain
   open. Firefox is out of scope and Safari is optional later. Do not mark M6
   complete until background refresh has been verified against a real signed-in
   account.
+  Pairing stores a one-time originating Slate tab target and returns focus there
+  only after ingest succeeds; provider login by itself must never show success.
 - **Final provider milestone — Yahoo.** Apply through Yahoo's reviewed Fantasy
   access process, verify real-account read fixtures, then add official lineup
   edits with confirmation and read-back. Yahoo is not a blocker for M5 or other

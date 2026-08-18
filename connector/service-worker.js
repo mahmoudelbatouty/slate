@@ -29,7 +29,7 @@ async function registerDashboardBridge(dashboardUrl) {
   }]);
 }
 
-async function claimPairing(message) {
+async function claimPairing(message, sender) {
   try {
     const dashboardOrigin = normalizedOrigin(message.dashboardOrigin);
     if (
@@ -62,7 +62,7 @@ async function claimPairing(message) {
       throw new Error(result.error || "Dashboard rejected pairing");
     }
 
-    const stored = await chrome.storage.local.get("connections");
+    const stored = await chrome.storage.local.get(["connections", "pendingReturns"]);
     const connections = stored.connections && typeof stored.connections === "object"
       ? stored.connections
       : {};
@@ -75,7 +75,21 @@ async function claimPairing(message) {
       connections,
       dashboardUrl: dashboardOrigin,
       lastError: null,
+      pendingReturns: stored.pendingReturns && typeof stored.pendingReturns === "object"
+        ? stored.pendingReturns
+        : {},
     };
+    if (
+      Number.isInteger(sender?.tab?.id) &&
+      typeof sender?.tab?.url === "string" &&
+      normalizedOrigin(sender.tab.url) === dashboardOrigin
+    ) {
+      updates.pendingReturns[result.platform] = {
+        tabId: sender.tab.id,
+        returnUrl: sender.tab.url,
+        dashboardOrigin,
+      };
+    }
     if (result.platform === "espn") updates.espnLeagues = [];
     await chrome.storage.local.set(updates);
     await chrome.tabs.create({
@@ -119,6 +133,25 @@ function sanitizeMatchup(row) {
     );
   }
   return clean;
+}
+
+async function completePendingReturn(platform) {
+  const { pendingReturns } = await chrome.storage.local.get("pendingReturns");
+  const pending = pendingReturns?.[platform];
+  if (!pending || !Number.isInteger(pending.tabId) || typeof pending.returnUrl !== "string") return;
+  let returnUrl;
+  try {
+    returnUrl = new URL(pending.returnUrl);
+    if (returnUrl.origin !== normalizedOrigin(pending.dashboardOrigin)) return;
+  } catch {
+    return;
+  }
+  returnUrl.searchParams.set("connection", `${platform}-connected`);
+  await chrome.tabs.update(pending.tabId, { url: returnUrl.href, active: true })
+    .catch(() => chrome.tabs.create({ url: returnUrl.href }));
+  const next = { ...pendingReturns };
+  delete next[platform];
+  await chrome.storage.local.set({ pendingReturns: next });
 }
 
 function safeString(value, max = 160) {
@@ -326,6 +359,7 @@ async function deliver(message, scheduleRefresh = true) {
           : ESPN_IDLE_REFRESH_MS
       );
     }
+    await completePendingReturn(message.platform);
     return { ok: true, nextRefreshMs: result.nextRefreshMs };
   } catch (error) {
     await chrome.storage.local.set({
@@ -338,7 +372,7 @@ async function deliver(message, scheduleRefresh = true) {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "SLATE_PAIR_CLAIM") {
-    void claimPairing(message).then(sendResponse);
+    void claimPairing(message, _sender).then(sendResponse);
     return true;
   }
 

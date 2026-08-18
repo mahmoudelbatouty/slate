@@ -83,6 +83,16 @@ export function LeagueCard({
           {expanded ? <MatchupDetail card={card} /> : null}
         </>
       )}
+      {card.platform === "yahoo" ? (
+        <a
+          className="mono mt-3 block text-right text-[9px] tracking-[0.08em] text-bone-dim underline-offset-2 hover:text-bone hover:underline focus-visible:outline-2 focus-visible:outline-amber"
+          href="https://football.fantasysports.yahoo.com/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Fantasy data provided by Yahoo Fantasy
+        </a>
+      ) : null}
     </article>
   );
 }

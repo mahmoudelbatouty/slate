@@ -44,7 +44,7 @@ export function LiveRefresh({ enabled }: { enabled: boolean }) {
           cache: "no-store",
           signal: controller.signal,
         });
-        if (!response.ok) throw new Error("live refresh failed");
+        if (!response.ok) throw new Error("dashboard sync failed");
 
         const result = (await response.json()) as LiveResponse;
         setState(result.live ? "live" : "idle");
@@ -85,15 +85,15 @@ export function LiveRefresh({ enabled }: { enabled: boolean }) {
     <span
       className="mono text-[9px] tracking-[0.08em] text-stone"
       aria-live="polite"
-      title="Slate checks for live Sleeper scores automatically while this dashboard is open."
+      title="Slate checks leagues and rosters every five minutes, and live scores every minute during active games."
     >
       {state === "live"
-        ? "LIVE REFRESH ON"
+        ? "LIVE SYNC ON"
         : state === "retrying"
-          ? "LIVE REFRESH RETRYING"
+          ? "SYNC RETRYING"
           : state === "idle"
-            ? "LIVE REFRESH READY"
-            : "LIVE REFRESH CHECKING"}
+            ? "AUTO SYNC READY"
+            : "SYNC CHECKING"}
     </span>
   );
 }

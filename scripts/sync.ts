@@ -2,6 +2,7 @@
  * Runs a sync from the command line, same code path as the cron route.
  *
  *   npm run sync -- players    # Sleeper directory + crosswalk (do this first)
+ *   npm run sync -- account    # leagues, teams, rosters + current matchups
  *   npm run sync -- daily      # leagues, teams, rosters, transactions + full schedule
  *   npm run sync -- live       # matchups + scores, current week only
  *   npm run sync -- backfill   # every published week, including future matchups
@@ -13,7 +14,7 @@ import { config } from "dotenv";
 
 config({ path: ".env.local", quiet: true });
 
-const MODES = ["live", "daily", "players", "backfill"] as const;
+const MODES = ["live", "account", "daily", "players", "backfill"] as const;
 type Mode = (typeof MODES)[number];
 
 async function main() {

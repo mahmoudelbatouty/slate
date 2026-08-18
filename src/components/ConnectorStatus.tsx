@@ -158,7 +158,8 @@ function ProviderLogo({
 
 function connectionNotice(notice: string | undefined): string | null {
   switch (notice) {
-    case "yahoo-connected": return "Yahoo connected. League import is the next step.";
+    case "yahoo-connected": return "Yahoo connected. Your leagues are synced.";
+    case "yahoo-sync-pending": return "Yahoo connected. League sync will retry automatically.";
     case "yahoo-cancelled": return "Yahoo connection was cancelled.";
     case "yahoo-invalid-state": return "Yahoo connection expired. Please try again.";
     case "yahoo-missing-code":

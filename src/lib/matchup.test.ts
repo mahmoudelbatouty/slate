@@ -18,6 +18,8 @@ function card(
     leagueExternalId: "1313273030905974784",
     platform: "sleeper",
     leagueStatus: "in_season",
+    leagueFormat: "head_to_head",
+    leagueType: "redraft",
     teamCount: 12,
     season: 2026,
     week: 11,
@@ -37,6 +39,7 @@ function card(
       points: theirs,
       projected: null,
     },
+    chopped: null,
     ...rest,
   };
 }

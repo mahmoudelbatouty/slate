@@ -116,6 +116,13 @@ This preserves the insight without rendering dozens or hundreds of blinkers.
 
 Everything else on the page stays quiet so this lands.
 
+Each active matchup also shows a mirrored win-probability bar immediately
+below the two team scores. Label both sides explicitly (`YOU 38%` and
+`OPP 62%`): the higher-probability segment is turf green and the lower is flag
+red. A 50/50 tie is neutral stone. Never infer a percentage when the normalized
+provider data is incomplete; show `WIN ODDS UNAVAILABLE` instead. The remaining
+starter counts sit on their own aligned row below the odds bar.
+
 ---
 
 ## Layout
@@ -188,6 +195,23 @@ sheet naming the exact players, slots, league, platform, and lock status.
 Pending, verified, and rejected states must be textual as well as visual.
 Experimental Sleeper/ESPN actions must say **Experimental** beside the action;
 do not bury that qualification in settings or help copy.
+
+### Chopped / guillotine leagues
+
+Treat Chopped leagues as league-wide survival contests, never as head-to-head
+matchups. Detect the provider's explicit format (`settings.type = 3` for
+Sleeper), store it as canonical `format = chopped`, and retain the raw settings.
+The collapsed card shows the user's survival rank, projected score, current
+Chop Zone team, and margin above the lowest projected score. Its expanded view
+is the provider-sourced Chopping Block ordered lowest-to-highest. Do not show an
+opponent, head-to-head win odds, or manufacture a matchup pairing. Apply this
+format distinction to Yahoo and ESPN if they expose equivalent contests.
+
+League cards keep roster lifecycle separate from season state. Show the
+canonical lifecycle (`REDRAFT`, `KEEPER`, or `DYNASTY`) beneath the league
+name, while state such as `PRE-DRAFT` stays right-aligned in the header. A
+Chopped league preserves both dimensions and reads `CHOPPED · REDRAFT`.
+Normalize the corresponding provider fields when Yahoo and ESPN are added.
 
 ---
 

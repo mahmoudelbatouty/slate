@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "sleepercdn.com",
-        pathname: "/landing/web2026/img/logos/**",
+        pathname: "/**",
       },
     ],
   },

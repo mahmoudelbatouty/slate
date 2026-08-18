@@ -151,6 +151,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 YAHOO_CLIENT_ID=
 YAHOO_CLIENT_SECRET=
 YAHOO_REDIRECT_URI=
+PLATFORM_TOKEN_ENCRYPTION_KEY= # base64-encoded 32-byte AES key; never commit its value
 SLEEPER_USERNAME=
 CRON_SECRET=
 APP_PASSWORD=
@@ -160,6 +161,9 @@ APP_PASSWORD=
 - **Yahoo**: one-time OAuth consent at `/admin/connections`. Store the refresh
   token; mint access tokens on demand (1hr life). Refresh tokens are long-lived
   but not eternal — surface a reconnect banner when `last_ok_at` goes stale.
+- Provider passwords are never accepted by Slate. Yahoo sign-in and consent
+  happen only on Yahoo; Slate stores only an AES-256-GCM encrypted refresh
+  token. Authorization codes and access tokens are transient and never logged.
 - **ESPN**: browser connector. The user signs into ESPN directly; Slate never
   receives the password, cookies, or session token. Surface a reconnect banner
   when approved captures stop arriving.

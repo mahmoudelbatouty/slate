@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ConnectorStatus as Status } from "@/lib/connector-status";
+import { PlatformMark } from "@/components/PlatformMark";
+import type {
+  ConnectorStatus as Status,
+  PlatformConnectionStatuses,
+} from "@/lib/connector-status";
 
 interface PairingChallenge {
   challengeId: string;
@@ -18,14 +22,19 @@ interface PairingResult {
   error?: string;
 }
 
-export function ConnectorStatus({ status }: { status: Status }) {
+export function ConnectorStatus({
+  statuses,
+  notice,
+}: {
+  statuses: PlatformConnectionStatuses;
+  notice?: string;
+}) {
   const [pairing, setPairing] = useState(false);
-  const [current, setCurrent] = useState(status);
+  const [current, setCurrent] = useState(statuses.sleeper);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (current.state !== "waiting_for_data") return;
-
     const interval = window.setInterval(async () => {
       const response = await fetch("/api/connector/status", { cache: "no-store" });
       if (!response.ok) return;
@@ -33,11 +42,8 @@ export function ConnectorStatus({ status }: { status: Status }) {
       setCurrent(next);
       if (next.state === "connected") window.clearInterval(interval);
     }, 3_000);
-
     return () => window.clearInterval(interval);
   }, [current.state]);
-
-  if (!current.configured) return null;
 
   async function pair() {
     setPairing(true);
@@ -52,42 +58,11 @@ export function ConnectorStatus({ status }: { status: Status }) {
       if (!response.ok || !body.challengeId || !body.claimSecret) {
         throw new Error(body.error ?? "Pairing failed");
       }
-
       await claimWithExtension(body);
-      setCurrent((value) => ({
-        ...value,
-        state: "waiting_for_data",
-        paired: false,
-      }));
+      setCurrent((value) => ({ ...value, state: "waiting_for_data", paired: false }));
       await refreshStatus();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Pairing failed");
-    } finally {
-      setPairing(false);
-    }
-  }
-
-  async function disconnect() {
-    if (!current.installationId) return;
-    setPairing(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/connector/revoke", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ installationId: current.installationId }),
-      });
-      if (!response.ok) throw new Error("Disconnect failed");
-      setCurrent({
-        ...current,
-        state: "disconnected",
-        paired: false,
-        installationId: null,
-        lastSeenAt: null,
-        lastCaptureAt: null,
-      });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Disconnect failed");
     } finally {
       setPairing(false);
     }
@@ -99,51 +74,98 @@ export function ConnectorStatus({ status }: { status: Status }) {
     setCurrent((await response.json()) as Status);
   }
 
-  const timestamp = current.lastCaptureAt ?? current.lastSeenAt;
-  const connected = current.state === "connected";
-  const waiting = current.state === "waiting_for_data";
+  const sleeperState = current.state === "connected"
+    ? "connected"
+    : current.state === "waiting_for_data"
+      ? "ready"
+      : "not connected";
+  const message = error ?? connectionNotice(notice);
 
   return (
-    <section className="mt-4 border border-ink-line bg-ink-raised px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="mono text-2xs tracking-[0.08em] text-bone">
-            {connected ? "SLEEPER CONNECTED" : waiting ? "SLEEPER READY" : "CONNECT SLEEPER"}
-          </p>
-          <p className="mt-1 text-xs text-bone-dim">
-            {connected
-              ? timestamp
-                ? `Approved fantasy data received ${new Date(timestamp).toLocaleString()}`
-                : "Connected to approved Sleeper data"
-              : waiting
-                ? "Schedules, scores, and Sleeper projections sync automatically. Connection is ready for provider-only features."
-                : "Connect provider-only fantasy data without sharing your password."}
-          </p>
-        </div>
+    <section className="relative w-[142px] border border-ink-line bg-ink-raised" aria-label="Platform login">
+      <p className="mono border-b border-ink-line px-2 py-1.5 text-center text-[9px] tracking-[0.16em] text-bone">LOGIN</p>
+      <div className="grid grid-cols-3 divide-x divide-ink-line">
         {!current.installationId ? (
           <button
-            className="shrink-0 border border-ink-line px-3 py-2 text-xs text-bone focus-visible:outline-2 focus-visible:outline-amber"
+            className="inline-flex h-10 items-center justify-center opacity-70 transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait"
             type="button"
             disabled={pairing}
             onClick={pair}
+            aria-label={`Sleeper ${sleeperState}. ${pairing ? "Connecting" : "Connect Sleeper"}.`}
+            title={pairing ? "Connecting Sleeper" : "Connect Sleeper"}
           >
-            {pairing ? "CONNECTING…" : "CONNECT"}
+            <PlatformMark platform="sleeper" variant="login" />
           </button>
         ) : (
-          <button
-            className="shrink-0 border border-ink-line px-3 py-2 text-xs text-bone-dim focus-visible:outline-2 focus-visible:outline-amber"
-            type="button"
-            disabled={pairing}
-            onClick={disconnect}
+          <span
+            className="inline-flex h-10 items-center justify-center bg-ink/25"
+            aria-label={`Sleeper ${sleeperState}`}
+            title={`Sleeper ${sleeperState}`}
           >
-            DISCONNECT
-          </button>
+            <PlatformMark platform="sleeper" variant="login" />
+          </span>
         )}
+
+        <ProviderLogo
+          platform="yahoo"
+          state={statuses.yahoo.connected
+            ? "connected"
+            : statuses.yahoo.configured
+              ? "not connected"
+              : "setup needed"}
+          href={statuses.yahoo.configured && !statuses.yahoo.connected
+            ? "/api/auth/yahoo/start"
+            : undefined}
+        />
+        <ProviderLogo platform="espn" state="coming next" />
       </div>
 
-      {error && <p className="mt-2 text-xs text-flag">{error}</p>}
+      {message ? (
+        <p
+          className={`absolute top-[calc(100%+6px)] right-0 z-30 w-[250px] border border-ink-line bg-ink-raised px-3 py-2 text-xs shadow-lg ${error || notice === "yahoo-error" || notice === "yahoo-invalid-state" ? "text-flag" : "text-bone-dim"}`}
+          role="status"
+        >
+          {message}
+        </p>
+      ) : null}
     </section>
   );
+}
+
+function ProviderLogo({
+  platform,
+  state,
+  href,
+}: {
+  platform: "yahoo" | "espn";
+  state: string;
+  href?: string;
+}) {
+  const provider = platform === "espn" ? "ESPN" : "Yahoo";
+  const label = `${provider} ${state}`;
+  const className = `inline-flex h-10 items-center justify-center transition-opacity focus-visible:outline-2 focus-visible:outline-amber ${href ? "opacity-70 hover:bg-ink hover:opacity-100" : "bg-ink/25 opacity-45"}`;
+
+  return href ? (
+    <a className={className} href={href} aria-label={`${label}. Connect.`} title={`Connect ${provider}`}>
+      <PlatformMark platform={platform} variant="login" />
+    </a>
+  ) : (
+    <span className={className} aria-label={label} title={label}>
+      <PlatformMark platform={platform} variant="login" />
+    </span>
+  );
+}
+
+function connectionNotice(notice: string | undefined): string | null {
+  switch (notice) {
+    case "yahoo-connected": return "Yahoo connected. League import is the next step.";
+    case "yahoo-cancelled": return "Yahoo connection was cancelled.";
+    case "yahoo-invalid-state": return "Yahoo connection expired. Please try again.";
+    case "yahoo-missing-code":
+    case "yahoo-error": return "Yahoo could not be connected. No password or token was retained.";
+    case "yahoo-setup-needed": return "Yahoo setup needs developer credentials and a token-encryption key.";
+    default: return null;
+  }
 }
 
 function claimWithExtension(challenge: PairingChallenge): Promise<void> {
@@ -151,11 +173,7 @@ function claimWithExtension(challenge: PairingChallenge): Promise<void> {
     const requestId = crypto.randomUUID();
     const timeout = window.setTimeout(() => {
       cleanup();
-      reject(
-        new Error(
-          "Slate Connector was not detected. Open its popup once, approve this dashboard, then try again."
-        )
-      );
+      reject(new Error("Slate Connector was not detected. Open its popup once, approve this dashboard, then try again."));
     }, 8_000);
 
     function cleanup() {
@@ -173,13 +191,6 @@ function claimWithExtension(challenge: PairingChallenge): Promise<void> {
     }
 
     window.addEventListener("message", onMessage);
-    window.postMessage(
-      {
-        type: "SLATE_PAIR_REQUEST",
-        requestId,
-        ...challenge,
-      },
-      window.location.origin
-    );
+    window.postMessage({ type: "SLATE_PAIR_REQUEST", requestId, ...challenge }, window.location.origin);
   });
 }

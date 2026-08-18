@@ -6,6 +6,7 @@
 
 import type { Database } from "@/db/types.gen";
 import type { StarterSummary } from "./game-state";
+import type { ChoppedSummary, LeagueFormat, LeagueType } from "./league-format";
 
 export type Platform = Database["public"]["Enums"]["platform"];
 export type LeagueStatus = "pre_draft" | "in_season" | "complete";
@@ -52,6 +53,8 @@ export interface MatchupCard {
   leagueExternalId: string;
   platform: Platform;
   leagueStatus: LeagueStatus;
+  leagueFormat: LeagueFormat;
+  leagueType: LeagueType;
   teamCount: number | null;
   season: number;
   week: number;
@@ -65,6 +68,7 @@ export interface MatchupCard {
   syncedAt: string | null;
   mine: Side;
   opponent: Side | null;
+  chopped: ChoppedSummary | null;
 }
 
 /** SL / ES / YH — provenance without spending any of the color budget. */

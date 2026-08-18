@@ -186,6 +186,11 @@ The collapsed card and expanded matchup header must use the same shared,
 accessible platform-logo component. Expanding a matchup must not regress to a
 two-letter monogram.
 
+Sleeper Chopped leagues are a distinct canonical format, detected from
+`settings.type = 3`. They use a league-wide Chopping Block card and standings,
+not a fabricated head-to-head opponent. Future Yahoo/ESPN guillotine formats
+must normalize into the same `chopped` presentation.
+
 Do not restore the global dot/blinker field. It becomes unreadable across many
 leagues and omits opponent context. The collapsed card uses compact counts with
 a hover/keyboard-focus table; the expanded view owns player-level status.
@@ -199,6 +204,15 @@ attribution. Use Yahoo's documented roster update resource for lineup changes.
 
 Before enabling a write action, record response fixtures and verify the current
 Yahoo documentation. Do not infer an endpoint from old samples.
+
+The dashboard connection surface is one compact `LOGIN` rectangle on the
+header's right side containing the compact official Sleeper, Yahoo `y!`, and
+ESPN `E` marks—no explanatory descriptions. Each mark is the connection target and exposes its
+state through an accessible label/title, never a provider password field. The
+Yahoo and ESPN marks are stored locally in `public/brands`. Yahoo uses its
+hosted OAuth consent screen; ESPN/Sleeper must retain the approved password-free
+connector pattern. Provider refresh tokens are encrypted at rest and
+authorization codes/access tokens are never stored.
 
 ### 5. Experimental Sleeper/ESPN lineup actions
 
@@ -227,6 +241,9 @@ league-setting operations are out of scope until lineup edits are reliable.
 - A new user never copies a key, password, cookie, or token.
 - The dashboard shows Connect/Connected/Reconnect separately for each platform.
 - Week selection is visible on first load even if only week 1 has data.
+- Every league stores a canonical `league_type` (`redraft`, `keeper`, or
+  `dynasty`) independently from its competition `format`; future Yahoo/ESPN
+  adapters must normalize their equivalent values into the same field.
 - A matchup expands inline at 360px without horizontal page overflow.
 - Yahoo lineup changes use official OAuth/API and are verified by re-read.
 - Sleeper/ESPN edits are labeled Experimental at the action point.

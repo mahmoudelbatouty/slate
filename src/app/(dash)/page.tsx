@@ -2,12 +2,12 @@ import { getDashboard } from "@/lib/dashboard";
 import { SortableLeagueCards } from "@/components/SortableLeagueCards";
 import { SyncedAt } from "@/components/SyncedAt";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Today } from "@/components/Today";
+import { Today, TodayContext } from "@/components/Today";
 import { WeekPicker } from "@/components/WeekPicker";
 import { ConnectorStatus } from "@/components/ConnectorStatus";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
-import { getConnectorStatus } from "@/lib/connector-status";
+import { getPlatformConnectionStatuses } from "@/lib/connector-status";
 
 // Reads Postgres on every request. The data is already local, so there's
 // nothing to cache around — and a stale score is worse than a query.
@@ -16,14 +16,14 @@ export const dynamic = "force-dynamic";
 export default async function Dashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; connection?: string }>;
 }) {
-  const { week: raw } = await searchParams;
+  const { week: raw, connection } = await searchParams;
   const requested = Number(raw);
 
   const [dashboard, connector] = await Promise.all([
     getDashboard(Number.isInteger(requested) ? requested : undefined),
-    getConnectorStatus(),
+    getPlatformConnectionStatuses(),
   ]);
   const { configured, cards, lastSyncedAt, leagueCount, week, weeks } = dashboard;
 
@@ -42,18 +42,22 @@ export default async function Dashboard({
   return (
     <main className="mx-auto max-w-app px-[18px] pb-16">
       <header className="sticky top-0 z-10 border-b border-ink-line bg-ink pt-[22px] pb-[14px]">
-        <Today week={week} context={weekContext} />
-        <div className="flex items-end justify-between gap-3">
-          <div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <Today week={week} />
+          <ConnectorStatus statuses={connector} notice={connection} />
+        </div>
+        <div className="mt-2 flex items-end justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
             <SyncedAt iso={lastSyncedAt} leagueCount={leagueCount} />
             <LiveRefresh enabled={configured && leagueCount > 0} />
           </div>
-          <ThemeToggle />
+          <div className="flex min-h-7 shrink-0 items-center gap-2">
+            <TodayContext context={weekContext} />
+            <ThemeToggle />
+          </div>
         </div>
         <WeekPicker weeks={weeks} selected={week} />
       </header>
-
-      <ConnectorStatus status={connector} />
 
       {configured && isUnsynced && week && (
         <UnsyncedWeek week={week} isCurrent={isCurrent} />

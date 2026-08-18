@@ -136,7 +136,9 @@ export type Database = {
         Row: {
           current_week: number | null
           external_id: string
+          format: string
           id: string
+          league_type: string
           name: string
           platform: Database["public"]["Enums"]["platform"]
           roster_slots: Json | null
@@ -151,7 +153,9 @@ export type Database = {
         Insert: {
           current_week?: number | null
           external_id: string
+          format?: string
           id?: string
+          league_type?: string
           name: string
           platform: Database["public"]["Enums"]["platform"]
           roster_slots?: Json | null
@@ -166,7 +170,9 @@ export type Database = {
         Update: {
           current_week?: number | null
           external_id?: string
+          format?: string
           id?: string
+          league_type?: string
           name?: string
           platform?: Database["public"]["Enums"]["platform"]
           roster_slots?: Json | null

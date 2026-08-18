@@ -294,6 +294,13 @@ period. It uses the page's existing signed-in fetch context but never reads or
 transmits cookie values. Revalidate roster/player/projection counts after the
 extension is reloaded and the league page is refreshed.
 
+The first real league was legitimately undrafted, which explains its empty
+rosters and projections. Connector 0.3.4 reads ESPN's boolean
+`draftDetail.drafted` flag and gives an explicit `false` priority over the
+presence of a published schedule, preventing an undrafted league from being
+misclassified as in-season. Empty pre-draft rosters are expected and must not
+be treated as a failed capture.
+
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application
 at `https://sports.yahoo.com/developer/access/`. The generic YDN Create

@@ -83,13 +83,20 @@
     const selectedTeam = parsed.searchParams.get("teamId")
       ?? parsed.searchParams.get("forTeamId")
       ?? pageParams.get("teamId");
+    const drafted = json.draftDetail?.drafted;
     return {
       leagueId: String(json.id ?? match[2]),
       season,
       name: String(json.settings?.name ?? `ESPN League ${match[2]}`).slice(0, 200),
       teamCount: Math.min(32, Math.max(1, Math.trunc(json.settings?.size ?? teams.length))),
       currentWeek: Math.min(25, Math.max(1, currentWeek)),
-      status: json.status?.isActive === false ? "complete" : schedule.length ? "in_season" : "pre_draft",
+      status: drafted === false
+        ? "pre_draft"
+        : json.status?.isActive === false
+          ? "complete"
+          : schedule.length
+            ? "in_season"
+            : "pre_draft",
       myTeamId: selectedTeam && teams.some((team) => team.id === selectedTeam) ? selectedTeam : null,
       rosterSlots: Object.fromEntries(Object.entries(json.settings?.rosterSettings?.lineupSlotCounts ?? {}).filter(([, count]) => Number.isInteger(count) && count >= 0 && count <= 30).map(([slot, count]) => [SLOT[slot] ?? `S${slot}`, count])),
       teams,

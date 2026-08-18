@@ -5,7 +5,8 @@
   "description": "Sends approved fantasy matchup data to your Slate dashboard without reading passwords or cookies.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
-    "https://sleeper.com/*"
+    "https://sleeper.com/*",
+    "https://fantasy.espn.com/*"
   ],
   "optional_host_permissions": [
     "http://localhost/*",
@@ -29,12 +30,21 @@
       "matches": ["https://sleeper.com/*"],
       "js": ["content.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://fantasy.espn.com/*"],
+      "js": ["espn-content.js"],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
       "resources": ["page-bridge.js"],
       "matches": ["https://sleeper.com/*"]
+    },
+    {
+      "resources": ["espn-page-bridge.js"],
+      "matches": ["https://fantasy.espn.com/*"]
     }
   ]
 }

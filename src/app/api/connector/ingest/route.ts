@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   const { data: installation, error: authError } = await db()
     .from("connector_installations")
-    .select("id")
+    .select("id, platform")
     .eq("token_hash", hashConnectorToken(token))
     .is("revoked_at", null)
     .maybeSingle();
@@ -39,6 +39,9 @@ export async function POST(request: Request) {
 
   const parsed = connectorEnvelope.safeParse(body);
   if (!parsed.success) return json({ error: "Unsupported connector payload" }, 422);
+  if (installation.platform !== parsed.data.platform) {
+    return json({ error: "Connector token cannot ingest this platform" }, 403);
+  }
 
   try {
     const result = await storeConnectorCapture(installation.id, parsed.data);

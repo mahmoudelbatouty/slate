@@ -4,8 +4,8 @@ The connector is a Manifest V3 browser extension. It never reads password
 fields, cookies, local storage, or request headers. It observes only approved
 fantasy responses, removes every field outside the allowlist, and sends that
 sanitized data to Slate with a revocable, platform-scoped ingest token. Sleeper
-capture is implemented; ESPN pairing/sign-in is implemented and ESPN capture
-remains pending.
+capture is implemented. ESPN pairing, sign-in, strict league capture, and
+canonical ingestion are implemented but still require real-account validation.
 
 ## Install for development
 
@@ -13,8 +13,10 @@ remains pending.
 2. Enable **Developer mode**.
 3. Choose **Load unpacked** and select this `connector/` directory.
 4. Reload the extension after pulling connector changes.
-5. Open Slate and press **Connect Sleeper**.
-6. Sign into Sleeper normally and open a matchup when the connector opens it.
+5. Open Slate and press the Sleeper or ESPN logo.
+6. Sign into that provider normally. For Sleeper, open a matchup; for ESPN,
+   open your fantasy league. The connector captures the full approved league
+   response, including its published schedule, rather than one matchup page.
 
 Localhost is approved automatically. For another dashboard origin, open the
 extension popup once, enter that dashboard URL, and press **Approve dashboard**.
@@ -39,5 +41,6 @@ need to be opened or refreshed when their native private data should be synced.
 - Provider credentials stay with the provider.
 - The extension cannot read or modify the Slate database.
 - The connector token authorizes only `/api/connector/ingest`.
+- Each token is bound to one platform; cross-platform payloads are rejected.
 - Server validation rejects unknown platforms, capture kinds, and fields.
 - Captured payloads are protected by RLS and accessible only to the server role.

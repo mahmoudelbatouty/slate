@@ -72,7 +72,7 @@ async function claimPairing(message) {
     });
     await chrome.tabs.create({
       url: result.platform === "espn"
-        ? "https://www.espn.com/fantasy/football/"
+        ? "https://fantasy.espn.com/football/"
         : "https://sleeper.com/?login=",
     });
     return { ok: true };
@@ -113,6 +113,79 @@ function sanitizeMatchup(row) {
   return clean;
 }
 
+function safeString(value, max = 160) {
+  return typeof value === "string" ? value.slice(0, max) : null;
+}
+
+function nullableNumber(value) {
+  return finiteNumber(value) ? value : null;
+}
+
+function sanitizeEspnPlayer(player) {
+  if (!player || typeof player !== "object" || typeof player.id !== "string" || typeof player.name !== "string") return null;
+  return {
+    id: player.id,
+    name: player.name.slice(0, 160),
+    position: safeString(player.position, 16),
+    proTeam: safeString(player.proTeam, 16),
+    lineupSlot: safeString(player.lineupSlot, 24) ?? "BN",
+    injuryStatus: safeString(player.injuryStatus, 32),
+    currentPoints: nullableNumber(player.currentPoints),
+    projectedPoints: nullableNumber(player.projectedPoints),
+  };
+}
+
+function sanitizeEspnTeam(team) {
+  if (!team || typeof team !== "object" || typeof team.id !== "string" || typeof team.name !== "string") return null;
+  return {
+    id: team.id,
+    name: team.name.slice(0, 160),
+    abbreviation: safeString(team.abbreviation, 16),
+    managerName: safeString(team.managerName, 160),
+    wins: Math.max(0, Math.trunc(team.wins ?? 0)),
+    losses: Math.max(0, Math.trunc(team.losses ?? 0)),
+    ties: Math.max(0, Math.trunc(team.ties ?? 0)),
+    pointsFor: nullableNumber(team.pointsFor),
+    pointsAgainst: nullableNumber(team.pointsAgainst),
+    standing: Number.isInteger(team.standing) && team.standing > 0 ? team.standing : null,
+    roster: Array.isArray(team.roster) ? team.roster.slice(0, 100).map(sanitizeEspnPlayer).filter(Boolean) : [],
+  };
+}
+
+function sanitizeEspnMatchup(game) {
+  if (!game || typeof game !== "object" || typeof game.id !== "string" || !Number.isInteger(game.week)) return null;
+  return {
+    id: game.id,
+    week: game.week,
+    isFinal: game.isFinal === true,
+    homeTeamId: safeString(game.homeTeamId),
+    awayTeamId: safeString(game.awayTeamId),
+    homePoints: nullableNumber(game.homePoints),
+    awayPoints: nullableNumber(game.awayPoints),
+    homeProjected: nullableNumber(game.homeProjected),
+    awayProjected: nullableNumber(game.awayProjected),
+  };
+}
+
+function sanitizeEspnSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object" || typeof snapshot.leagueId !== "string") return null;
+  if (!Number.isInteger(snapshot.season) || !Number.isInteger(snapshot.currentWeek)) return null;
+  const teams = Array.isArray(snapshot.teams) ? snapshot.teams.slice(0, 32).map(sanitizeEspnTeam).filter(Boolean) : [];
+  if (teams.length === 0) return null;
+  return {
+    leagueId: snapshot.leagueId,
+    season: snapshot.season,
+    name: safeString(snapshot.name, 200) ?? `ESPN League ${snapshot.leagueId}`,
+    teamCount: Math.min(32, Math.max(1, Math.trunc(snapshot.teamCount ?? teams.length))),
+    currentWeek: snapshot.currentWeek,
+    status: ["pre_draft", "in_season", "complete"].includes(snapshot.status) ? snapshot.status : "in_season",
+    myTeamId: safeString(snapshot.myTeamId),
+    rosterSlots: Object.fromEntries(Object.entries(snapshot.rosterSlots ?? {}).filter(([key, value]) => typeof key === "string" && Number.isInteger(value) && value >= 0 && value <= 30)),
+    teams,
+    matchups: Array.isArray(snapshot.matchups) ? snapshot.matchups.slice(0, 500).map(sanitizeEspnMatchup).filter(Boolean) : [],
+  };
+}
+
 async function deliver(message) {
   const stored = await chrome.storage.local.get(["connections", "dashboardUrl", "connectorToken"]);
   const config = stored.connections?.[message.platform] ?? {
@@ -124,11 +197,22 @@ async function deliver(message) {
     return;
   }
 
-  const matchups = message.matchups
-    .slice(0, MAX_MATCHUPS)
-    .map(sanitizeMatchup)
-    .filter(Boolean);
-  if (matchups.length === 0) return;
+  const payload = message.platform === "espn"
+    ? {
+        version: 1,
+        platform: "espn",
+        kind: "league_snapshot",
+        capturedAt: message.capturedAt,
+        snapshots: (message.snapshots ?? []).slice(0, 10).map(sanitizeEspnSnapshot).filter(Boolean),
+      }
+    : {
+        version: 1,
+        platform: "sleeper",
+        kind: "matchup_legs",
+        capturedAt: message.capturedAt,
+        matchups: (message.matchups ?? []).slice(0, MAX_MATCHUPS).map(sanitizeMatchup).filter(Boolean),
+      };
+  if ((payload.snapshots ?? payload.matchups).length === 0) return;
 
   try {
     const response = await fetch(`${config.dashboardUrl}/api/connector/ingest`, {
@@ -137,13 +221,7 @@ async function deliver(message) {
         authorization: `Bearer ${config.connectorToken}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        version: 1,
-        platform: "sleeper",
-        kind: "matchup_legs",
-        capturedAt: message.capturedAt,
-        matchups,
-      }),
+      body: JSON.stringify(payload),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || `Dashboard returned ${response.status}`);
@@ -175,7 +253,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === "SLATE_CAPTURE" && message.platform === "sleeper") {
+  if (message?.type === "SLATE_CAPTURE" && ["sleeper", "espn"].includes(message.platform)) {
     void deliver(message);
   }
 });

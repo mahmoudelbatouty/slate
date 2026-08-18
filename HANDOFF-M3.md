@@ -255,11 +255,21 @@ logo starts the same short-lived challenge/claim flow and opens ESPN's fantasy
 football site for normal provider-hosted sign-in. Slate does not receive or
 store the ESPN password, ESPN cookies, or the user's browser session.
 
-This checkpoint does not ingest ESPN fantasy data yet. The next slice must add
-a narrowly allowlisted ESPN page bridge, record sanitized response fixtures,
-normalize leagues/teams/standings/weekly matchups/rosters into the existing
-canonical adapter contract, and only then mark ESPN connected after a valid
-capture. Never send raw request headers or cookies through the ingest endpoint.
+The capture/normalization slice is now implemented in the same branch. A page
+bridge observes only GET responses from ESPN's exact fantasy league-read path,
+reduces them to a strict allowlist, and the service worker and Zod server
+boundary validate the reduced shape again. The server normalizes and upserts
+leagues, teams, provider standings, current rosters, player crosswalks, native
+projections, and every captured weekly matchup. Connector tokens are enforced
+per platform, so a Sleeper token cannot submit an ESPN payload. Raw response
+objects, headers, cookies, local storage, and browser sessions are never sent.
+
+M6 remains incomplete until the extension is reloaded and verified against a
+real signed-in ESPN league. That verification must confirm ESPN's current field
+shapes, ownership detection (`teamId`/`forTeamId`), full schedule coverage, and
+repeat refresh behavior. After the first valid capture, compare the canonical
+rows and dashboard against ESPN before merging PR #11. Automatic refresh when
+no ESPN page is open is still a separate remaining slice.
 
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application

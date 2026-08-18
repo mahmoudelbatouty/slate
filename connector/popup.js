@@ -50,12 +50,17 @@ document.querySelector("#save").addEventListener("click", async () => {
 
 document.querySelector("#sync").addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url?.startsWith("https://sleeper.com/leagues/")) {
-    status.textContent = "Make a Sleeper league the active tab first.";
+  const provider = tab?.url?.startsWith("https://sleeper.com/leagues/")
+    ? "Sleeper"
+    : tab?.url?.startsWith("https://fantasy.espn.com/")
+      ? "ESPN"
+      : null;
+  if (!tab?.id || !provider) {
+    status.textContent = "Make a Sleeper or ESPN fantasy league the active tab first.";
     return;
   }
   await chrome.tabs.reload(tab.id);
-  status.textContent = "Refreshing Sleeper. The capture will arrive after the matchup loads.";
+  status.textContent = `Refreshing ${provider}. Approved fantasy data will sync after the page loads.`;
 });
 
 void renderStatus();

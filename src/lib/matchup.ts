@@ -47,6 +47,28 @@ export interface TeamLineup {
   bench: MatchupPlayer[];
 }
 
+export interface LeagueScoreboardTeam extends Side {
+  isMine: boolean;
+  starterStatus: StarterSummary;
+}
+
+export interface LeagueScoreboardGame {
+  key: string;
+  left: LeagueScoreboardTeam;
+  right: LeagueScoreboardTeam | null;
+  isFinal: boolean;
+  isLive: boolean;
+}
+
+export interface LeagueScoreboardRow {
+  matchupKey: string;
+  teamId: string;
+  opponentTeamId: string | null;
+  points: number | null;
+  projected: number | null;
+  isFinal: boolean;
+}
+
 export interface MatchupCard {
   leagueId: string;
   leagueName: string;
@@ -69,6 +91,55 @@ export interface MatchupCard {
   mine: Side;
   opponent: Side | null;
   chopped: ChoppedSummary | null;
+  scoreboard: LeagueScoreboardGame[];
+}
+
+/** Pair provider rows once, keeping the user's game first and every game truthful. */
+export function buildLeagueScoreboard(
+  rows: LeagueScoreboardRow[],
+  teams: LeagueScoreboardTeam[]
+): LeagueScoreboardGame[] {
+  const teamById = new Map(teams.map((team) => [team.teamId, team]));
+  const rowByTeam = new Map(rows.map((row) => [row.teamId, row]));
+  const visited = new Set<string>();
+  const games: LeagueScoreboardGame[] = [];
+
+  for (const row of rows) {
+    if (visited.has(row.teamId)) continue;
+    const team = teamById.get(row.teamId);
+    if (!team) continue;
+
+    const opponentRow = row.opponentTeamId ? rowByTeam.get(row.opponentTeamId) : undefined;
+    const opponent = opponentRow ? teamById.get(opponentRow.teamId) : undefined;
+    visited.add(row.teamId);
+    if (opponentRow) visited.add(opponentRow.teamId);
+
+    let left = team;
+    let right = opponent ?? null;
+    if (right && (right.isMine || (!left.isMine && right.name.localeCompare(left.name) < 0))) {
+      [left, right] = [right, left];
+    }
+
+    games.push({
+      key: row.matchupKey || [row.teamId, opponentRow?.teamId ?? "bye"].sort().join(":"),
+      left,
+      right,
+      isFinal: row.isFinal && (opponentRow?.isFinal ?? true),
+      isLive: left.starterStatus.live > 0 || (right?.starterStatus.live ?? 0) > 0,
+    });
+  }
+
+  return games.sort((a, b) => {
+    const aMine = a.left.isMine || Boolean(a.right?.isMine);
+    const bMine = b.left.isMine || Boolean(b.right?.isMine);
+    if (aMine !== bMine) return aMine ? -1 : 1;
+    if (a.isFinal !== b.isFinal) return a.isFinal ? 1 : -1;
+    return scoreboardMargin(a) - scoreboardMargin(b) || a.key.localeCompare(b.key);
+  });
+}
+
+function scoreboardMargin(game: LeagueScoreboardGame): number {
+  return Math.abs((game.left.points ?? 0) - (game.right?.points ?? 0));
 }
 
 /** SL / ES / YH — provenance without spending any of the color budget. */

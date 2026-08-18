@@ -1,6 +1,13 @@
 import "server-only";
 import { db, dbConfigured } from "@/db/client";
-import { byDrama, type MatchupCard, type MatchupPlayer, type TeamLineup } from "./matchup";
+import {
+  buildLeagueScoreboard,
+  byDrama,
+  type LeagueScoreboardTeam,
+  type MatchupCard,
+  type MatchupPlayer,
+  type TeamLineup,
+} from "./matchup";
 import { buildWeekOptions, resolveWeek, type WeekOption } from "./weeks";
 import {
   EMPTY_STARTER_SUMMARY,
@@ -59,7 +66,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
   // whole-league toggle needs exactly this data and it's a few dozen rows.
   const { data: rows, error: matchupError } = await client
     .from("matchups")
-    .select("league_id, week, points, projected_points, is_final, team_id, opponent_team_id")
+    .select("league_id, week, matchup_key, points, projected_points, is_final, team_id, opponent_team_id")
     .in(
       "league_id",
       leagues.map((l) => l.id)
@@ -109,12 +116,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   const selectedRows = (rows ?? []).filter((row) => row.week === week);
   const relevantTeamIds = new Set<string>();
-  for (const row of selectedRows) {
-    if (teamById.get(row.team_id)?.is_mine) {
-      relevantTeamIds.add(row.team_id);
-      if (row.opponent_team_id) relevantTeamIds.add(row.opponent_team_id);
-    }
-  }
+  for (const row of selectedRows) relevantTeamIds.add(row.team_id);
 
   const lineupsByTeam = new Map<string, TeamLineup>();
   if (week && relevantTeamIds.size > 0) {
@@ -273,6 +275,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         },
         opponent: null,
         chopped: null,
+        scoreboard: [],
       });
       continue;
     }
@@ -327,6 +330,44 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
     const choppedStarters = leagueFormat === "chopped"
       ? starterGames.filter((starter) => starter.leagueId === league.id)
       : [];
+    const scoreboard = leagueFormat === "head_to_head"
+      ? buildLeagueScoreboard(
+          selectedRows
+            .filter((row) => row.league_id === league.id)
+            .map((row) => {
+              const team = teamById.get(row.team_id);
+              const native = team
+                ? nativeByTeam.get(`${league.platform}:${league.external_id}:${team.external_id}:${week}`)
+                : undefined;
+              return {
+                matchupKey: row.matchup_key,
+                teamId: row.team_id,
+                opponentTeamId: row.opponent_team_id,
+                points: row.points,
+                projected: native ?? row.projected_points,
+                isFinal: row.is_final,
+              };
+            }),
+          (teams ?? []).flatMap((team): LeagueScoreboardTeam[] => {
+            if (team.league_id !== league.id) return [];
+            const row = selectedRows.find((candidate) => candidate.team_id === team.id);
+            if (!row) return [];
+            const native = nativeByTeam.get(
+              `${league.platform}:${league.external_id}:${team.external_id}:${week}`
+            );
+            return [{
+              teamId: team.id,
+              externalId: team.external_id,
+              name: team.name ?? `Roster ${team.external_id}`,
+              points: row.points,
+              projected: native ?? row.projected_points,
+              lineup: lineupsByTeam.get(team.id),
+              isMine: team.is_mine,
+              starterStatus: summarizeStarterStates(startersByTeam.get(team.id) ?? []),
+            }];
+          })
+        )
+      : [];
 
     cards.push({
       leagueId: league.id,
@@ -369,6 +410,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
             }
           : null,
       chopped,
+      scoreboard,
     });
   }
 

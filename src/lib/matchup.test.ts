@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   byDrama,
+  buildLeagueScoreboard,
   deepLink,
   MONOGRAM,
   type MatchupCard,
@@ -40,6 +41,7 @@ function card(
       projected: null,
     },
     chopped: null,
+    scoreboard: [],
     ...rest,
   };
 }
@@ -77,6 +79,42 @@ describe("byDrama", () => {
       "active",
       "pre",
     ]);
+  });
+});
+
+describe("buildLeagueScoreboard", () => {
+  const starterStatus = EMPTY_STARTER_SUMMARY;
+  const teams = [
+    { teamId: "a", externalId: "1", name: "Mine", points: 80, projected: 110, isMine: true, starterStatus },
+    { teamId: "b", externalId: "2", name: "Opponent", points: 75, projected: 105, isMine: false, starterStatus },
+    { teamId: "c", externalId: "3", name: "Third", points: 40, projected: 90, isMine: false, starterStatus },
+    { teamId: "d", externalId: "4", name: "Fourth", points: 45, projected: 95, isMine: false, starterStatus },
+  ];
+  const rows = [
+    { matchupKey: "two", teamId: "c", opponentTeamId: "d", points: 40, projected: 90, isFinal: false },
+    { matchupKey: "one", teamId: "b", opponentTeamId: "a", points: 75, projected: 105, isFinal: false },
+    { matchupKey: "two", teamId: "d", opponentTeamId: "c", points: 45, projected: 95, isFinal: false },
+    { matchupKey: "one", teamId: "a", opponentTeamId: "b", points: 80, projected: 110, isFinal: false },
+  ];
+
+  it("pairs reciprocal rows without duplicating games", () => {
+    const games = buildLeagueScoreboard(rows, teams);
+    expect(games).toHaveLength(2);
+    expect(games.map((game) => game.key)).toEqual(["one", "two"]);
+  });
+
+  it("puts the user's team on the left in the first game", () => {
+    const [game] = buildLeagueScoreboard(rows, teams);
+    expect(game.left.name).toBe("Mine");
+    expect(game.right?.name).toBe("Opponent");
+  });
+
+  it("keeps an unpaired bye instead of inventing an opponent", () => {
+    const [game] = buildLeagueScoreboard(
+      [{ matchupKey: "bye", teamId: "a", opponentTeamId: null, points: 10, projected: 20, isFinal: false }],
+      teams
+    );
+    expect(game.right).toBeNull();
   });
 });
 

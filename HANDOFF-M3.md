@@ -226,6 +226,23 @@ starting with M5 whole-league scoreboard expansion. Do not request Yahoo keys,
 enable the Yahoo login mark, record real Yahoo data, or build provider writes
 as part of the current milestone.
 
+### M5 whole-league scoreboard checkpoint
+
+Work began on `codex/m5-whole-league-scoreboard`. The dashboard already fetched
+all canonical matchup rows for the selected week; M5 now pairs reciprocal rows
+once and passes a serializable league scoreboard to each head-to-head card.
+The user's matchup sorts first, unmatched rows remain honest byes, and every
+scoreboard game can expand inline to the provider-synced starters and bench.
+Chopped leagues keep the existing Chopping Block view because their league-wide
+competition is not a set of head-to-head matchups.
+
+The remaining M5 core-hub slice is a truthful league standings view. Do not
+derive season records from a single week's matchup rows; extend canonical sync
+with provider standings/record data first. After M5, M6 is the password-free
+ESPN browser connection and canonical read sync. ESPN credentials stay inside
+ESPN's signed-in browser session and must never be accepted or stored by Slate.
+Yahoo remains the final provider milestone.
+
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application
 at `https://sports.yahoo.com/developer/access/`. The generic YDN Create

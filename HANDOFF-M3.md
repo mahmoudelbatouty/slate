@@ -71,10 +71,30 @@ and cookies.** Deferred, not decided. What the analysis established:
 **Yahoo** application is written and ready but not submitted; the owner will
 revisit when access is approved. It remains the gate on all scalable writes.
 
-**Vercel** project `slate` created and linked to the GitHub repo
-(`prj_7ybmdWGks3gGAh4JMRqC2zqBySal`, team `MTE`). The first deployment was
-refused because the authenticated Vercel identity lacks permission to create
-production deployments for that team. Environment variables are not yet set.
+**Vercel deployment completed.** Project `mte2/slate` is linked to the GitHub
+repo and local checkout. Production is available at
+`https://slate-mte2.vercel.app` (also aliased as
+`https://slate-jet.vercel.app`). The required production variables are set in
+Vercel without committing or printing their values:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (sensitive)
+- `CRON_SECRET` (sensitive)
+- `DEFAULT_SEASON`
+
+Yahoo variables and `PLATFORM_TOKEN_ENCRYPTION_KEY` remain intentionally unset
+because Yahoo is deferred. `SLEEPER_USERNAME` is not set in production; user-
+owned Sleeper connections supply their own public account ID.
+
+Supabase Auth's Site URL is `https://slate-mte2.vercel.app`, and the exact
+`https://slate-mte2.vercel.app/auth/confirm` redirect is allowlisted for account
+confirmation and password recovery. A forced production deployment completed
+successfully on 2026-08-18. Verification: `/` redirects signed-out visitors to
+`/login`, the sign-in/create-account UI renders with no console errors, an
+invalid connector token returns 401 through the service-role-backed ingest
+route, an unauthenticated cron request returns 401, and the production error-log
+scan was clean.
 
 ### Sign-in screen — rebuilt 2026-08-18 (after the M6 merge)
 

@@ -133,7 +133,8 @@
     if (enrichedLeagues.has(leagueId)) return;
     enrichedLeagues.add(leagueId);
     const enriched = addApprovedViews(url, currentWeek);
-    void originalFetch.call(window, enriched.href, { credentials: "include" })
+    void Promise.resolve()
+      .then(() => originalFetch.call(window, enriched.href, { credentials: "include" }))
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("ESPN enrichment failed")))
       .then((json) => publish(json, enriched.href, false))
       .catch(() => enrichedLeagues.delete(leagueId));
@@ -161,12 +162,17 @@
     }
   });
 
-  window.fetch = async function slateEspnFetch(input, init) {
+  window.fetch = function slateEspnFetch(input, init) {
     const url = input instanceof Request ? input.url : String(input);
     const method = init?.method ?? (input instanceof Request ? input.method : "GET");
-    const response = await originalFetch.apply(this, arguments);
-    if (approved(url, method)) void response.clone().json().then((json) => publish(json, url)).catch(() => undefined);
-    return response;
+    const responsePromise = originalFetch.apply(this, arguments);
+    if (approved(url, method)) {
+      void responsePromise
+        .then((response) => response.clone().json())
+        .then((json) => publish(json, url))
+        .catch(() => undefined);
+    }
+    return responsePromise;
   };
 
   const originalOpen = XMLHttpRequest.prototype.open;

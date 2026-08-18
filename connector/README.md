@@ -16,7 +16,7 @@ real-account validation.
 4. Reload the extension after pulling connector changes.
 5. Open Slate and press the Sleeper or ESPN logo.
 6. Sign into that provider normally. For Sleeper, open a matchup. For ESPN,
-   land on the fantasy welcome page; connector 0.4.0 discovers up to ten leagues
+   land on the fantasy welcome page; connector 0.4.1 discovers up to ten leagues
    from ESPN's own visible league links and captures their approved league
    responses. Opening an individual league remains a safe fallback.
 

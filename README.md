@@ -170,7 +170,7 @@ simultaneous users.
 7. **M6 (in progress):** ESPN password-free browser connection and canonical
    read sync. Pairing, ESPN-hosted sign-in, strict response capture, and
    canonical league/team/standings/roster/matchup ingestion are implemented.
-   Connector 0.5.1 automatically discovers up to ten leagues from ESPN's own
+   Connector 0.6.1 automatically discovers up to ten leagues from ESPN's own
    visible league links after sign-in and refreshes them in the Chromium
    background every five minutes, or every minute during live games. Chromium
    must remain open; no ESPN tab is required. Real-account background-refresh

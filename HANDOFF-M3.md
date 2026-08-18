@@ -1,5 +1,100 @@
 # Handoff — M3/M4: seamless connections, complete matchups, lineup actions
 
+## Morning pickup — authoritative state as of 2026-08-18
+
+This section supersedes conflicting historical notes later in this file.
+
+### Repository and verification
+
+- Merge candidate: branch `codex/m6-espn-connector`, PR #11.
+- Latest implementation commit before this documentation update: `a8be7b6`.
+- Final local verification: 145 tests pass, ESLint passes, TypeScript passes,
+  the production Next.js build passes, and the working tree contains no secrets.
+- PR #11 is approved to merge after its GitHub checks and mergeability are
+  confirmed. After merge, begin the next task from updated `main`; do not reuse
+  the feature branch.
+
+### User/account behavior now implemented
+
+- Slate uses Supabase email/password Auth. Signed-out users see no fantasy
+  records. Every league, platform account, sync run, projection override, and
+  connector installation is scoped to its authenticated owner.
+- A newly created Slate account starts empty. Legacy prototype rows remain
+  unowned and cannot be claimed merely by signing up or signing in.
+- Sleeper and ESPN connection begins from the compact provider marks in Slate.
+  The connector claims a short-lived account-scoped challenge, navigates the
+  originating Slate tab to the provider, and navigates that same tab back only
+  after Slate confirms successful ingestion. No second tab is normally opened.
+- Users sign in only on the provider's page. Slate never accepts or stores a
+  Sleeper/ESPN password, session token, cookie, email, or request header.
+- Connector version is `0.6.1`. An unpacked installation must be reloaded from
+  `chrome://extensions` after pulling connector changes.
+
+### Sleeper connection and refresh
+
+- Sleeper has no official OAuth flow. After normal provider sign-in, the page
+  bridge reads only Sleeper's non-secret numeric `localStorage.user_id`. It is
+  strictly digits-only; `token`, `email`, passwords, cookies, headers, and all
+  other storage keys are neither read nor transmitted.
+- The server binds that numeric ID to the current Slate owner and runs an
+  owner-scoped account sync through Sleeper's public read API. Users do not type
+  a username and do not open individual matchups.
+- Initial/account sync imports all leagues, teams, rosters, provider-published
+  matchup weeks, scores, current points, and Sleeper-derived projections.
+  Dashboard live refresh remains owner-scoped and cannot coalesce work across
+  two users.
+- Sleeper's NFL preseason counter must not become fantasy Week 2/3. For drafted
+  leagues, `season_type = pre` maps to fantasy Week 1 so published Week 1 and
+  future matchups remain visible. Slate exposes no separate PRE/preseason tab.
+  Truly undrafted leagues remain canonical `pre_draft` cards.
+- Live verification on 2026-08-18: Sleeper returned and Slate stored all 10
+  leagues for the connected owner (4 drafted/in-season, 6 pre-draft), 116
+  teams, 1,489 roster entries, and 714 matchup rows spanning published Weeks
+  1–17. A transient first database fetch failure succeeded on the single safe,
+  idempotent retry; no rows were deleted or reassigned.
+
+### ESPN connection and refresh
+
+- ESPN uses the same password-free pairing/return UX but reads approved fantasy
+  responses through the signed-in Chromium session. The connector stores at
+  most ten sanitized numeric league/team/season references locally and uses
+  Chromium alarms for background refresh: approximately five minutes idle and
+  one minute in a live NFL window. Chromium and the ESPN login session must
+  remain active; an ESPN tab does not need to remain open after discovery.
+- ESPN payloads are sanitized in the extension and validated again by the
+  server before canonical ingestion. Raw provider responses and browser auth
+  material never enter Slate.
+- Fresh-refresh verification on 2026-08-18: a new owner-scoped ESPN installation
+  was created, two league snapshots were captured from ESPN, received by Slate
+  about 0.1 seconds later, and the canonical ESPN leagues received the same new
+  capture timestamp. The quick result came from an already signed-in ESPN
+  browser session, not from displaying an old connection.
+
+### Read-only boundary and later writes
+
+- Sleeper and ESPN are read-only in this milestone. A public Sleeper user ID
+  grants no write capability.
+- Sleeper/ESPN lineup changes remain a later experimental milestone because no
+  supported third-party Fantasy write API is available. They require an active
+  signed-in provider tab, an explicit user-confirmed command, stale-lineup and
+  lock checks, idempotency, provider submission, and provider read-back before
+  Slate may display success. Never automate or imply a lineup write from login.
+- Yahoo is still deferred to the final provider milestone. Use official Yahoo
+  OAuth and request reviewed Fantasy Read/Write access; never collect Yahoo
+  credentials. Existing scaffolding must remain owner-scoped.
+
+### Recommended next work
+
+1. Pull updated `main` and confirm PR #11 is merged.
+2. Deploy to Vercel and configure production Supabase/Yahoo callback values only
+   through environment settings; never commit secret values.
+3. Revalidate account A/account B isolation in the deployed environment.
+4. Test ESPN background refresh after Chromium has been idle and after its
+   provider session expires; surface a clear reconnect state.
+5. Keep Yahoo until the final provider milestone. Before any write feature,
+   complete the provider-specific confirmation/read-back workflow described
+   below.
+
 ## 2026-08-18 — Supabase Auth ownership foundation
 
 - Replaced `APP_PASSWORD` with Supabase email/password Auth and SSR sessions.
@@ -9,10 +104,10 @@
 - Every account starts empty and sees only records created by its own platform
   connections. Legacy prototype records remain unowned and are never claimed
   automatically by login, signup, confirmation, or dashboard rendering.
-- Build, lint, 142 tests, and signed-out browser checks pass.
+- Build, lint, 145 tests, and signed-out browser checks pass.
 
-Before merge: verify account A cannot see account B or unowned prototype data,
-then finish the owner-scope audit for live sync and Yahoo.
+The owner-scope audit is complete for dashboard reads, connector ingestion,
+live sync, Sleeper refresh, and Yahoo scaffolding. Revalidate it after deploy.
 
 This file records the repo owner's approved product-direction change on
 2026-08-12. `CLAUDE.md` and `DESIGN.md` have been updated to match it. If older
@@ -55,7 +150,7 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 - The manual connector-token input has been removed from the extension popup.
 - The always-visible full-season week selector is implemented on
   `codex/m3-week-selector`. It remains server-rendered and shareable through
-  `?week=N`, supports preseason and provider season-end metadata, and labels
+  `?week=N`, supports provider season-end metadata, and labels
   current/synced/unsynced states without relying on color.
 - Daily sync now imports every provider-published season matchup, including
   future pairings. Users never need to open individual provider matchups to
@@ -117,8 +212,10 @@ Slate remains the one browser screen used during fantasy game day. A user can:
 ## Non-negotiable security boundary
 
 - Never accept or store a Sleeper/ESPN/Yahoo password.
-- Never read or transmit cookies, local storage, session tokens, or request
-  headers from Sleeper/ESPN connector sessions.
+- Never read or transmit cookies, session tokens, request headers, passwords,
+  email, or arbitrary local storage from Sleeper/ESPN connector sessions. The
+  sole local-storage exception is Sleeper's public numeric `user_id`, with a
+  digits-only schema and no access to any other key.
 - Do not expose the Supabase service-role key or connector tokens to Git.
 - The extension is an allowlisted fantasy-data adapter, not an HTTP proxy.
 - Unknown operation names, fields, providers, league IDs, and response shapes
@@ -209,12 +306,11 @@ caching expires after 30 seconds so a warm local/Vercel process cannot preserve
 an old lineup forever.
 
 Provider football clocks must be normalized before they reach the dashboard.
-Sleeper advances `state.week` during the NFL preseason, so its adapter returns
-no canonical `currentWeek` unless `season_type === "regular"`. The dashboard
-also ignores pre-draft and completed leagues when selecting the shared current
-week. This keeps the PRE state selected until real fantasy scoring begins; use
-the same rule for ESPN and Yahoo rather than treating any positive provider
-week as an active fantasy week.
+Sleeper advances `state.week` during NFL preseason, so its adapter maps
+`season_type === "pre"` to fantasy Week 1. This keeps drafted leagues and their
+published future schedules visible without falsely calling NFL preseason Week
+2 the current fantasy week. The dashboard ignores pre-draft and completed
+leagues when selecting a shared current week and does not expose a PRE tab.
 The path was verified against the live Supabase project on 2026-08-17: a
 dashboard load completed an `account` run in under nine seconds, advanced the
 stored Sleeper current week, imported 1,489 roster rows and 42 current-week
@@ -289,12 +385,11 @@ projections, and every captured weekly matchup. Connector tokens are enforced
 per platform, so a Sleeper token cannot submit an ESPN payload. Raw response
 objects, headers, cookies, local storage, and browser sessions are never sent.
 
-M6 remains incomplete until the extension is reloaded and verified against a
-real signed-in ESPN league. That verification must confirm ESPN's current field
-shapes, ownership detection (`teamId`/`forTeamId`), full schedule coverage, and
-repeat refresh behavior. After the first valid capture, compare the canonical
-rows and dashboard against ESPN before merging PR #11. Automatic refresh when
-no ESPN page is open is still a separate remaining slice.
+M6 read-only connection is implemented and verified against a real signed-in
+ESPN account. Current field shapes, ownership detection, canonical ingestion,
+automatic discovery, same-tab return, and background refresh are implemented.
+Remaining follow-up is deployed/long-idle validation, including expired-session
+reconnect behavior; it is not a blocker for merging PR #11.
 
 Connector 0.3.2 uses ESPN's fantasy-game welcome URL
 (`https://fantasy.espn.com/football/welcome`) after pairing. The bare
@@ -353,11 +448,11 @@ the cookies API and never reads, stores, logs, or transmits passwords, cookie
 values, headers, arbitrary URLs, or raw ESPN responses. The ingest response
 selects a five-minute idle cadence or one-minute live cadence using Slate's NFL
 game window. Chromium must remain open, but no ESPN tab is required. Firefox is
-out of scope; Safari remains an optional later distribution target. Reload and
-verify connector 0.5.1 against a signed-in ESPN account before merging PR #11.
+out of scope; Safari remains an optional later distribution target. This path
+was verified against a signed-in ESPN account on 2026-08-18.
 Pairing also stores the originating Slate tab as a one-time local return target.
-The provider opens in the same Chromium browser; only after the server confirms
-that a sanitized capture was stored does the connector focus and refresh Slate
+The provider replaces Slate in that same tab; only after the server confirms
+that a sanitized capture was stored does the connector navigate back to Slate
 with `?connection=sleeper-connected` or `?connection=espn-connected`. Slate then
 shows an explicit “connected and synced just now” notice. Login alone never
 triggers success, failed capture leaves the provider page available, and no

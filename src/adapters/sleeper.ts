@@ -242,7 +242,16 @@ const zTransaction = z.object({
   drops: z.record(z.string(), z.number()).nullable(),
 });
 
-const zState = z.object({ week: z.number(), season: z.string() });
+const zState = z.object({
+  week: z.number(),
+  season: z.string(),
+  season_type: z.string(),
+});
+
+/** Sleeper's counter advances through NFL preseason games; fantasy Week 1 does not. */
+export function currentFantasyWeek(state: z.infer<typeof zState>): number {
+  return state.season_type === "pre" ? 1 : Math.max(1, state.week);
+}
 
 // ---------- helpers ----------
 
@@ -336,7 +345,7 @@ export const sleeperAdapter: PlatformAdapter = {
           roster_positions: l.roster_positions,
         },
         rosterSlots: slotCounts(l.roster_positions),
-        currentWeek: state.week,
+        currentWeek: currentFantasyWeek(state),
         status: mapStatus(l.status),
         format: sleeperLeagueFormat(l.settings),
         leagueType: sleeperLeagueType(l.settings),

@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearProjectionCache,
+  currentFantasyWeek,
   getProjections,
   projectPlayer,
   projectTeam,
@@ -119,6 +120,11 @@ describe("listLeagues", () => {
 
     expect(Array.isArray(raw.roster_positions)).toBe(true);
     expect((raw.roster_positions as string[]).length).toBeGreaterThan(0);
+  });
+
+  it("does not treat an NFL preseason week as the current fantasy week", () => {
+    expect(currentFantasyWeek({ week: 2, season: "2026", season_type: "pre" })).toBe(1);
+    expect(currentFantasyWeek({ week: 1, season: "2026", season_type: "regular" })).toBe(1);
   });
 });
 

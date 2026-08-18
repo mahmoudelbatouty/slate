@@ -9,7 +9,7 @@ import {
   type MatchupPlayer,
   type TeamLineup,
 } from "./matchup";
-import { buildWeekOptions, resolveWeek, type WeekOption } from "./weeks";
+import { buildWeekOptions, currentLeagueWeek, resolveWeek, type WeekOption } from "./weeks";
 import {
   EMPTY_STARTER_SUMMARY,
   summarizeStarterStates,
@@ -47,21 +47,27 @@ const EMPTY: Dashboard = {
  * `requestedWeek` comes from the URL and is clamped to something real, so
  * a hand-typed ?week=99 shows the current week rather than an error.
  */
-export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
+export async function getDashboard(ownerId: string, requestedWeek?: number): Promise<Dashboard> {
   if (!dbConfigured()) return EMPTY;
 
   const client = db();
 
   const { data: leagues, error } = await client
     .from("leagues")
-    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw, format, league_type");
+    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw, format, league_type")
+    .eq("owner_id", ownerId);
 
   if (error) throw new Error(`leagues read: ${error.message}`);
   if (!leagues?.length) return { ...EMPTY, configured: true };
 
   // Leagues can disagree about the current week (different platforms, or
   // one league already eliminated). The furthest-along wins for defaults.
-  const currentWeek = Math.max(...leagues.map((l) => l.current_week ?? 0), 0) || null;
+  const leagueWeekMetadata = leagues.map((league) => ({
+    currentWeek: league.current_week,
+    scoringRaw: league.scoring_raw,
+    status: league.status,
+  }));
+  const currentWeek = currentLeagueWeek(leagueWeekMetadata);
 
   // Whole weeks rather than just my own row, deliberately: M5's
   // whole-league toggle needs exactly this data and it's a few dozen rows.
@@ -77,7 +83,8 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   const { data: teams, error: teamError } = await client
     .from("teams")
-    .select("id, league_id, name, manager_name, external_id, is_mine, wins, losses, ties, points_for, points_against, standing");
+    .select("id, league_id, name, manager_name, external_id, is_mine, wins, losses, ties, points_for, points_against, standing")
+    .in("league_id", leagues.map((league) => league.id));
 
   if (teamError) throw new Error(`teams read: ${teamError.message}`);
 
@@ -87,6 +94,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
   const { data: nativeRows, error: nativeError } = await client
     .from("native_projections")
     .select("platform, external_league_id, external_team_id, week, projected_points")
+    .eq("owner_id", ownerId)
     .in(
       "external_league_id",
       leagues.map((league) => league.external_id)
@@ -101,13 +109,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   // The full season remains selectable, including future/unsynced weeks and
   // preseason. Provider settings can narrow or extend the normal 18-week rail.
-  const weeks = buildWeekOptions(
-    leagues.map((league) => ({
-      currentWeek: league.current_week,
-      scoringRaw: league.scoring_raw,
-    })),
-    (rows ?? []).map((row) => row.week)
-  );
+  const weeks = buildWeekOptions(leagueWeekMetadata, (rows ?? []).map((row) => row.week));
 
   const week = resolveWeek(
     requestedWeek,
@@ -233,7 +235,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
   const cards: MatchupCard[] = [];
 
   for (const league of leagues) {
-    if (!week) continue;
+    const cardWeek = week ?? 1;
 
     const mineTeamForLeague = (teams ?? []).find(
       (team) => team.league_id === league.id && team.is_mine
@@ -245,9 +247,10 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         r.week === week &&
         teamById.get(r.team_id)?.is_mine
     );
-    if (!mineRow) {
-      if (league.status !== "pre_draft") continue;
-
+    // Provider schedules can contain placeholder games before a draft. The
+    // canonical league status is authoritative, so never turn those rows into
+    // a live matchup card.
+    if (league.status === "pre_draft") {
       cards.push({
         leagueId: league.id,
         leagueName: league.name,
@@ -258,7 +261,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         leagueType: canonicalLeagueType(league.league_type),
         teamCount: league.team_count,
         season: league.season,
-        week,
+        week: cardWeek,
         isFinal: false,
         isLive: false,
         winProbability: null,
@@ -281,6 +284,8 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
       });
       continue;
     }
+
+    if (!mineRow) continue;
 
     const mineTeam = teamById.get(mineRow.team_id);
     if (!mineTeam) continue;
@@ -395,7 +400,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
       leagueType: canonicalLeagueType(league.league_type),
       teamCount: league.team_count,
       season: league.season,
-      week,
+      week: cardWeek,
       isFinal: mineRow.is_final,
       isLive: [...mineStarters, ...opponentStarters, ...choppedStarters].some((starter) => starter.inProgress),
       winProbability: leagueFormat === "chopped" ? null : probability,

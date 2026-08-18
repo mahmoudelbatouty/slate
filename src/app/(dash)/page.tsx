@@ -8,6 +8,9 @@ import { ConnectorStatus } from "@/components/ConnectorStatus";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { getPlatformConnectionStatuses } from "@/lib/connector-status";
+import { currentUser } from "@/lib/supabase/server";
+import { logout } from "@/app/auth-actions";
+import { redirect } from "next/navigation";
 
 // Reads Postgres on every request. The data is already local, so there's
 // nothing to cache around — and a stale score is worse than a query.
@@ -20,10 +23,12 @@ export default async function Dashboard({
 }) {
   const { week: raw, connection } = await searchParams;
   const requested = Number(raw);
+  const user = await currentUser();
+  if (!user) redirect("/login");
 
   const [dashboard, connector] = await Promise.all([
-    getDashboard(Number.isInteger(requested) ? requested : undefined),
-    getPlatformConnectionStatuses(),
+    getDashboard(user.id, Number.isInteger(requested) ? requested : undefined),
+    getPlatformConnectionStatuses(user.id),
   ]);
   const { configured, cards, lastSyncedAt, leagueCount, week, weeks } = dashboard;
 
@@ -54,6 +59,11 @@ export default async function Dashboard({
           <div className="flex min-h-7 shrink-0 items-center gap-2">
             <TodayContext context={weekContext} />
             <ThemeToggle />
+            <form action={logout}>
+              <button className="mono cursor-pointer border-b border-ink-line text-[9px] tracking-[0.12em] text-bone-dim hover:text-bone" type="submit">
+                SIGN OUT
+              </button>
+            </form>
           </div>
         </div>
         <WeekPicker weeks={weeks} selected={week} />

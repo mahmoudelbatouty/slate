@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/db/client";
 import { runSync, type SyncMode } from "@/sync/run";
-import { safeEqual } from "@/lib/auth";
+import { safeEqual } from "@/lib/safe-equal";
 
 // Sync talks to live platform APIs and writes Postgres. Never cached.
 export const dynamic = "force-dynamic";

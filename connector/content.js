@@ -10,6 +10,20 @@
     if (event.source !== window || event.origin !== window.location.origin) return;
     const message = event.data;
     if (
+      message?.type === "SLATE_SLEEPER_IDENTITY" &&
+      message.source === "sleeper" &&
+      typeof message.userId === "string" &&
+      /^\d+$/.test(message.userId)
+    ) {
+      chrome.runtime.sendMessage({
+        type: "SLATE_SLEEPER_IDENTITY",
+        platform: "sleeper",
+        capturedAt: message.capturedAt,
+        userId: message.userId,
+      });
+      return;
+    }
+    if (
       !message ||
       message.type !== "SLATE_FANTASY_CAPTURE" ||
       message.source !== "sleeper" ||

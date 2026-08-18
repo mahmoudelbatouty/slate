@@ -51,30 +51,41 @@ const SPORT: Sport = "nfl";
 interface EnabledPlatform {
   adapter: PlatformAdapter;
   creds: Credentials | Error;
+  ownerId: string | null;
 }
 
-async function enabledPlatforms(db: Db): Promise<EnabledPlatform[]> {
+async function enabledPlatforms(db: Db, requestedOwnerId?: string): Promise<EnabledPlatform[]> {
   const out: EnabledPlatform[] = [];
 
+  let accountQuery = db
+    .from("platform_accounts")
+    .select("owner_id, platform, external_user_id, username, secrets");
+  if (requestedOwnerId) accountQuery = accountQuery.eq("owner_id", requestedOwnerId);
+  const { data: accounts, error: accountError } = await accountQuery;
+  if (accountError) throw new Error(`Platform account read: ${accountError.message}`);
+
+  for (const account of accounts ?? []) {
+    if (account.platform === "sleeper") {
+      const username = account.external_user_id ?? account.username;
+      if (username) out.push({
+        adapter: sleeperAdapter,
+        creds: { platform: "sleeper", username },
+        ownerId: account.owner_id,
+      });
+    }
+  }
+
+  // Preserve the legacy unowned CLI workflow, but never apply its configured
+  // username to an authenticated Slate account.
   const username = process.env.SLEEPER_USERNAME;
-  if (username) {
-    out.push({
-      adapter: sleeperAdapter,
-      creds: { platform: "sleeper", username },
-    });
+  if (!requestedOwnerId && username && !out.some((entry) => entry.adapter.platform === "sleeper" && entry.ownerId === null)) {
+    out.push({ adapter: sleeperAdapter, creds: { platform: "sleeper", username }, ownerId: null });
   }
 
   if (yahooOAuthConfigured()) {
-    const { data, error } = await db
-      .from("platform_accounts")
-      .select("secrets")
-      .eq("platform", "yahoo")
-      .maybeSingle();
-    if (error) {
-      out.push({ adapter: yahooAdapter, creds: new Error(`Yahoo account read: ${error.message}`) });
-    } else if (data) {
-      const secrets = data.secrets && typeof data.secrets === "object" && !Array.isArray(data.secrets)
-        ? data.secrets as Record<string, unknown>
+    for (const account of (accounts ?? []).filter((row) => row.platform === "yahoo")) {
+      const secrets = account.secrets && typeof account.secrets === "object" && !Array.isArray(account.secrets)
+        ? account.secrets as Record<string, unknown>
         : {};
       const sealed = typeof secrets.refresh_token_enc === "string"
         ? secrets.refresh_token_enc
@@ -84,11 +95,13 @@ async function enabledPlatforms(db: Db): Promise<EnabledPlatform[]> {
         out.push({
           adapter: yahooAdapter,
           creds: { platform: "yahoo", refreshToken: decryptYahooRefreshToken(sealed) },
+          ownerId: account.owner_id,
         });
       } catch (cause) {
         out.push({
           adapter: yahooAdapter,
           creds: cause instanceof Error ? cause : new Error("Yahoo credentials could not be decrypted."),
+          ownerId: account.owner_id,
         });
       }
     }
@@ -101,17 +114,18 @@ export async function runSync(
   db: Db,
   mode: SyncMode,
   season: number,
-  platforms?: Platform[]
+  platforms?: Platform[],
+  ownerId?: string
 ): Promise<SyncResult[]> {
   const results: SyncResult[] = [];
 
-  for (const { adapter, creds } of (await enabledPlatforms(db)).filter(
+  for (const { adapter, creds, ownerId: connectionOwnerId } of (await enabledPlatforms(db, ownerId)).filter(
     ({ adapter }) => !platforms || platforms.includes(adapter.platform)
   )) {
     if (mode === "players" && !adapter.getPlayerDirectory) continue;
     const { data: run } = await db
       .from("sync_runs")
-      .insert({ platform: adapter.platform, status: "running" })
+      .insert({ platform: adapter.platform, owner_id: connectionOwnerId, status: "running" })
       .select("id")
       .single();
 
@@ -136,14 +150,15 @@ export async function runSync(
             },
             expires_at: new Date(Date.now() + 60 * 60 * 1_000).toISOString(),
           })
-          .eq("platform", "yahoo");
+          .eq("platform", "yahoo")
+          .eq("owner_id", connectionOwnerId ?? "00000000-0000-0000-0000-000000000000");
         if (error) throw new Error(`Yahoo refresh token rotation save: ${error.message}`);
       }
       if (mode === "players") {
         Object.assign(stats, await syncPlayers(db, adapter));
       } else if (mode === "account") {
-        Object.assign(stats, await syncDaily(db, adapter, activeCreds, season, false));
-        const current = await syncScores(db, adapter, activeCreds, season, "missing");
+        Object.assign(stats, await syncDaily(db, adapter, activeCreds, season, connectionOwnerId, false));
+        const current = await syncScores(db, adapter, activeCreds, season, "missing", connectionOwnerId);
         Object.assign(stats, {
           account_refresh: 1,
           matchup_leagues: current.leagues,
@@ -153,8 +168,8 @@ export async function runSync(
           game_state_errors: current.game_state_errors,
         });
       } else if (mode === "daily") {
-        Object.assign(stats, await syncDaily(db, adapter, activeCreds, season));
-        const schedule = await syncScores(db, adapter, activeCreds, season, "backfill");
+        Object.assign(stats, await syncDaily(db, adapter, activeCreds, season, connectionOwnerId));
+        const schedule = await syncScores(db, adapter, activeCreds, season, "backfill", connectionOwnerId);
         Object.assign(stats, {
           matchup_leagues: schedule.leagues,
           matchups: schedule.matchups,
@@ -163,7 +178,7 @@ export async function runSync(
           game_state_errors: schedule.game_state_errors,
         });
       } else {
-        Object.assign(stats, await syncScores(db, adapter, activeCreds, season, mode));
+        Object.assign(stats, await syncScores(db, adapter, activeCreds, season, mode, connectionOwnerId));
       }
 
       results.push({ platform: adapter.platform, mode, status: "ok", stats });
@@ -182,7 +197,8 @@ export async function runSync(
       await db
         .from("platform_accounts")
         .update({ last_ok_at: new Date().toISOString() })
-        .eq("platform", adapter.platform);
+        .eq("platform", adapter.platform)
+        .eq("owner_id", connectionOwnerId ?? "00000000-0000-0000-0000-000000000000");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       results.push({
@@ -328,6 +344,7 @@ async function syncDaily(
   adapter: PlatformAdapter,
   creds: Credentials,
   season: number,
+  ownerId: string | null,
   includeTransactions = true
 ): Promise<Record<string, number>> {
   const leagues = await adapter.listLeagues(creds, SPORT, season);
@@ -339,7 +356,7 @@ async function syncDaily(
   let transactionCount = 0;
 
   for (const league of leagues) {
-    const leagueId = await upsertLeague(db, adapter.platform, league);
+    const leagueId = await upsertLeague(db, adapter.platform, league, ownerId);
 
     const teams = await adapter.getTeams(creds, league.externalId, season);
     const teamIds = await upsertTeams(db, leagueId, teams);
@@ -477,13 +494,16 @@ async function syncScores(
   adapter: PlatformAdapter,
   creds: Credentials,
   season: number,
-  mode: "live" | "backfill" | "missing"
+  mode: "live" | "backfill" | "missing",
+  ownerId: string | null
 ): Promise<Record<string, number>> {
-  const { data: leagues, error } = await db
+  let leagueQuery = db
     .from("leagues")
     .select("id, external_id, current_week, scoring_raw, status")
     .eq("platform", adapter.platform)
     .eq("season", season);
+  leagueQuery = ownerId ? leagueQuery.eq("owner_id", ownerId) : leagueQuery.is("owner_id", null);
+  const { data: leagues, error } = await leagueQuery;
 
   if (error) throw new Error(`leagues read: ${error.message}`);
   if (!leagues?.length) {
@@ -519,7 +539,7 @@ async function syncScores(
     })
   ));
   const requestedWeeks = [...new Set([...weeksByLeague.values()].flat())];
-  const gameState = await syncGameStates(db, adapter, season, requestedWeeks);
+  const gameState = await syncGameStates(db, adapter, season, requestedWeeks, ownerId);
   const crosswalk = await loadCrosswalk(db, adapter.platform);
 
   let matchupCount = 0;
@@ -616,7 +636,8 @@ async function syncGameStates(
   db: Db,
   adapter: PlatformAdapter,
   season: number,
-  weeks: number[]
+  weeks: number[],
+  ownerId: string | null
 ): Promise<{ gameCount: number; errorCount: number; finalWeeks: Set<number> }> {
   const finalWeeks = new Set<number>();
   let gameCount = 0;
@@ -656,6 +677,7 @@ async function syncGameStates(
       errorCount++;
       const message = err instanceof Error ? err.message : String(err);
       await db.from("sync_runs").insert({
+        owner_id: ownerId,
         platform: adapter.platform,
         status: "error",
         finished_at: new Date().toISOString(),
@@ -673,12 +695,14 @@ async function syncGameStates(
 async function upsertLeague(
   db: Db,
   platform: Platform,
-  league: CanonicalLeague
+  league: CanonicalLeague,
+  ownerId: string | null
 ): Promise<string> {
   const { data, error } = await db
     .from("leagues")
     .upsert(
       {
+        owner_id: ownerId,
         platform,
         external_id: league.externalId,
         sport: league.sport,
@@ -693,7 +717,7 @@ async function upsertLeague(
         current_week: league.currentWeek,
         status: league.status,
       },
-      { onConflict: "platform,external_id,season" }
+      { onConflict: "owner_id,platform,external_id,season" }
     )
     .select("id")
     .single();

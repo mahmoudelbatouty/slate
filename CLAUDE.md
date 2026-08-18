@@ -1,5 +1,11 @@
 # Slate
 
+## Authentication and ownership
+
+Use Supabase Auth; never restore the shared `APP_PASSWORD` gate. Scope every
+user-facing top-level query by verified `owner_id`. Signing out hides data and
+must never delete it. Provider passwords and cookies never enter Slate.
+
 One dashboard for fantasy leagues spread across Sleeper, ESPN, and Yahoo.
 
 **Single user for the current prototype.** This runs for the repo owner today.
@@ -157,7 +163,8 @@ CRON_SECRET=
 APP_PASSWORD=
 ```
 
-- **Sleeper**: username only. Nothing to expire.
+- **Sleeper**: the connector discovers the signed-in account's public numeric
+  user ID. No username entry is required and no credential is stored.
 - **Yahoo**: one-time OAuth consent at `/admin/connections`. Store the refresh
   token; mint access tokens on demand (1hr life). Refresh tokens are long-lived
   but not eternal — surface a reconnect banner when `last_ok_at` goes stale.
@@ -173,8 +180,10 @@ APP_PASSWORD=
 For private data that a provider does not expose through a supported API,
 prefer the local browser connector over collecting passwords or copying
 cookies. The user signs into the provider directly. The extension may observe
-only explicitly allowlisted fantasy response bodies and must never read
-password fields, cookies, local storage, request headers, or platform tokens.
+only explicitly allowlisted fantasy response bodies. Sleeper account discovery
+may read only the exact non-secret numeric `user_id` local-storage key; all
+other local storage, password fields, cookies, request headers, and platform
+tokens are forbidden.
 
 The extension authenticates to Slate with a random ingest-only token. Store
 only its SHA-256 hash, make it revocable, validate and sanitize every payload at
@@ -252,7 +261,18 @@ Ship each milestone working before starting the next.
   suppress meaningless numbered ranks while every team is still 0-0.
 - **M6 — ESPN connection.** Add the password-free ESPN browser connector and
   normalize its approved reads into the same canonical sync path. ESPN sign-in
-  happens on ESPN; Slate must never accept or persist the user's password.
+  happens on ESPN; Slate must never accept or persist the user's password. The
+  connector supports independent Sleeper/ESPN pairings, ESPN-hosted sign-in, a
+  strict league-response allowlist, canonical snapshot ingestion, and automatic
+  discovery of up to ten leagues from ESPN's visible numeric league links.
+  Connector 0.6.1 adds automatic signed-in Sleeper account discovery/import;
+  its ESPN path uses Chromium alarms for five-minute background refresh and
+  one-minute live refresh without requiring an ESPN tab; the browser must remain
+  open. Firefox is out of scope and Safari is optional later. Do not mark M6
+  complete until background refresh has been verified against a real signed-in
+  account.
+  Pairing stores a one-time originating Slate tab target and returns focus there
+  only after ingest succeeds; provider login by itself must never show success.
 - **Final provider milestone — Yahoo.** Apply through Yahoo's reviewed Fantasy
   access process, verify real-account read fixtures, then add official lineup
   edits with confirmation and read-back. Yahoo is not a blocker for M5 or other

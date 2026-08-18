@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildWeekOptions, resolveWeek } from "./weeks";
+import { buildWeekOptions, currentLeagueWeek, resolveWeek } from "./weeks";
 
 describe("buildWeekOptions", () => {
   it("shows the full default season during preseason", () => {
@@ -40,6 +40,17 @@ describe("buildWeekOptions", () => {
     expect(weeks.filter((week) => week.isCurrent).map((week) => week.week)).toEqual([6]);
   });
 
+  it("ignores provider week counters for leagues that are not in season", () => {
+    const leagues = [
+      { currentWeek: 2, status: "pre_draft" },
+      { currentWeek: 18, status: "complete" },
+      { currentWeek: null, status: "in_season" },
+    ];
+
+    expect(currentLeagueWeek(leagues)).toBeNull();
+    expect(buildWeekOptions(leagues, []).some((week) => week.isCurrent)).toBe(false);
+  });
+
   it("incorporates provider playoff metadata", () => {
     const weeks = buildWeekOptions(
       [{
@@ -69,8 +80,8 @@ describe("resolveWeek", () => {
     expect(resolveWeek(Number.NaN, available, 8)).toBe(8);
   });
 
-  it("stays in preseason by default but permits a valid requested week", () => {
-    expect(resolveWeek(undefined, available, null)).toBeNull();
+  it("defaults to Week 1 before scoring begins but permits a valid requested week", () => {
+    expect(resolveWeek(undefined, available, null)).toBe(1);
     expect(resolveWeek(4, available, null)).toBe(4);
   });
 });

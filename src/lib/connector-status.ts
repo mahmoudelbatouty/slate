@@ -4,7 +4,7 @@ import { db, dbConfigured } from "@/db/client";
 
 export interface ConnectorStatus {
   configured: boolean;
-  platform: "sleeper";
+  platform: "sleeper" | "espn";
   paired: boolean;
   state: "unconfigured" | "disconnected" | "waiting_for_data" | "connected";
   installationId: string | null;
@@ -15,11 +15,14 @@ export interface ConnectorStatus {
 export interface PlatformConnectionStatuses {
   sleeper: ConnectorStatus;
   yahoo: { configured: boolean; connected: boolean; lastOkAt: string | null };
-  espn: { configured: false; connected: false };
+  espn: ConnectorStatus;
 }
 
-export async function getPlatformConnectionStatuses(): Promise<PlatformConnectionStatuses> {
-  const sleeper = await getConnectorStatus();
+export async function getPlatformConnectionStatuses(ownerId: string): Promise<PlatformConnectionStatuses> {
+  const [sleeper, espn] = await Promise.all([
+    getConnectorStatus(ownerId, "sleeper"),
+    getConnectorStatus(ownerId, "espn"),
+  ]);
   const yahooConfigured = Boolean(
     process.env.YAHOO_CLIENT_ID
       && process.env.YAHOO_CLIENT_SECRET
@@ -31,6 +34,7 @@ export async function getPlatformConnectionStatuses(): Promise<PlatformConnectio
     const { data, error } = await db()
       .from("platform_accounts")
       .select("last_ok_at")
+      .eq("owner_id", ownerId)
       .eq("platform", "yahoo")
       .maybeSingle();
     if (error) throw new Error(`Yahoo connection status: ${error.message}`);
@@ -43,15 +47,15 @@ export async function getPlatformConnectionStatuses(): Promise<PlatformConnectio
       connected: yahooConfigured && Boolean(yahooAccount?.last_ok_at),
       lastOkAt: yahooAccount?.last_ok_at ?? null,
     },
-    espn: { configured: false, connected: false },
+    espn,
   };
 }
 
-export async function getConnectorStatus(): Promise<ConnectorStatus> {
+export async function getConnectorStatus(ownerId: string, platform: "sleeper" | "espn" = "sleeper"): Promise<ConnectorStatus> {
   if (!dbConfigured()) {
     return {
       configured: false,
-      platform: "sleeper",
+      platform,
       paired: false,
       state: "unconfigured",
       installationId: null,
@@ -64,7 +68,8 @@ export async function getConnectorStatus(): Promise<ConnectorStatus> {
   const { data: installation, error } = await client
     .from("connector_installations")
     .select("id, last_seen_at")
-    .eq("platform", "sleeper")
+    .eq("owner_id", ownerId)
+    .eq("platform", platform)
     .is("revoked_at", null)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -73,7 +78,7 @@ export async function getConnectorStatus(): Promise<ConnectorStatus> {
   if (!installation) {
     return {
       configured: true,
-      platform: "sleeper",
+      platform,
       paired: false,
       state: "disconnected",
       installationId: null,
@@ -82,22 +87,30 @@ export async function getConnectorStatus(): Promise<ConnectorStatus> {
     };
   }
 
-  const { data: capture, error: captureError } = await client
-    .from("connector_captures")
-    .select("captured_at")
-    .eq("installation_id", installation.id)
-    .order("captured_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: capture, error: captureError }, { data: account, error: accountError }] = await Promise.all([
+    client.from("connector_captures")
+      .select("captured_at")
+      .eq("installation_id", installation.id)
+      .order("captured_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    client.from("platform_accounts")
+      .select("last_ok_at")
+      .eq("owner_id", ownerId)
+      .eq("platform", platform)
+      .maybeSingle(),
+  ]);
   if (captureError) throw new Error(`connector capture status: ${captureError.message}`);
+  if (accountError) throw new Error(`connector account status: ${accountError.message}`);
+  const connectedAt = capture?.captured_at ?? account?.last_ok_at ?? null;
 
   return {
     configured: true,
-    platform: "sleeper",
-    paired: Boolean(capture),
-    state: capture ? "connected" : "waiting_for_data",
+    platform,
+    paired: Boolean(connectedAt),
+    state: connectedAt ? "connected" : "waiting_for_data",
     installationId: installation.id,
     lastSeenAt: installation.last_seen_at,
-    lastCaptureAt: capture?.captured_at ?? null,
+    lastCaptureAt: connectedAt,
   };
 }

@@ -6,6 +6,36 @@
 
   const GRAPHQL_URL = "https://sleeper.com/graphql";
   const MESSAGE_TYPE = "SLATE_FANTASY_CAPTURE";
+  const IDENTITY_MESSAGE_TYPE = "SLATE_SLEEPER_IDENTITY";
+  let lastPublishedUserId = null;
+
+  function publishIdentity() {
+    let value = null;
+    try {
+      // This is Sleeper's non-secret numeric account ID. Do not read any
+      // token, email, password field, cookie, or other storage key.
+      value = window.localStorage.getItem("user_id");
+    } catch {
+      return;
+    }
+    const userId = typeof value === "string" ? value.replace(/^"|"$/g, "") : "";
+    if (!/^\d+$/.test(userId) || userId === lastPublishedUserId) return;
+    lastPublishedUserId = userId;
+    window.postMessage({
+      type: IDENTITY_MESSAGE_TYPE,
+      source: "sleeper",
+      capturedAt: new Date().toISOString(),
+      userId,
+    }, window.location.origin);
+  }
+
+  publishIdentity();
+  window.addEventListener("focus", publishIdentity);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") publishIdentity();
+  });
+  const identityPoll = window.setInterval(publishIdentity, 1_000);
+  window.setTimeout(() => window.clearInterval(identityPoll), 120_000);
 
   function isApprovedRequest(url, method, body) {
     if (url !== GRAPHQL_URL || method.toUpperCase() !== "POST") return false;

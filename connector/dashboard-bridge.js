@@ -13,7 +13,7 @@
       typeof message.requestId !== "string" ||
       typeof message.challengeId !== "string" ||
       typeof message.claimSecret !== "string" ||
-      message.platform !== "sleeper" ||
+      !["sleeper", "espn"].includes(message.platform) ||
       message.dashboardOrigin !== window.location.origin
     ) {
       return;

@@ -9,6 +9,7 @@ export interface WeekOption {
 export interface LeagueWeekMetadata {
   currentWeek: number | null;
   scoringRaw?: unknown;
+  status?: "pre_draft" | "in_season" | "complete" | string | null;
 }
 
 export const DEFAULT_FANTASY_WEEKS = 18;
@@ -25,7 +26,7 @@ export function buildWeekOptions(
   leagues: LeagueWeekMetadata[],
   dataWeeks: number[]
 ): WeekOption[] {
-  const currentWeek = maxValidWeek(leagues.map((league) => league.currentWeek));
+  const currentWeek = currentLeagueWeek(leagues);
   const syncedWeeks = new Set(dataWeeks.filter(isValidWeek));
   const explicitEnds = leagues
     .map((league) => explicitSeasonEndFromRaw(league.scoringRaw))
@@ -49,6 +50,17 @@ export function buildWeekOptions(
   });
 }
 
+/** Only an actively scoring league can nominate the dashboard's current week. */
+export function currentLeagueWeek(leagues: LeagueWeekMetadata[]): number | null {
+  return maxValidWeek(
+    leagues.map((league) =>
+      league.status === undefined || league.status === "in_season"
+        ? league.currentWeek
+        : null
+    )
+  );
+}
+
 /** Provider-defined final matchup week, with the normal NFL season fallback. */
 export function seasonEndWeek(scoringRaw: unknown): number {
   return explicitSeasonEndFromRaw(scoringRaw) ?? DEFAULT_FANTASY_WEEKS;
@@ -56,8 +68,8 @@ export function seasonEndWeek(scoringRaw: unknown): number {
 
 /**
  * Clamp a user-editable/shareable URL week to the season rail.
- * In preseason there is no default selected week, but any valid requested
- * season week remains selectable so its unsynced state can be explained.
+ * If no provider has begun fantasy scoring yet, default to Week 1 rather than
+ * exposing a separate preseason view.
  */
 export function resolveWeek(
   requested: number | undefined,
@@ -65,7 +77,7 @@ export function resolveWeek(
   currentWeek: number | null
 ): number | null {
   if (requested !== undefined && available.includes(requested)) return requested;
-  return currentWeek;
+  return currentWeek ?? available[0] ?? null;
 }
 
 function explicitSeasonEndFromRaw(raw: unknown): number | null {

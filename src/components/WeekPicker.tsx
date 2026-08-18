@@ -16,8 +16,6 @@ export function WeekPicker({
   weeks: WeekOption[];
   selected: number | null;
 }) {
-  const preseason = !weeks.some((option) => option.isCurrent);
-
   return (
     <div className="-mx-[18px] mt-3 border-t border-ink-line/70 pt-2">
       <div className="mb-1 flex items-center justify-between px-[18px]">
@@ -28,14 +26,6 @@ export function WeekPicker({
         aria-label="Fantasy week"
         className="week-rail flex gap-1 overflow-x-auto px-[18px] pb-1"
       >
-        {preseason && (
-          <WeekLink
-            href="/"
-            label="PRE"
-            state="PRESEASON"
-            selected={selected === null}
-          />
-        )}
         {weeks.map((option) => {
           const isSelected = option.week === selected;
           const syncState = option.hasData ? "SYNCED" : "UNSYNCED";
@@ -83,7 +73,7 @@ function WeekLink({
       scroll={false}
       prefetch={false}
       aria-current={selected ? "page" : undefined}
-      aria-label={`${label === "PRE" ? "Preseason" : `Week ${label.slice(1)}`}, ${state.toLowerCase()}${selected ? ", selected" : ""}`}
+      aria-label={`Week ${label.slice(1)}, ${state.toLowerCase()}${selected ? ", selected" : ""}`}
       className={`mono flex min-w-[58px] shrink-0 flex-col tabular-nums ${shape} ${tone}`}
     >
       <span className="text-2xs leading-none">{label}</span>

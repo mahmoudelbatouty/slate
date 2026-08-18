@@ -64,6 +64,7 @@ export type Database = {
           id: string
           label: string
           last_seen_at: string | null
+          owner_id: string | null
           platform: Database["public"]["Enums"]["platform"]
           revoked_at: string | null
           token_hash: string
@@ -73,6 +74,7 @@ export type Database = {
           id?: string
           label?: string
           last_seen_at?: string | null
+          owner_id?: string | null
           platform?: Database["public"]["Enums"]["platform"]
           revoked_at?: string | null
           token_hash: string
@@ -82,6 +84,7 @@ export type Database = {
           id?: string
           label?: string
           last_seen_at?: string | null
+          owner_id?: string | null
           platform?: Database["public"]["Enums"]["platform"]
           revoked_at?: string | null
           token_hash?: string
@@ -97,6 +100,7 @@ export type Database = {
           expires_at: string
           id: string
           installation_id: string | null
+          owner_id: string | null
           platform: Database["public"]["Enums"]["platform"]
           session_hash: string
         }
@@ -108,6 +112,7 @@ export type Database = {
           expires_at: string
           id?: string
           installation_id?: string | null
+          owner_id?: string | null
           platform: Database["public"]["Enums"]["platform"]
           session_hash: string
         }
@@ -119,6 +124,7 @@ export type Database = {
           expires_at?: string
           id?: string
           installation_id?: string | null
+          owner_id?: string | null
           platform?: Database["public"]["Enums"]["platform"]
           session_hash?: string
         }
@@ -140,6 +146,7 @@ export type Database = {
           id: string
           league_type: string
           name: string
+          owner_id: string | null
           platform: Database["public"]["Enums"]["platform"]
           roster_slots: Json | null
           scoring_raw: Json | null
@@ -157,6 +164,7 @@ export type Database = {
           id?: string
           league_type?: string
           name: string
+          owner_id?: string | null
           platform: Database["public"]["Enums"]["platform"]
           roster_slots?: Json | null
           scoring_raw?: Json | null
@@ -174,6 +182,7 @@ export type Database = {
           id?: string
           league_type?: string
           name?: string
+          owner_id?: string | null
           platform?: Database["public"]["Enums"]["platform"]
           roster_slots?: Json | null
           scoring_raw?: Json | null
@@ -402,6 +411,7 @@ export type Database = {
           external_team_id: string
           id: string
           installation_id: string
+          owner_id: string | null
           platform: Database["public"]["Enums"]["platform"]
           projected_points: number
           week: number
@@ -412,6 +422,7 @@ export type Database = {
           external_team_id: string
           id?: string
           installation_id: string
+          owner_id?: string | null
           platform: Database["public"]["Enums"]["platform"]
           projected_points: number
           week: number
@@ -422,6 +433,7 @@ export type Database = {
           external_team_id?: string
           id?: string
           installation_id?: string
+          owner_id?: string | null
           platform?: Database["public"]["Enums"]["platform"]
           projected_points?: number
           week?: number
@@ -494,6 +506,7 @@ export type Database = {
           external_user_id: string | null
           id: string
           last_ok_at: string | null
+          owner_id: string | null
           platform: Database["public"]["Enums"]["platform"]
           secrets: Json
           username: string | null
@@ -504,6 +517,7 @@ export type Database = {
           external_user_id?: string | null
           id?: string
           last_ok_at?: string | null
+          owner_id?: string | null
           platform: Database["public"]["Enums"]["platform"]
           secrets?: Json
           username?: string | null
@@ -514,6 +528,7 @@ export type Database = {
           external_user_id?: string | null
           id?: string
           last_ok_at?: string | null
+          owner_id?: string | null
           platform?: Database["public"]["Enums"]["platform"]
           secrets?: Json
           username?: string | null
@@ -658,6 +673,7 @@ export type Database = {
           finished_at: string | null
           id: string
           league_id: string | null
+          owner_id: string | null
           platform: Database["public"]["Enums"]["platform"]
           started_at: string
           stats: Json | null
@@ -668,6 +684,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           league_id?: string | null
+          owner_id?: string | null
           platform: Database["public"]["Enums"]["platform"]
           started_at?: string
           stats?: Json | null
@@ -678,6 +695,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           league_id?: string | null
+          owner_id?: string | null
           platform?: Database["public"]["Enums"]["platform"]
           started_at?: string
           stats?: Json | null

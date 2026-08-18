@@ -1,5 +1,12 @@
 # Slate
 
+## User accounts and data isolation
+
+Slate now uses Supabase Auth rather than a shared application password. Signed-out
+visitors are redirected to `/login` and receive no fantasy data. Connector
+pairings and league data are scoped to the authenticated user; signing out hides
+cached data without deleting it. Provider passwords are never received or stored.
+
 One screen for fantasy leagues spread across Sleeper, ESPN, and Yahoo.
 Single-user prototype, with verified provider actions where supported. Named
 for the set of games in a window.
@@ -23,6 +30,10 @@ where it supplies equivalent data.
 Sleeper now uses one-click automatic pairing with the installed connector. A
 five-minute, single-use challenge is exchanged in the background; no connector
 token is rendered or copied. Provider login remains on the provider's own page.
+Connector 0.6.1 reads only the signed-in account's public numeric Sleeper user
+ID, imports all leagues and published weeks automatically, and returns to Slate
+only after the account-scoped import succeeds. It never reads Sleeper's token,
+email, password, or cookies.
 
 Yahoo uses its official OAuth Authorization Code flow with S256 PKCE. Slate
 stores only an AES-256-GCM encrypted refresh token, mints access tokens in
@@ -156,8 +167,16 @@ simultaneous users.
 6. **M5** inline whole-league scoreboard and standings — implemented. Every
    weekly matchup is paired once, the user's game stays first, any game expands
    to its synced lineup, and standings use provider rank/record data.
-7. **M6:** ESPN password-free browser connection and canonical read sync. The
-   user signs in on ESPN; Slate never accepts or stores the ESPN password.
+7. **M6 (in progress):** ESPN password-free browser connection and canonical
+   read sync. Pairing, ESPN-hosted sign-in, strict response capture, and
+   canonical league/team/standings/roster/matchup ingestion are implemented.
+   Connector 0.6.1 automatically discovers up to ten leagues from ESPN's own
+   visible league links after sign-in and refreshes them in the Chromium
+   background every five minutes, or every minute during live games. Chromium
+   must remain open; no ESPN tab is required. Real-account background-refresh
+   verification remains. Slate never accepts or stores the ESPN password.
+   Sleeper and ESPN pairing return the user to the originating Slate tab only
+   after the first sanitized provider capture has been stored successfully.
 8. **Final provider milestone:** complete Yahoo's reviewed OAuth/Fantasy access,
    verify real read fixtures, then add confirmed Yahoo lineup submission
 

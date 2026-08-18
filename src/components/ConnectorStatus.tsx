@@ -10,7 +10,7 @@ import type {
 interface PairingChallenge {
   challengeId: string;
   claimSecret: string;
-  platform: "sleeper";
+  platform: "sleeper" | "espn";
   dashboardOrigin: string;
   expiresAt: string;
 }
@@ -31,7 +31,15 @@ export function ConnectorStatus({
 }) {
   const [pairing, setPairing] = useState(false);
   const [current, setCurrent] = useState(statuses.sleeper);
+  const [espnCurrent, setEspnCurrent] = useState(statuses.espn);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!notice?.endsWith("-connected")) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("connection");
+    window.history.replaceState(window.history.state, "", url);
+  }, [notice]);
 
   useEffect(() => {
     if (current.state !== "waiting_for_data") return;
@@ -45,22 +53,37 @@ export function ConnectorStatus({
     return () => window.clearInterval(interval);
   }, [current.state]);
 
-  async function pair() {
+  useEffect(() => {
+    if (espnCurrent.state !== "waiting_for_data") return;
+    const interval = window.setInterval(async () => {
+      const next = await fetchConnectorStatus("espn");
+      if (!next) return;
+      setEspnCurrent(next);
+      if (next.state === "connected") window.clearInterval(interval);
+    }, 3_000);
+    return () => window.clearInterval(interval);
+  }, [espnCurrent.state]);
+
+  async function pair(platform: "sleeper" | "espn") {
     setPairing(true);
     setError(null);
     try {
       const response = await fetch("/api/connector/pair", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ platform: "sleeper" }),
+        body: JSON.stringify({ platform }),
       });
       const body = (await response.json()) as PairingChallenge & { error?: string };
       if (!response.ok || !body.challengeId || !body.claimSecret) {
         throw new Error(body.error ?? "Pairing failed");
       }
       await claimWithExtension(body);
-      setCurrent((value) => ({ ...value, state: "waiting_for_data", paired: false }));
-      await refreshStatus();
+      if (platform === "sleeper") {
+        setCurrent((value) => ({ ...value, state: "waiting_for_data", paired: false }));
+      } else {
+        setEspnCurrent((value) => ({ ...value, state: "waiting_for_data", paired: false }));
+      }
+      await refreshStatus(platform);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Pairing failed");
     } finally {
@@ -68,10 +91,11 @@ export function ConnectorStatus({
     }
   }
 
-  async function refreshStatus() {
-    const response = await fetch("/api/connector/status", { cache: "no-store" });
-    if (!response.ok) return;
-    setCurrent((await response.json()) as Status);
+  async function refreshStatus(platform: "sleeper" | "espn") {
+    const next = await fetchConnectorStatus(platform);
+    if (!next) return;
+    if (platform === "sleeper") setCurrent(next);
+    else setEspnCurrent(next);
   }
 
   const sleeperState = current.state === "connected"
@@ -85,26 +109,16 @@ export function ConnectorStatus({
     <section className="relative w-[142px] border border-ink-line bg-ink-raised" aria-label="Platform login">
       <p className="mono border-b border-ink-line px-2 py-1.5 text-center text-[9px] tracking-[0.16em] text-bone">LOGIN</p>
       <div className="grid grid-cols-3 divide-x divide-ink-line">
-        {!current.installationId ? (
-          <button
-            className="inline-flex h-10 items-center justify-center opacity-70 transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait"
-            type="button"
-            disabled={pairing}
-            onClick={pair}
-            aria-label={`Sleeper ${sleeperState}. ${pairing ? "Connecting" : "Connect Sleeper"}.`}
-            title={pairing ? "Connecting Sleeper" : "Connect Sleeper"}
-          >
-            <PlatformMark platform="sleeper" variant="login" />
-          </button>
-        ) : (
-          <span
-            className="inline-flex h-10 items-center justify-center bg-ink/25"
-            aria-label={`Sleeper ${sleeperState}`}
-            title={`Sleeper ${sleeperState}`}
-          >
-            <PlatformMark platform="sleeper" variant="login" />
-          </span>
-        )}
+        <button
+          className={`inline-flex h-10 items-center justify-center transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait ${current.installationId ? "bg-ink/25 opacity-90" : "opacity-70"}`}
+          type="button"
+          disabled={pairing}
+          onClick={() => pair("sleeper")}
+          aria-label={`Sleeper ${sleeperState}. ${pairing ? "Connecting" : current.installationId ? "Reconnect Sleeper" : "Connect Sleeper"}.`}
+          title={pairing ? "Connecting Sleeper" : current.installationId ? "Reconnect Sleeper" : "Connect Sleeper"}
+        >
+          <PlatformMark platform="sleeper" variant="login" />
+        </button>
 
         <ProviderLogo
           platform="yahoo"
@@ -117,7 +131,16 @@ export function ConnectorStatus({
             ? "/api/auth/yahoo/start"
             : undefined}
         />
-        <ProviderLogo platform="espn" state="coming next" />
+        <button
+          className={`inline-flex h-10 items-center justify-center transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait ${espnCurrent.installationId ? "bg-ink/25 opacity-90" : "opacity-70"}`}
+          type="button"
+          disabled={pairing}
+          onClick={() => pair("espn")}
+          aria-label={`ESPN ${espnCurrent.state}. ${pairing ? "Connecting" : espnCurrent.installationId ? "Reconnect ESPN" : "Connect ESPN"}.`}
+          title={pairing ? "Connecting ESPN" : espnCurrent.installationId ? "Reconnect ESPN" : "Connect ESPN"}
+        >
+          <PlatformMark platform="espn" variant="login" />
+        </button>
       </div>
 
       {message ? (
@@ -130,6 +153,11 @@ export function ConnectorStatus({
       ) : null}
     </section>
   );
+}
+
+async function fetchConnectorStatus(platform: "sleeper" | "espn"): Promise<Status | null> {
+  const response = await fetch(`/api/connector/status?platform=${platform}`, { cache: "no-store" });
+  return response.ok ? await response.json() as Status : null;
 }
 
 function ProviderLogo({
@@ -158,6 +186,8 @@ function ProviderLogo({
 
 function connectionNotice(notice: string | undefined): string | null {
   switch (notice) {
+    case "sleeper-connected": return "Sleeper connected and synced just now.";
+    case "espn-connected": return "ESPN connected and synced just now.";
     case "yahoo-connected": return "Yahoo connected. Your leagues are synced.";
     case "yahoo-sync-pending": return "Yahoo connected. League sync will retry automatically.";
     case "yahoo-cancelled": return "Yahoo connection was cancelled.";

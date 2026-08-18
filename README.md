@@ -108,7 +108,7 @@ role key is set.
 npm test
 ```
 
-109 tests, all against local fixtures and synthetic connector payloads. No test hits a live API. Re-record
+112 tests, all against local fixtures and synthetic connector payloads. No test hits a live API. Re-record
 with `npm run fixtures` only when you deliberately want to refresh against a
 schema change.
 
@@ -116,17 +116,18 @@ schema change.
 
 `vercel.json` keeps the two maintenance jobs (`players` and `daily`) at a
 once-per-day cadence supported by Vercel Hobby. Live scoring does not depend on
-paid cron: while an authenticated dashboard is visible, it checks every 30
-seconds and pulls each connected read adapter at most once per minute only from
-15 minutes before a scheduled NFL kickoff until the game is final. Provider
-cooldowns are independent. Hidden tabs and off-window games
-fall back to a five-minute, database-only check. A successful pull refreshes
-the Server Component automatically, so current scores update without a reload.
+paid cron: while an authenticated dashboard is visible, it refreshes league,
+team, roster, and current-matchup data at most once every five minutes. During
+an active NFL game window it checks every 30 seconds and pulls live scores at
+most once per minute. Provider cooldowns are independent. Hidden tabs do not
+poll. A successful pull refreshes the Server Component automatically, so
+account changes and current scores appear without a manual reload.
 
 This demand-driven path is intended to remain $0 for the single-user prototype.
-It uses ordinary Vercel Function and Supabase database quotas; revisit the
-cadence and hosting plan before opening the dashboard to many simultaneous
-users.
+It skips the expensive 18-week transaction sweep during five-minute account
+refreshes and uses ordinary Vercel Function and Supabase database quotas;
+revisit the cadence and hosting plan before opening the dashboard to many
+simultaneous users.
 
 ## Order of operations
 
@@ -149,6 +150,12 @@ Don't start a milestone until the previous one works against real data.
 
 ## Costs
 
-$0. Supabase free tier, Vercel Hobby, Sleeper free, Yahoo free, ESPN unofficial.
-The only thing to watch is Vercel Cron frequency on Hobby — if 5-minute live
-sync is too aggressive for the plan, run it from a GitHub Action instead.
+Expected cost for the single-user prototype is $0, provided it stays within the
+free-plan quotas. As checked on 2026-08-17, Vercel Hobby includes one million
+function invocations, four active CPU hours, and 360 GB-hours of provisioned
+memory per month. Supabase Free includes unlimited API requests, a 500 MB
+database, and 5 GB each of egress and cached egress. The browser-driven account
+sync runs only while the dashboard is visible and is capped at once per five
+minutes per provider; live scoring is capped at once per minute during active
+NFL games. Revisit these assumptions before adding many users or substantially
+more leagues.

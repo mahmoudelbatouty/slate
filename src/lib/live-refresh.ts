@@ -1,6 +1,7 @@
 export const LIVE_SYNC_MIN_GAP_MS = 60_000;
 export const LIVE_POLL_MS = 30_000;
 export const IDLE_POLL_MS = 5 * 60_000;
+export const ACCOUNT_SYNC_MIN_GAP_MS = IDLE_POLL_MS;
 
 const LIVE_LEAD_MS = 15 * 60_000;
 const MAX_GAME_WINDOW_MS = 6 * 60 * 60_000;
@@ -70,6 +71,38 @@ export function platformsNeedingScoreSync(
 ): string[] {
   return platforms.filter((platform) =>
     !hasRecentScoreSync(
+      runs.filter((run) => run.platform === platform),
+      now,
+      minimumGapMs
+    )
+  );
+}
+
+export function isAccountRun(run: SyncRun): boolean {
+  if (run.status !== "ok" || !run.stats || typeof run.stats !== "object") return false;
+  return typeof (run.stats as Record<string, unknown>).roster_entries === "number";
+}
+
+export function hasRecentAccountSync(
+  runs: SyncRun[],
+  now = Date.now(),
+  minimumGapMs = ACCOUNT_SYNC_MIN_GAP_MS
+): boolean {
+  return runs.some((run) => {
+    const started = Date.parse(run.started_at);
+    if (!Number.isFinite(started) || now - started >= minimumGapMs) return false;
+    return run.status === "running" || isAccountRun(run);
+  });
+}
+
+export function platformsNeedingAccountSync(
+  platforms: string[],
+  runs: SyncRun[],
+  now = Date.now(),
+  minimumGapMs = ACCOUNT_SYNC_MIN_GAP_MS
+): string[] {
+  return platforms.filter((platform) =>
+    !hasRecentAccountSync(
       runs.filter((run) => run.platform === platform),
       now,
       minimumGapMs

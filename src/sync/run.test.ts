@@ -3,7 +3,7 @@ import { weeksFor } from "./run";
 
 describe("weeksFor", () => {
   it("pulls only the current week on a live run", () => {
-    // This runs every 5 minutes on gameday, so it must stay at one call
+    // This runs every minute on gameday, so it must stay at one call
     // per league.
     expect(weeksFor("live", 11)).toEqual([11]);
   });

@@ -36,7 +36,7 @@ import {
   yahooOAuthConfigured,
 } from "@/lib/yahoo-oauth";
 
-export type SyncMode = "live" | "daily" | "players" | "backfill";
+export type SyncMode = "live" | "account" | "daily" | "players" | "backfill";
 
 export interface SyncResult {
   platform: Platform;
@@ -141,6 +141,17 @@ export async function runSync(
       }
       if (mode === "players") {
         Object.assign(stats, await syncPlayers(db, adapter));
+      } else if (mode === "account") {
+        Object.assign(stats, await syncDaily(db, adapter, activeCreds, season, false));
+        const current = await syncScores(db, adapter, activeCreds, season, "live");
+        Object.assign(stats, {
+          account_refresh: 1,
+          matchup_leagues: current.leagues,
+          matchups: current.matchups,
+          matchup_weeks: current.weeks,
+          games: current.games,
+          game_state_errors: current.game_state_errors,
+        });
       } else if (mode === "daily") {
         Object.assign(stats, await syncDaily(db, adapter, activeCreds, season));
         const schedule = await syncScores(db, adapter, activeCreds, season, "backfill");
@@ -316,7 +327,8 @@ async function syncDaily(
   db: Db,
   adapter: PlatformAdapter,
   creds: Credentials,
-  season: number
+  season: number,
+  includeTransactions = true
 ): Promise<Record<string, number>> {
   const leagues = await adapter.listLeagues(creds, SPORT, season);
   const crosswalk = await loadCrosswalk(db, adapter.platform);
@@ -391,7 +403,9 @@ async function syncDaily(
       rosterCount += rows.length;
     }
 
-    const transactions = await adapter.getTransactions(creds, league.externalId, season);
+    const transactions = includeTransactions
+      ? await adapter.getTransactions(creds, league.externalId, season)
+      : [];
     if (transactions.length) {
       const { error } = await db.from("transactions").upsert(
         transactions.map((t) => ({

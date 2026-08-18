@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNT_SYNC_MIN_GAP_MS,
+  hasRecentAccountSync,
   hasRecentScoreSync,
+  isAccountRun,
   isLiveSyncWindow,
   isScoreRun,
   LIVE_SYNC_MIN_GAP_MS,
   platformsNeedingScoreSync,
+  platformsNeedingAccountSync,
 } from "./live-refresh";
 
 const NOW = Date.parse("2026-09-13T17:00:00Z");
@@ -102,5 +106,26 @@ describe("score sync cooldown", () => {
         NOW
       )
     ).toEqual([]);
+  });
+});
+
+describe("account sync cooldown", () => {
+  const accountRun = {
+    platform: "sleeper",
+    started_at: new Date(NOW - ACCOUNT_SYNC_MIN_GAP_MS + 1).toISOString(),
+    status: "ok",
+    stats: { leagues: 10, roster_entries: 400 },
+  };
+
+  it("recognizes roster-producing account and daily runs", () => {
+    expect(isAccountRun(accountRun)).toBe(true);
+    expect(isAccountRun({ ...accountRun, stats: { matchups: 32 } })).toBe(false);
+    expect(hasRecentAccountSync([accountRun], NOW)).toBe(true);
+  });
+
+  it("refreshes only providers without a recent account snapshot", () => {
+    expect(
+      platformsNeedingAccountSync(["sleeper", "yahoo"], [accountRun], NOW)
+    ).toEqual(["yahoo"]);
   });
 });

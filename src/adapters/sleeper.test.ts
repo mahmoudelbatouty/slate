@@ -70,7 +70,10 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe("healthCheck", () => {
   it("is true when the user resolves", async () => {
@@ -144,6 +147,33 @@ describe("getTeams", () => {
 });
 
 describe("getRosters", () => {
+  it("expires roster responses so account refreshes see lineup changes", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-17T12:00:00Z"));
+    let playerId = "p1";
+    const fetchSpy = vi.fn(async () =>
+      new Response(JSON.stringify([{
+        roster_id: 1,
+        owner_id: "owner",
+        players: [playerId],
+        starters: [playerId],
+        settings: null,
+      }]), { status: 200, headers: { "content-type": "application/json" } })
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    expect((await sleeperAdapter.getRosters(creds, "changing", 2026, 1))[0].externalPlayerId)
+      .toBe("p1");
+    playerId = "p2";
+    expect((await sleeperAdapter.getRosters(creds, "changing", 2026, 1))[0].externalPlayerId)
+      .toBe("p1");
+
+    vi.advanceTimersByTime(30_001);
+    expect((await sleeperAdapter.getRosters(creds, "changing", 2026, 1))[0].externalPlayerId)
+      .toBe("p2");
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
   it("drops repeated preseason empty-slot placeholders", async () => {
     vi.stubGlobal("fetch", async () =>
       new Response(

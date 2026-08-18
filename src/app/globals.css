@@ -74,7 +74,7 @@
   }
 
   /* Display face: extended grotesque, uppercase, tabular.
-     Tabular figures matter — live scores tick every 5 min and
+     Tabular figures matter — account data ticks every 5 min and
      proportional digits make the whole card reflow. */
   .display {
     font-family: var(--font-display);

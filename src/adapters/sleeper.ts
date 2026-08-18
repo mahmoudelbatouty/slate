@@ -198,11 +198,12 @@ const zRoster = z.object({
 });
 
 type SleeperRoster = z.infer<typeof zRoster>;
-const rosterCache = new Map<string, Promise<SleeperRoster[]>>();
+const ROSTER_CACHE_TTL_MS = 30_000;
+const rosterCache = new Map<string, { at: number; promise: Promise<SleeperRoster[]> }>();
 
 async function getLeagueRosters(leagueId: string): Promise<SleeperRoster[]> {
   const cached = rosterCache.get(leagueId);
-  if (cached) return cached;
+  if (cached && Date.now() - cached.at < ROSTER_CACHE_TTL_MS) return cached.promise;
 
   const request = get<unknown[]>(`/league/${leagueId}/rosters`)
     .then((rows) => rows.map((row) => zRoster.parse(row)))
@@ -210,7 +211,7 @@ async function getLeagueRosters(leagueId: string): Promise<SleeperRoster[]> {
       rosterCache.delete(leagueId);
       throw error;
     });
-  rosterCache.set(leagueId, request);
+  rosterCache.set(leagueId, { at: Date.now(), promise: request });
   return request;
 }
 

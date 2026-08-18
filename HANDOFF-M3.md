@@ -205,6 +205,14 @@ schedule weeks, covering leagues that move from pre-draft to in-season between
 daily jobs without repeatedly downloading the entire season. Sleeper roster
 caching expires after 30 seconds so a warm local/Vercel process cannot preserve
 an old lineup forever.
+
+Provider football clocks must be normalized before they reach the dashboard.
+Sleeper advances `state.week` during the NFL preseason, so its adapter returns
+no canonical `currentWeek` unless `season_type === "regular"`. The dashboard
+also ignores pre-draft and completed leagues when selecting the shared current
+week. This keeps the PRE state selected until real fantasy scoring begins; use
+the same rule for ESPN and Yahoo rather than treating any positive provider
+week as an active fantasy week.
 The path was verified against the live Supabase project on 2026-08-17: a
 dashboard load completed an `account` run in under nine seconds, advanced the
 stored Sleeper current week, imported 1,489 roster rows and 42 current-week

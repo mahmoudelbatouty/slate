@@ -9,6 +9,7 @@ export interface WeekOption {
 export interface LeagueWeekMetadata {
   currentWeek: number | null;
   scoringRaw?: unknown;
+  status?: "pre_draft" | "in_season" | "complete" | string | null;
 }
 
 export const DEFAULT_FANTASY_WEEKS = 18;
@@ -25,7 +26,7 @@ export function buildWeekOptions(
   leagues: LeagueWeekMetadata[],
   dataWeeks: number[]
 ): WeekOption[] {
-  const currentWeek = maxValidWeek(leagues.map((league) => league.currentWeek));
+  const currentWeek = currentLeagueWeek(leagues);
   const syncedWeeks = new Set(dataWeeks.filter(isValidWeek));
   const explicitEnds = leagues
     .map((league) => explicitSeasonEndFromRaw(league.scoringRaw))
@@ -47,6 +48,17 @@ export function buildWeekOptions(
       isCurrent: week === currentWeek,
     };
   });
+}
+
+/** Only an actively scoring league can nominate the dashboard's current week. */
+export function currentLeagueWeek(leagues: LeagueWeekMetadata[]): number | null {
+  return maxValidWeek(
+    leagues.map((league) =>
+      league.status === undefined || league.status === "in_season"
+        ? league.currentWeek
+        : null
+    )
+  );
 }
 
 /** Provider-defined final matchup week, with the normal NFL season fallback. */

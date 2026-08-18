@@ -9,7 +9,7 @@ import {
   type MatchupPlayer,
   type TeamLineup,
 } from "./matchup";
-import { buildWeekOptions, resolveWeek, type WeekOption } from "./weeks";
+import { buildWeekOptions, currentLeagueWeek, resolveWeek, type WeekOption } from "./weeks";
 import {
   EMPTY_STARTER_SUMMARY,
   summarizeStarterStates,
@@ -62,7 +62,12 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
 
   // Leagues can disagree about the current week (different platforms, or
   // one league already eliminated). The furthest-along wins for defaults.
-  const currentWeek = Math.max(...leagues.map((l) => l.current_week ?? 0), 0) || null;
+  const leagueWeekMetadata = leagues.map((league) => ({
+    currentWeek: league.current_week,
+    scoringRaw: league.scoring_raw,
+    status: league.status,
+  }));
+  const currentWeek = currentLeagueWeek(leagueWeekMetadata);
 
   // Whole weeks rather than just my own row, deliberately: M5's
   // whole-league toggle needs exactly this data and it's a few dozen rows.
@@ -104,13 +109,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
 
   // The full season remains selectable, including future/unsynced weeks and
   // preseason. Provider settings can narrow or extend the normal 18-week rail.
-  const weeks = buildWeekOptions(
-    leagues.map((league) => ({
-      currentWeek: league.current_week,
-      scoringRaw: league.scoring_raw,
-    })),
-    (rows ?? []).map((row) => row.week)
-  );
+  const weeks = buildWeekOptions(leagueWeekMetadata, (rows ?? []).map((row) => row.week));
 
   const week = resolveWeek(
     requestedWeek,

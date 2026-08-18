@@ -68,8 +68,8 @@ export function seasonEndWeek(scoringRaw: unknown): number {
 
 /**
  * Clamp a user-editable/shareable URL week to the season rail.
- * In preseason there is no default selected week, but any valid requested
- * season week remains selectable so its unsynced state can be explained.
+ * If no provider has begun fantasy scoring yet, default to Week 1 rather than
+ * exposing a separate preseason view.
  */
 export function resolveWeek(
   requested: number | undefined,
@@ -77,7 +77,7 @@ export function resolveWeek(
   currentWeek: number | null
 ): number | null {
   if (requested !== undefined && available.includes(requested)) return requested;
-  return currentWeek;
+  return currentWeek ?? available[0] ?? null;
 }
 
 function explicitSeasonEndFromRaw(raw: unknown): number | null {

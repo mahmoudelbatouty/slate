@@ -123,7 +123,7 @@ describe("listLeagues", () => {
   });
 
   it("does not treat an NFL preseason week as the current fantasy week", () => {
-    expect(currentFantasyWeek({ week: 2, season: "2026", season_type: "pre" })).toBeNull();
+    expect(currentFantasyWeek({ week: 2, season: "2026", season_type: "pre" })).toBe(1);
     expect(currentFantasyWeek({ week: 1, season: "2026", season_type: "regular" })).toBe(1);
   });
 });

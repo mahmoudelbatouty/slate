@@ -374,8 +374,10 @@ connection. Periodic/live sync and sync-run cooldown queries are owner-scoped;
 one Slate account must never read, refresh, or inherit another account's data.
 Pairing navigates the originating Slate tab to the provider rather than opening
 a second tab, then navigates that same tab back only after successful ingest.
-During NFL preseason, drafted leagues remain visible with a `PRESEASON` state;
-only leagues whose provider status is truly pre-draft show `PRE-DRAFT`.
+During NFL preseason, drafted leagues use fantasy Week 1 and sync every
+provider-published future matchup week; the dashboard does not expose a separate
+preseason view. Only leagues whose provider status is truly pre-draft show
+`PRE-DRAFT`.
 
 This remains read-only. Sleeper provides no official OAuth/write API. A future
 lineup action still requires an active signed-in Sleeper browser session and

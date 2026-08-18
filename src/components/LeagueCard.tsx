@@ -46,8 +46,6 @@ export function LeagueCard({
         </div>
         {card.leagueStatus === "pre_draft" ? (
           <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">PRE-DRAFT</span>
-        ) : card.isPreseason ? (
-          <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">PRESEASON</span>
         ) : (
           <StateLabel isFinal={card.isFinal} isLive={card.isLive} hasScore={total > 0} />
         )}
@@ -55,8 +53,6 @@ export function LeagueCard({
 
       {card.leagueStatus === "pre_draft" ? (
         <PreDraft card={card} />
-      ) : card.isPreseason ? (
-        <Preseason card={card} />
       ) : card.leagueFormat === "chopped" ? (
         <ChoppedLeague card={card} expanded={matchupExpanded} setExpanded={setMatchupExpanded} />
       ) : (
@@ -685,21 +681,6 @@ function PreDraft({ card }: { card: MatchupCard }) {
         {card.leagueFormat === "chopped"
           ? "Lowest score is eliminated each week. The Chopping Block will appear after the draft."
           : "Matchups and projections will appear after the draft."}
-      </p>
-      <div className="mt-[14px] border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
-        <span className="mono">{card.mine.teamId ? card.mine.name : "ROSTER PENDING"}</span>
-      </div>
-    </div>
-  );
-}
-
-function Preseason({ card }: { card: MatchupCard }) {
-  return (
-    <div>
-      <p className="text-sm font-semibold text-bone">Waiting for Week 1</p>
-      <p className="mt-1 text-xs text-bone-dim">
-        {card.teamCount ? `${card.teamCount} teams · ` : ""}
-        Your drafted league is synced. Matchups and projections will appear when the regular season begins.
       </p>
       <div className="mt-[14px] border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
         <span className="mono">{card.mine.teamId ? card.mine.name : "ROSTER PENDING"}</span>

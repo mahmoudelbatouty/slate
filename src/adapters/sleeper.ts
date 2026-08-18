@@ -248,9 +248,9 @@ const zState = z.object({
   season_type: z.string(),
 });
 
-/** Sleeper's week counter also advances during the NFL preseason. */
-export function currentFantasyWeek(state: z.infer<typeof zState>): number | null {
-  return state.season_type === "regular" ? state.week : null;
+/** Sleeper's counter advances through NFL preseason games; fantasy Week 1 does not. */
+export function currentFantasyWeek(state: z.infer<typeof zState>): number {
+  return state.season_type === "pre" ? 1 : Math.max(1, state.week);
 }
 
 // ---------- helpers ----------

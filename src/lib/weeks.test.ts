@@ -80,8 +80,8 @@ describe("resolveWeek", () => {
     expect(resolveWeek(Number.NaN, available, 8)).toBe(8);
   });
 
-  it("stays in preseason by default but permits a valid requested week", () => {
-    expect(resolveWeek(undefined, available, null)).toBeNull();
+  it("defaults to Week 1 before scoring begins but permits a valid requested week", () => {
+    expect(resolveWeek(undefined, available, null)).toBe(1);
     expect(resolveWeek(4, available, null)).toBe(4);
   });
 });

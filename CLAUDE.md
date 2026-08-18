@@ -265,7 +265,7 @@ Ship each milestone working before starting the next.
   connector supports independent Sleeper/ESPN pairings, ESPN-hosted sign-in, a
   strict league-response allowlist, canonical snapshot ingestion, and automatic
   discovery of up to ten leagues from ESPN's visible numeric league links.
-  Connector 0.6.1 adds automatic signed-in Sleeper account discovery/import;
+  Connector 0.6.2 adds automatic signed-in Sleeper account discovery/import;
   its ESPN path uses Chromium alarms for five-minute background refresh and
   one-minute live refresh without requiring an ESPN tab; the browser must remain
   open. Firefox is out of scope and Safari is optional later. Do not mark M6

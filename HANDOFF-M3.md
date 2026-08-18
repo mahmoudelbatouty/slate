@@ -154,7 +154,7 @@ localhost.
   after Slate confirms successful ingestion. No second tab is normally opened.
 - Users sign in only on the provider's page. Slate never accepts or stores a
   Sleeper/ESPN password, session token, cookie, email, or request header.
-- Connector version is `0.6.1`. An unpacked installation must be reloaded from
+- Connector version is `0.6.2`. An unpacked installation must be reloaded from
   `chrome://extensions` after pulling connector changes.
 
 ### Sleeper connection and refresh
@@ -586,7 +586,7 @@ shows an explicit “connected and synced just now” notice. Login alone never
 triggers success, failed capture leaves the provider page available, and no
 password, cookie, header, or raw response is added to the return state.
 
-Connector 0.6.1 fixes fresh-account Sleeper onboarding. After the user signs
+Connector 0.6.2 fixes fresh-account Sleeper onboarding. After the user signs
 in on Sleeper, the connector reads only Sleeper's non-secret numeric `user_id`
 local-storage key (never token, email, password, cookies, headers, or any other
 storage key). The server binds that ID to the authenticated Slate owner, imports

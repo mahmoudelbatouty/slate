@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Slate Fantasy Connector",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Syncs approved fantasy data to Slate without reading passwords, tokens, email, or cookies.",
   "permissions": ["storage", "activeTab", "scripting", "alarms"],
   "host_permissions": [
     "https://sleeper.com/*",
     "https://fantasy.espn.com/*",
-    "https://lm-api-reads.fantasy.espn.com/*"
+    "https://lm-api-reads.fantasy.espn.com/*",
+    "https://slate-mte2.vercel.app/*",
+    "https://slate-jet.vercel.app/*"
   ],
   "optional_host_permissions": [
     "http://localhost/*",
@@ -23,7 +25,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://localhost/*", "http://127.0.0.1/*"],
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://slate-mte2.vercel.app/*",
+        "https://slate-jet.vercel.app/*"
+      ],
       "js": ["dashboard-bridge.js"],
       "run_at": "document_start"
     },

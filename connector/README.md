@@ -17,14 +17,14 @@ real-account validation.
 3. Choose **Load unpacked** and select this `connector/` directory.
 4. Reload the extension after pulling connector changes.
 5. Open Slate and press the Sleeper or ESPN logo.
-6. Sign into that provider normally. Connector 0.6.1 identifies the signed-in
+6. Sign into that provider normally. Connector 0.6.2 identifies the signed-in
    Sleeper account and imports all of its leagues and published matchup weeks
    automatically; no individual matchup needs to be opened. For ESPN, land on
    the fantasy welcome page; the connector discovers up to ten leagues
    from ESPN's own visible league links and captures their approved league
    responses. Opening an individual league remains a safe fallback.
 
-Localhost is approved automatically. For another dashboard origin, open the
+Localhost and Slate's production Vercel aliases are approved automatically. For another dashboard origin, open the
 extension popup once, enter that dashboard URL, and press **Approve dashboard**.
 The URL is not a credential; the popup requests access only to that exact
 origin. No key or token is copied by the user.

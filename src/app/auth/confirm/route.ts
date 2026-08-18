@@ -1,5 +1,6 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { safeDestination } from "@/lib/auth-form";
 import { createAuthClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -8,7 +9,8 @@ export async function GET(request: Request) {
   const type = url.searchParams.get("type") as EmailOtpType | null;
   const code = url.searchParams.get("code");
   const requested = url.searchParams.get("next") ?? "/";
-  const next = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+  // A recovery link always lands on the new-password screen, whatever it asked for.
+  const next = type === "recovery" ? "/account/password" : safeDestination(requested);
   const client = await createAuthClient();
 
   const result = tokenHash && type

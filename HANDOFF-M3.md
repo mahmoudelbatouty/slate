@@ -185,8 +185,11 @@ Account freshness now uses the same endpoint and client timer. While the
 dashboard is visible, each connected provider refreshes leagues, teams,
 rosters, and the current matchup at most once every five minutes, including
 outside NFL game windows. This `account` mode deliberately skips the full
-transaction sweep and season backfill. Sleeper roster caching expires after 30
-seconds so a warm local/Vercel process cannot preserve an old lineup forever.
+transaction sweep. It refreshes the current matchup and backfills only missing
+schedule weeks, covering leagues that move from pre-draft to in-season between
+daily jobs without repeatedly downloading the entire season. Sleeper roster
+caching expires after 30 seconds so a warm local/Vercel process cannot preserve
+an old lineup forever.
 The path was verified against the live Supabase project on 2026-08-17: a
 dashboard load completed an `account` run in under nine seconds, advanced the
 stored Sleeper current week, imported 1,489 roster rows and 42 current-week

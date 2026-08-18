@@ -108,7 +108,7 @@ role key is set.
 npm test
 ```
 
-112 tests, all against local fixtures and synthetic connector payloads. No test hits a live API. Re-record
+114 tests, all against local fixtures and synthetic connector payloads. No test hits a live API. Re-record
 with `npm run fixtures` only when you deliberately want to refresh against a
 schema change.
 

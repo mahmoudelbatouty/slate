@@ -143,7 +143,7 @@ export async function runSync(
         Object.assign(stats, await syncPlayers(db, adapter));
       } else if (mode === "account") {
         Object.assign(stats, await syncDaily(db, adapter, activeCreds, season, false));
-        const current = await syncScores(db, adapter, activeCreds, season, "live");
+        const current = await syncScores(db, adapter, activeCreds, season, "missing");
         Object.assign(stats, {
           account_refresh: 1,
           matchup_leagues: current.leagues,
@@ -456,12 +456,28 @@ export function weeksFor(
   return Array.from({ length: end }, (_, i) => i + 1);
 }
 
+/**
+ * Account refreshes always update the current week and fill only absent season
+ * weeks. This catches leagues that draft or publish schedules after the daily
+ * backfill without repeatedly downloading every matchup.
+ */
+export function missingWeeksFor(
+  currentWeek: number,
+  existingWeeks: number[],
+  finalWeek = 18
+): number[] {
+  const existing = new Set(existingWeeks);
+  return weeksFor("backfill", currentWeek, finalWeek).filter(
+    (week) => week === currentWeek || !existing.has(week)
+  );
+}
+
 async function syncScores(
   db: Db,
   adapter: PlatformAdapter,
   creds: Credentials,
   season: number,
-  mode: "live" | "backfill"
+  mode: "live" | "backfill" | "missing"
 ): Promise<Record<string, number>> {
   const { data: leagues, error } = await db
     .from("leagues")
@@ -475,19 +491,34 @@ async function syncScores(
     return { leagues: 0, matchups: 0, weeks: 0 };
   }
 
-  const requestedWeeks = [
-    ...new Set(
-      leagues.flatMap((league) =>
-        league.status === "pre_draft"
-          ? []
-          : weeksFor(
-              mode,
-              league.current_week ?? 0,
-              seasonEndWeek(league.scoring_raw)
-            )
-      )
-    ),
-  ];
+  const weeksByLeague = new Map<string, number[]>(await Promise.all(
+    leagues.map(async (league) => {
+      if (league.status === "pre_draft" || !league.current_week) {
+        return [league.id, [] as number[]] as const;
+      }
+      if (mode !== "missing") {
+        return [
+          league.id,
+          weeksFor(mode, league.current_week, seasonEndWeek(league.scoring_raw)),
+        ] as const;
+      }
+
+      const { data: existing, error: matchupError } = await db
+        .from("matchups")
+        .select("week")
+        .eq("league_id", league.id);
+      if (matchupError) throw new Error(`matchup weeks read: ${matchupError.message}`);
+      return [
+        league.id,
+        missingWeeksFor(
+          league.current_week,
+          [...new Set((existing ?? []).map((row) => row.week))],
+          seasonEndWeek(league.scoring_raw)
+        ),
+      ] as const;
+    })
+  ));
+  const requestedWeeks = [...new Set([...weeksByLeague.values()].flat())];
   const gameState = await syncGameStates(db, adapter, season, requestedWeeks);
   const crosswalk = await loadCrosswalk(db, adapter.platform);
 
@@ -497,7 +528,7 @@ async function syncScores(
   for (const league of leagues) {
     const currentWeek = league.current_week;
     if (!currentWeek || league.status === "pre_draft") continue;
-    const leagueWeeks = weeksFor(mode, currentWeek, seasonEndWeek(league.scoring_raw));
+    const leagueWeeks = weeksByLeague.get(league.id) ?? [];
 
     const { data: teamRows, error: teamError } = await db
       .from("teams")

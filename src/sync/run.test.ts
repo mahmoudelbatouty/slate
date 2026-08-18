@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { weeksFor } from "./run";
+import { missingWeeksFor, weeksFor } from "./run";
 
 describe("weeksFor", () => {
   it("pulls only the current week on a live run", () => {
@@ -21,5 +21,15 @@ describe("weeksFor", () => {
 
   it("returns nothing when the season hasn't started", () => {
     expect(weeksFor("backfill", 0)).toEqual([]);
+  });
+});
+
+describe("missingWeeksFor", () => {
+  it("fills absent schedule weeks and still refreshes the current week", () => {
+    expect(missingWeeksFor(2, [2, 3, 4], 5)).toEqual([1, 2, 5]);
+  });
+
+  it("falls back to the current week once the full schedule exists", () => {
+    expect(missingWeeksFor(2, [1, 2, 3], 3)).toEqual([2]);
   });
 });

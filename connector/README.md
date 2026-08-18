@@ -17,7 +17,7 @@ real-account validation.
 3. Choose **Load unpacked** and select this `connector/` directory.
 4. Reload the extension after pulling connector changes.
 5. Open Slate and press the Sleeper or ESPN logo.
-6. Sign into that provider normally. Connector 0.6.0 identifies the signed-in
+6. Sign into that provider normally. Connector 0.6.1 identifies the signed-in
    Sleeper account and imports all of its leagues and published matchup weeks
    automatically; no individual matchup needs to be opened. For ESPN, land on
    the fantasy welcome page; the connector discovers up to ten leagues
@@ -35,9 +35,9 @@ numeric league references every five minutes, or every minute during the live
 NFL window reported by Slate. Chromium must remain open and the user's normal
 ESPN session must remain valid.
 
-Pairing records the originating Slate tab as a one-time return target. The
-provider opens in the same browser, and only after Slate confirms a sanitized
-capture was stored does the connector focus and refresh that Slate tab with a
+Pairing records the originating Slate tab as a one-time return target and
+navigates that same tab to the provider. Only after Slate confirms a sanitized
+capture was stored does the connector navigate the tab back to Slate with a
 provider-specific success message. A login alone never produces a success
 state. The provider tab stays available in the background for troubleshooting.
 

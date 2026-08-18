@@ -92,11 +92,14 @@ async function claimPairing(message, sender) {
     }
     if (result.platform === "espn") updates.espnLeagues = [];
     await chrome.storage.local.set(updates);
-    await chrome.tabs.create({
-      url: result.platform === "espn"
-        ? "https://fantasy.espn.com/football/welcome"
-        : "https://sleeper.com/?login=",
-    });
+    const providerUrl = result.platform === "espn"
+      ? "https://fantasy.espn.com/football/welcome"
+      : "https://sleeper.com/?login=";
+    if (Number.isInteger(sender?.tab?.id)) {
+      await chrome.tabs.update(sender.tab.id, { url: providerUrl, active: true });
+    } else {
+      await chrome.tabs.create({ url: providerUrl });
+    }
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Pairing failed";

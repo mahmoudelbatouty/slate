@@ -235,7 +235,6 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
   const cards: MatchupCard[] = [];
 
   for (const league of leagues) {
-    if (!week && league.status !== "pre_draft") continue;
     const cardWeek = week ?? 1;
 
     const mineTeamForLeague = (teams ?? []).find(
@@ -251,18 +250,19 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
     // Provider schedules can contain placeholder games before a draft. The
     // canonical league status is authoritative, so never turn those rows into
     // a live matchup card.
-    if (league.status === "pre_draft") {
+    if (!week || league.status === "pre_draft") {
       cards.push({
         leagueId: league.id,
         leagueName: league.name,
         leagueExternalId: league.external_id,
         platform: league.platform,
-        leagueStatus: "pre_draft",
+        leagueStatus: league.status === "complete" ? "complete" : league.status === "pre_draft" ? "pre_draft" : "in_season",
         leagueFormat: league.format === "chopped" ? "chopped" : "head_to_head",
         leagueType: canonicalLeagueType(league.league_type),
         teamCount: league.team_count,
         season: league.season,
         week: cardWeek,
+        isPreseason: !week && league.status !== "pre_draft",
         isFinal: false,
         isLive: false,
         winProbability: null,

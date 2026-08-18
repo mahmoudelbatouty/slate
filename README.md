@@ -30,7 +30,7 @@ where it supplies equivalent data.
 Sleeper now uses one-click automatic pairing with the installed connector. A
 five-minute, single-use challenge is exchanged in the background; no connector
 token is rendered or copied. Provider login remains on the provider's own page.
-Connector 0.6.0 reads only the signed-in account's public numeric Sleeper user
+Connector 0.6.1 reads only the signed-in account's public numeric Sleeper user
 ID, imports all leagues and published weeks automatically, and returns to Slate
 only after the account-scoped import succeeds. It never reads Sleeper's token,
 email, password, or cookies.

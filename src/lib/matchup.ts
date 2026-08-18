@@ -93,6 +93,7 @@ export interface MatchupCard {
   teamCount: number | null;
   season: number;
   week: number;
+  isPreseason?: boolean;
   isFinal: boolean;
   isLive: boolean;
   winProbability: number | null;

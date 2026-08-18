@@ -363,7 +363,7 @@ shows an explicit “connected and synced just now” notice. Login alone never
 triggers success, failed capture leaves the provider page available, and no
 password, cookie, header, or raw response is added to the return state.
 
-Connector 0.6.0 fixes fresh-account Sleeper onboarding. After the user signs
+Connector 0.6.1 fixes fresh-account Sleeper onboarding. After the user signs
 in on Sleeper, the connector reads only Sleeper's non-secret numeric `user_id`
 local-storage key (never token, email, password, cookies, headers, or any other
 storage key). The server binds that ID to the authenticated Slate owner, imports
@@ -372,6 +372,10 @@ public read API, and returns to Slate only after that owner-scoped import
 succeeds. Users no longer open an individual matchup to establish the initial
 connection. Periodic/live sync and sync-run cooldown queries are owner-scoped;
 one Slate account must never read, refresh, or inherit another account's data.
+Pairing navigates the originating Slate tab to the provider rather than opening
+a second tab, then navigates that same tab back only after successful ingest.
+During NFL preseason, drafted leagues remain visible with a `PRESEASON` state;
+only leagues whose provider status is truly pre-draft show `PRE-DRAFT`.
 
 This remains read-only. Sleeper provides no official OAuth/write API. A future
 lineup action still requires an active signed-in Sleeper browser session and

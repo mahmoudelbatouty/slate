@@ -102,26 +102,16 @@ export function ConnectorStatus({
     <section className="relative w-[142px] border border-ink-line bg-ink-raised" aria-label="Platform login">
       <p className="mono border-b border-ink-line px-2 py-1.5 text-center text-[9px] tracking-[0.16em] text-bone">LOGIN</p>
       <div className="grid grid-cols-3 divide-x divide-ink-line">
-        {!current.installationId ? (
-          <button
-            className="inline-flex h-10 items-center justify-center opacity-70 transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait"
-            type="button"
-            disabled={pairing}
-            onClick={() => pair("sleeper")}
-            aria-label={`Sleeper ${sleeperState}. ${pairing ? "Connecting" : "Connect Sleeper"}.`}
-            title={pairing ? "Connecting Sleeper" : "Connect Sleeper"}
-          >
-            <PlatformMark platform="sleeper" variant="login" />
-          </button>
-        ) : (
-          <span
-            className="inline-flex h-10 items-center justify-center bg-ink/25"
-            aria-label={`Sleeper ${sleeperState}`}
-            title={`Sleeper ${sleeperState}`}
-          >
-            <PlatformMark platform="sleeper" variant="login" />
-          </span>
-        )}
+        <button
+          className={`inline-flex h-10 items-center justify-center transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait ${current.installationId ? "bg-ink/25 opacity-90" : "opacity-70"}`}
+          type="button"
+          disabled={pairing}
+          onClick={() => pair("sleeper")}
+          aria-label={`Sleeper ${sleeperState}. ${pairing ? "Connecting" : current.installationId ? "Reconnect Sleeper" : "Connect Sleeper"}.`}
+          title={pairing ? "Connecting Sleeper" : current.installationId ? "Reconnect Sleeper" : "Connect Sleeper"}
+        >
+          <PlatformMark platform="sleeper" variant="login" />
+        </button>
 
         <ProviderLogo
           platform="yahoo"
@@ -134,22 +124,16 @@ export function ConnectorStatus({
             ? "/api/auth/yahoo/start"
             : undefined}
         />
-        {!espnCurrent.installationId ? (
-          <button
-            className="inline-flex h-10 items-center justify-center opacity-70 transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait"
-            type="button"
-            disabled={pairing}
-            onClick={() => pair("espn")}
-            aria-label={`ESPN ${espnCurrent.state === "disconnected" ? "not connected" : "ready"}. ${pairing ? "Connecting" : "Connect ESPN"}.`}
-            title={pairing ? "Connecting ESPN" : "Connect ESPN"}
-          >
-            <PlatformMark platform="espn" variant="login" />
-          </button>
-        ) : (
-          <span className="inline-flex h-10 items-center justify-center bg-ink/25" aria-label={`ESPN ${espnCurrent.state}`} title={`ESPN ${espnCurrent.state}`}>
-            <PlatformMark platform="espn" variant="login" />
-          </span>
-        )}
+        <button
+          className={`inline-flex h-10 items-center justify-center transition-opacity hover:bg-ink hover:opacity-100 focus-visible:outline-2 focus-visible:outline-amber disabled:cursor-wait ${espnCurrent.installationId ? "bg-ink/25 opacity-90" : "opacity-70"}`}
+          type="button"
+          disabled={pairing}
+          onClick={() => pair("espn")}
+          aria-label={`ESPN ${espnCurrent.state}. ${pairing ? "Connecting" : espnCurrent.installationId ? "Reconnect ESPN" : "Connect ESPN"}.`}
+          title={pairing ? "Connecting ESPN" : espnCurrent.installationId ? "Reconnect ESPN" : "Connect ESPN"}
+        >
+          <PlatformMark platform="espn" variant="login" />
+        </button>
       </div>
 
       {message ? (

@@ -72,7 +72,7 @@ async function claimPairing(message) {
     });
     await chrome.tabs.create({
       url: result.platform === "espn"
-        ? "https://www.espn.com/fantasy/football/"
+        ? "https://fantasy.espn.com/football/welcome"
         : "https://sleeper.com/?login=",
     });
     return { ok: true };

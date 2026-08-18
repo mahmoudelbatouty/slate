@@ -4,6 +4,78 @@
 
 This section supersedes conflicting historical notes later in this file.
 
+### Session decisions — 2026-08-18, later same day
+
+**Login rewrite merged.** PR #12, squashed to `2987ba6`. Sign-in and sign-up are
+separate modes, the confirmation email is announced before and after signup, and
+password reset exists at `/account/password`. See the section below for detail.
+
+**Sleeper lineup write is parked, not abandoned.** Branch
+`codex/sleeper-write-recorder` is open and deliberately unmerged. It contains a
+working opt-in recorder plus the reverse-engineered write, and these findings
+should not be re-derived:
+
+- The write is `update_matchup_leg` on `https://sleeper.com/graphql`, sent by
+  XHR. Every argument except `starters_games` is inlined into the query string;
+  `variables` is `{}`.
+- `starters` is positional. A swap replaces one index and leaves all others
+  identical. Empty slots are `"0"` and defenses use team abbreviations, so
+  player IDs are not always numeric.
+- Sleeper's own save also resends `roster_update_taxi` with unchanged values.
+  That is a UI no-op and Slate must not reproduce it.
+- The response returns the server's stored `starters`, which is the read-back
+  signal. GraphQL reports failure inside a 200, so the error array is checked
+  first and a 2xx is never success.
+- `src/connector/sleeper-write.ts` builds the request from strictly validated
+  arguments and verifies the response. Nothing is wired to the UI or extension.
+- No WebSocket is involved; HTTP interception suffices.
+
+**Product direction under revision: the extension must not be required.** The
+owner's goal is personal use now, scaling to all users later, with no extension
+install. Analysis, not yet implemented:
+
+- **Sleeper** needs no OAuth and no extension for reads. Its API is public and
+  unauthenticated; a username input replaces connector pairing entirely.
+- **ESPN** has no OAuth. Private leagues have no supported extension-free path.
+  Publicly viewable leagues work server-side. The plan is to support public
+  leagues and state the private-league limit in the UI.
+- **Yahoo** is the only platform that can be a complete hub — reads and writes,
+  on a phone, nothing installed.
+- **Writes at scale are Yahoo-only.** Sleeper and ESPN writes need a signed-in
+  session that cannot exist server-side; other users get deep links.
+- The extension is therefore demoted to an optional desktop power feature for
+  private ESPN leagues and the owner's own Sleeper writes.
+
+`CLAUDE.md` has **not** been updated for this yet. It still says no username
+entry is required and treats connector pairing as the canonical Sleeper path.
+Reconcile the brief before building toward either model.
+
+**Open question the owner intends to revisit: storing provider session tokens
+and cookies.** Deferred, not decided. What the analysis established:
+
+- A provider *password* is never required for any read or write path being
+  considered, and storing one is strictly worse than every alternative. That
+  rule should not move.
+- Server-side ESPN or Sleeper access without an extension requires a stored
+  session token or cookie. `token-crypto.ts` already provides AES-256-GCM with
+  an env-held key, which protects at rest but not against application
+  compromise, since the app must decrypt to use it.
+- Such a credential cannot be scoped, cannot be revoked without a password
+  change, and lives a long time — unlike an OAuth grant.
+- Client-side-only encryption does not work: ESPN cookies are `HttpOnly` and a
+  cross-origin call is blocked by CORS. That is the whole architectural reason
+  the extension exists.
+- Acceptable-risk judgment differs sharply between the single operator and
+  other users, where a table of session cookies is a breach liability.
+
+**Yahoo** application is written and ready but not submitted; the owner will
+revisit when access is approved. It remains the gate on all scalable writes.
+
+**Vercel** project `slate` created and linked to the GitHub repo
+(`prj_7ybmdWGks3gGAh4JMRqC2zqBySal`, team `MTE`). The first deployment was
+refused because the authenticated Vercel identity lacks permission to create
+production deployments for that team. Environment variables are not yet set.
+
 ### Sign-in screen — rebuilt 2026-08-18 (after the M6 merge)
 
 `/login` no longer mixes sign-in and sign-up in one ambiguous two-button form.

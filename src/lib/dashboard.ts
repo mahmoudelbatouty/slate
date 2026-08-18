@@ -245,9 +245,10 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         r.week === week &&
         teamById.get(r.team_id)?.is_mine
     );
-    if (!mineRow) {
-      if (league.status !== "pre_draft") continue;
-
+    // Provider schedules can contain placeholder games before a draft. The
+    // canonical league status is authoritative, so never turn those rows into
+    // a live matchup card.
+    if (league.status === "pre_draft") {
       cards.push({
         leagueId: league.id,
         leagueName: league.name,
@@ -281,6 +282,8 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
       });
       continue;
     }
+
+    if (!mineRow) continue;
 
     const mineTeam = teamById.get(mineRow.team_id);
     if (!mineTeam) continue;

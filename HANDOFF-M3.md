@@ -314,6 +314,9 @@ PR #11 is merged. Refresh while no ESPN page is open remains a later slice.
 The 0.4.1 patch also leaves ESPN's original fetch promise untouched and catches
 both synchronous and asynchronous enrichment failures, preventing ordinary
 ESPN network failures from being reported as unhandled connector errors.
+The dashboard treats canonical `pre_draft` status as authoritative even when a
+provider publishes placeholder schedule rows, so undrafted ESPN leagues render
+the pre-draft card instead of a fabricated matchup.
 
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application

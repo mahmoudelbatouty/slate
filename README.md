@@ -32,10 +32,23 @@ projections into the same canonical tables and dashboard used by Sleeper. Once
 connected, Yahoo also participates in the shared live-refresh loop; cooldowns
 are tracked per provider so a recent Sleeper pull cannot suppress Yahoo.
 
-### Yahoo developer setup
+### Yahoo integration — deferred until the final milestone
 
-Yahoo must approve the Slate developer application before real accounts can be
-connected. Configure these values only in the local/deployment environment:
+Do not treat Yahoo credentials or approval as a blocker for current work. The
+repo contains a read adapter and OAuth scaffolding, but real Yahoo connection
+and all Yahoo writes are intentionally deferred until Slate's core hub and the
+other planned provider work are complete.
+
+Yahoo's current Fantasy developer process requires a separate reviewed access
+application at `https://sports.yahoo.com/developer/access/`. The generic Yahoo
+Developer Network Create Application form may show only OpenID Connect and TW
+Auction; creating that generic app alone does not grant Fantasy access. Yahoo
+says Fantasy access is read-only by default, so the final application must
+truthfully explain Slate's use case and explicitly request Read/Write access in
+Additional Notes.
+
+After Yahoo approves/provisions access, configure these values only in the
+local/deployment environment:
 
 ```text
 YAHOO_CLIENT_ID
@@ -44,14 +57,17 @@ YAHOO_REDIRECT_URI
 PLATFORM_TOKEN_ENCRYPTION_KEY
 ```
 
-The redirect URI must end at `/api/auth/yahoo/callback` and exactly match the
-URI registered with Yahoo. Never commit the values above. End users only click
-the Yahoo mark and sign in on Yahoo's hosted consent page; Slate never accepts
-or stores their Yahoo password.
+For local development, Homepage URL is `http://localhost:3000/` and Redirect
+URI is `http://localhost:3000/api/auth/yahoo/callback`; do not put the callback
+path in the Homepage field. A Vercel deployment keeps the same application
+credentials but registers the deployed callback and sets the exact production
+`YAHOO_REDIRECT_URI`. Never commit any value above. End users only click the
+Yahoo mark and sign in on Yahoo's hosted consent page; Slate never accepts or
+stores their Yahoo password.
 
 - `CLAUDE.md` — the build brief. Point your coding agent at this first.
 - `DESIGN.md` — visual direction, tokens, the signature feature.
-- `HANDOFF-M2.md` — current state, and everything needed to build M2.
+- `HANDOFF-M3.md` — current state, completed M3/M4 foundation, and next work.
 - `preview.html` — open in a browser to see the target design.
 
 ---
@@ -108,7 +124,7 @@ role key is set.
 npm test
 ```
 
-114 tests, all against local fixtures and synthetic connector payloads. No test hits a live API. Re-record
+128 tests, all against local fixtures and synthetic connector payloads. No test hits a live API. Re-record
 with `npm run fixtures` only when you deliberately want to refresh against a
 schema change.
 
@@ -133,10 +149,13 @@ simultaneous users.
 
 1. ~~**M0** skeleton + migration + password gate~~ — done
 2. ~~**M1** Sleeper adapter → sync job → crosswalk → one league rendering live~~ — done
-3. **M2** the "Left to play" band â€” code/schema complete; awaiting initial data sync
+3. **M2** the "Left to play" band — code/schema complete; awaiting initial data sync
 4. **M3** automatic connections, persistent week selector, and complete inline matchups
-5. **M4** Yahoo official read path, then confirmed lineup editing (Yahoo official; Sleeper/ESPN experimental connector)
-6. **M5** whole-league scoreboard expansion
+5. **M4** secure provider-neutral preview, idempotency, and command/audit
+   foundation — implemented; provider write controls remain disabled
+6. **M5 (next)** whole-league scoreboard expansion and remaining core hub work
+7. **Final provider milestone:** complete Yahoo's reviewed OAuth/Fantasy access,
+   verify real read fixtures, then add confirmed Yahoo lineup submission
 
 Don't start a milestone until the previous one works against real data.
 

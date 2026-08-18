@@ -186,6 +186,136 @@ export type Database = {
         }
         Relationships: []
       }
+      lineup_command_events: {
+        Row: {
+          command_id: string
+          created_at: string
+          detail: Json
+          id: string
+          status: string
+        }
+        Insert: {
+          command_id: string
+          created_at?: string
+          detail?: Json
+          id?: string
+          status: string
+        }
+        Update: {
+          command_id?: string
+          created_at?: string
+          detail?: Json
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lineup_command_events_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: false
+            referencedRelation: "lineup_commands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lineup_commands: {
+        Row: {
+          created_at: string
+          expected_lineup_hash: string
+          expires_at: string
+          external_player_id: string
+          failure_code: string | null
+          from_slot: string
+          id: string
+          idempotency_key: string
+          kind: string
+          league_id: string
+          platform: Database["public"]["Enums"]["platform"]
+          preview: Json
+          result: Json | null
+          status: string
+          submitted_at: string | null
+          team_id: string
+          to_slot: string
+          updated_at: string
+          verified_at: string | null
+          week: number
+        }
+        Insert: {
+          created_at?: string
+          expected_lineup_hash: string
+          expires_at: string
+          external_player_id: string
+          failure_code?: string | null
+          from_slot: string
+          id?: string
+          idempotency_key: string
+          kind?: string
+          league_id: string
+          platform: Database["public"]["Enums"]["platform"]
+          preview: Json
+          result?: Json | null
+          status?: string
+          submitted_at?: string | null
+          team_id: string
+          to_slot: string
+          updated_at?: string
+          verified_at?: string | null
+          week: number
+        }
+        Update: {
+          created_at?: string
+          expected_lineup_hash?: string
+          expires_at?: string
+          external_player_id?: string
+          failure_code?: string | null
+          from_slot?: string
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          league_id?: string
+          platform?: Database["public"]["Enums"]["platform"]
+          preview?: Json
+          result?: Json | null
+          status?: string
+          submitted_at?: string | null
+          team_id?: string
+          to_slot?: string
+          updated_at?: string
+          verified_at?: string | null
+          week?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lineup_commands_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lineup_commands_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["league_id"]
+          },
+          {
+            foreignKeyName: "lineup_commands_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "starter_game_state"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "lineup_commands_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matchups: {
         Row: {
           id: string

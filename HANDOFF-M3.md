@@ -218,7 +218,26 @@ Do not restore the global dot/blinker field. It becomes unreadable across many
 leagues and omits opponent context. The collapsed card uses compact counts with
 a hover/keyboard-focus table; the expanded view owns player-level status.
 
-### 4. Yahoo official connection and writes
+### Deferred final milestone: Yahoo official connection and writes
+
+Product decision recorded 2026-08-17: stop Yahoo implementation here and save
+it until the end. The next active development work is the non-Yahoo roadmap,
+starting with M5 whole-league scoreboard expansion. Do not request Yahoo keys,
+enable the Yahoo login mark, record real Yahoo data, or build provider writes
+as part of the current milestone.
+
+Yahoo's current onboarding differs from the older YDN flow described in parts
+of its documentation. Fantasy API access now starts with a reviewed application
+at `https://sports.yahoo.com/developer/access/`. The generic YDN Create
+Application form may not list Fantasy Sports at all; OpenID Connect permission
+alone is insufficient. Access is read-only by default, and a future Slate
+application must explicitly request Read/Write access in Additional Notes.
+
+When this work resumes, use `http://localhost:3000/` as the local Homepage URL
+and `http://localhost:3000/api/auth/yahoo/callback` as the Redirect URI. For
+Vercel, register the deployed callback and set the identical production
+`YAHOO_REDIRECT_URI`; the Consumer Key/Secret otherwise remain application
+credentials. They are never user-entered fields.
 
 Yahoo supports OAuth and Fantasy Read/Write authorization. Implement the
 Authorization Code flow with state + PKCE where supported, exact redirect URI,
@@ -237,10 +256,38 @@ hosted OAuth consent screen; ESPN/Sleeper must retain the approved password-free
 connector pattern. Provider refresh tokens are encrypted at rest and
 authorization codes/access tokens are never stored.
 
-#### Current Yahoo checkpoint and next slice
+#### Current Yahoo checkpoint — frozen until the final milestone
 
-- Read-only OAuth and canonical imports are implemented on
-  `codex/m4-yahoo-read-path`, including per-provider live refresh.
+- Read-only OAuth and canonical imports were merged to `main` in PR #7,
+  including per-provider live refresh, five-minute account refreshes, and
+  missing-week backfill when a league moves from pre-draft to in-season.
+- The provider-neutral lineup-command foundation was started on
+  `codex/m4-lineup-command-foundation`. It adds deterministic lineup hashes,
+  five-minute previews, stale/locked/expired rejection, idempotency keys, and
+  server-only command plus append-only status-event records. Command records
+  contain no provider credentials, cookies, headers, or raw responses.
+- Migration `20260817212000_lineup_command_foundation.sql` was applied to
+  Supabase project `qqxceojybbacughapnom` on 2026-08-17. Both tables have RLS,
+  deny `anon`/`authenticated`, allow `service_role`, and passed a rollback-only
+  insert/audit-trigger verification. Generated TypeScript database types match
+  the deployed schema.
+- The server-side preview service is implemented in `src/lineup/store.ts` and
+  exposed to future matchup controls through a Server Action. The browser sends
+  only league/team/week and two player IDs; Slate re-reads the owned canonical
+  roster, derives names and current slots, checks both players' NFL lock state,
+  computes the full-lineup hash, and persists a five-minute exact swap preview.
+  No provider request is made by this action.
+- Preview retries reuse an idempotency key derived from both affected players,
+  the expected lineup state, and expiration. Status changes use conditional
+  updates, permit only forward transitions, and automatically append audit
+  events. `verified` additionally requires a sanitized provider read-back hash
+  equal to the expected lineup hash; raw provider payloads are rejected by the
+  audit-result schema.
+- This foundation does **not** enable a real lineup write. Yahoo stays read-only
+  until an approved developer app and sanitized roster-update/read-back
+  fixtures prove the current official request shape. Sleeper/ESPN stay
+  read-only until their experimental connector command paths are separately
+  allowlisted and verified.
 - Before enabling lineup writes, connect an approved Yahoo developer app in a
   non-production environment and record sanitized response fixtures for
   leagues, standings, weekly rosters, scoreboards, and roster-update read-back.
@@ -250,6 +297,29 @@ authorization codes/access tokens are never stored.
   confirmation, stale-lineup hash rejection, idempotency, provider submission,
   and read-back verification. Transactions and commissioner actions remain
   out of scope.
+
+#### M4 command state machine
+
+`pending → submitted → verified` is the only successful path. A command may
+instead end as `rejected`, `expired`, or `unknown`. Slate must never render a
+successful edit from a provider 2xx alone; only a provider re-read matching the
+intended lineup may set `verified` and refresh canonical roster rows.
+
+The database transaction that creates or advances a command must finish before
+any provider HTTP/browser operation begins. Submission and read-back run
+outside database locks, then update the command with a conditional status
+transition. The unique idempotency key prevents retries/double-clicks from
+creating a second provider write for the same expected lineup state.
+Lock state and the current lineup hash must be re-derived server-side during
+confirmation; values returned by the browser are preview-only and untrusted.
+
+When the final Yahoo milestone begins, its first slice is the provider-write
+boundary: obtain reviewed access, record approved sanitized read and
+roster-update fixtures, translate the exact two-player swap into Yahoo's then-
+current documented request, submit outside the database transaction, re-read
+the roster, and advance the existing command through the state machine. Do not
+render Yahoo lineup controls before that end-to-end path has been verified
+against a disposable Yahoo lineup.
 
 ### 5. Experimental Sleeper/ESPN lineup actions
 

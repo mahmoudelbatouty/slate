@@ -110,6 +110,10 @@ describe("connector protocol", () => {
       ...espnValid,
       snapshots: [{ ...espnValid.snapshots[0], cookies: "forbidden" }],
     })).toThrow();
+    expect(() => connectorEnvelope.parse({
+      ...espnValid,
+      snapshots: [{ ...espnValid.snapshots[0], leagueId: "../../session" }],
+    })).toThrow();
   });
 
   it("never treats ESPN snapshots as Sleeper projection overrides", () => {

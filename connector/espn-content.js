@@ -64,6 +64,7 @@
     const signature = JSON.stringify(discovered);
     if (!discovered.length || signature === lastDiscovery) return;
     lastDiscovery = signature;
+    chrome.runtime.sendMessage({ type: "SLATE_ESPN_DISCOVER", leagues: discovered });
     window.postMessage({ type: "SLATE_ESPN_DISCOVER", leagues: discovered }, window.location.origin);
   }
 

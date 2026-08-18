@@ -85,7 +85,7 @@ export function LiveRefresh({ enabled }: { enabled: boolean }) {
     <span
       className="mono text-[9px] tracking-[0.08em] text-stone"
       aria-live="polite"
-      title="Slate checks leagues and rosters every five minutes, and live scores every minute during active games."
+      title="Slate checks leagues and rosters every five minutes, and live scores every minute during active games. ESPN background sync requires Chromium to be open and signed into ESPN."
     >
       {state === "live"
         ? "LIVE SYNC ON"

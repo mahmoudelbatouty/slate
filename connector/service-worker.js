@@ -1,7 +1,13 @@
 "use strict";
 
+importScripts("espn-background.js");
+
 const MAX_MATCHUPS = 100;
 const DASHBOARD_SCRIPT_ID = "slate-dashboard-bridge";
+const ESPN_REFRESH_ALARM = "slate-espn-refresh";
+const ESPN_IDLE_REFRESH_MS = 5 * 60_000;
+const ESPN_LIVE_REFRESH_MS = 60_000;
+let espnRefreshInFlight = null;
 
 function normalizedOrigin(value) {
   const url = new URL(value);
@@ -65,11 +71,13 @@ async function claimPairing(message) {
       connectorToken: result.token,
       installationId: result.installationId,
     };
-    await chrome.storage.local.set({
+    const updates = {
       connections,
       dashboardUrl: dashboardOrigin,
       lastError: null,
-    });
+    };
+    if (result.platform === "espn") updates.espnLeagues = [];
+    await chrome.storage.local.set(updates);
     await chrome.tabs.create({
       url: result.platform === "espn"
         ? "https://fantasy.espn.com/football/welcome"
@@ -136,7 +144,7 @@ function sanitizeEspnPlayer(player) {
 }
 
 function sanitizeEspnTeam(team) {
-  if (!team || typeof team !== "object" || typeof team.id !== "string" || typeof team.name !== "string") return null;
+  if (!team || typeof team !== "object" || typeof team.id !== "string" || !/^\d+$/.test(team.id) || typeof team.name !== "string") return null;
   return {
     id: team.id,
     name: team.name.slice(0, 160),
@@ -158,8 +166,8 @@ function sanitizeEspnMatchup(game) {
     id: game.id,
     week: game.week,
     isFinal: game.isFinal === true,
-    homeTeamId: safeString(game.homeTeamId),
-    awayTeamId: safeString(game.awayTeamId),
+    homeTeamId: typeof game.homeTeamId === "string" && /^\d+$/.test(game.homeTeamId) ? game.homeTeamId : null,
+    awayTeamId: typeof game.awayTeamId === "string" && /^\d+$/.test(game.awayTeamId) ? game.awayTeamId : null,
     homePoints: nullableNumber(game.homePoints),
     awayPoints: nullableNumber(game.awayPoints),
     homeProjected: nullableNumber(game.homeProjected),
@@ -168,7 +176,7 @@ function sanitizeEspnMatchup(game) {
 }
 
 function sanitizeEspnSnapshot(snapshot) {
-  if (!snapshot || typeof snapshot !== "object" || typeof snapshot.leagueId !== "string") return null;
+  if (!snapshot || typeof snapshot !== "object" || typeof snapshot.leagueId !== "string" || !/^\d+$/.test(snapshot.leagueId)) return null;
   if (!Number.isInteger(snapshot.season) || !Number.isInteger(snapshot.currentWeek)) return null;
   const teams = Array.isArray(snapshot.teams) ? snapshot.teams.slice(0, 32).map(sanitizeEspnTeam).filter(Boolean) : [];
   if (teams.length === 0) return null;
@@ -179,14 +187,95 @@ function sanitizeEspnSnapshot(snapshot) {
     teamCount: Math.min(32, Math.max(1, Math.trunc(snapshot.teamCount ?? teams.length))),
     currentWeek: snapshot.currentWeek,
     status: ["pre_draft", "in_season", "complete"].includes(snapshot.status) ? snapshot.status : "in_season",
-    myTeamId: safeString(snapshot.myTeamId),
+    myTeamId: typeof snapshot.myTeamId === "string" && /^\d+$/.test(snapshot.myTeamId) ? snapshot.myTeamId : null,
     rosterSlots: Object.fromEntries(Object.entries(snapshot.rosterSlots ?? {}).filter(([key, value]) => typeof key === "string" && Number.isInteger(value) && value >= 0 && value <= 30)),
     teams,
     matchups: Array.isArray(snapshot.matchups) ? snapshot.matchups.slice(0, 500).map(sanitizeEspnMatchup).filter(Boolean) : [],
   };
 }
 
-async function deliver(message) {
+function espnLeagueRef(value) {
+  return self.SlateEspnBackground.normalizeLeagueRef(value);
+}
+
+async function rememberEspnLeagues(values) {
+  const incoming = (Array.isArray(values) ? values : [])
+    .slice(0, 10)
+    .map(espnLeagueRef)
+    .filter(Boolean);
+  if (!incoming.length) return;
+
+  const { espnLeagues } = await chrome.storage.local.get("espnLeagues");
+  const byLeague = new Map(
+    (Array.isArray(espnLeagues) ? espnLeagues : [])
+      .map(espnLeagueRef)
+      .filter(Boolean)
+      .map((league) => [`${league.season}:${league.leagueId}`, league])
+  );
+  for (const league of incoming) {
+    const key = `${league.season}:${league.leagueId}`;
+    const previous = byLeague.get(key);
+    byLeague.set(key, previous?.teamId && !league.teamId ? previous : league);
+  }
+  await chrome.storage.local.set({ espnLeagues: [...byLeague.values()].slice(-10) });
+  await ensureEspnAlarm(ESPN_IDLE_REFRESH_MS);
+}
+
+async function scheduleEspnRefresh(delayMs) {
+  const safeDelay = Math.max(ESPN_LIVE_REFRESH_MS, Math.min(ESPN_IDLE_REFRESH_MS, delayMs));
+  await chrome.alarms.create(ESPN_REFRESH_ALARM, { delayInMinutes: safeDelay / 60_000 });
+}
+
+async function ensureEspnAlarm(delayMs = ESPN_LIVE_REFRESH_MS) {
+  const stored = await chrome.storage.local.get(["connections", "espnLeagues"]);
+  if (!stored.connections?.espn || !Array.isArray(stored.espnLeagues) || stored.espnLeagues.length === 0) return;
+  const existing = await chrome.alarms.get(ESPN_REFRESH_ALARM);
+  if (!existing) await scheduleEspnRefresh(delayMs);
+}
+
+async function refreshEspnLeagues() {
+  const stored = await chrome.storage.local.get(["connections", "espnLeagues"]);
+  if (!stored.connections?.espn) return;
+  const leagues = (Array.isArray(stored.espnLeagues) ? stored.espnLeagues : [])
+    .slice(0, 10)
+    .map(espnLeagueRef)
+    .filter(Boolean);
+  if (!leagues.length) return;
+
+  let refreshed = 0;
+  let nextRefreshMs = ESPN_IDLE_REFRESH_MS;
+  const capturedAt = new Date().toISOString();
+  for (const league of leagues) {
+    const url = self.SlateEspnBackground.buildLeagueUrl(league);
+    if (!url) continue;
+    try {
+      const response = await fetch(url, { credentials: "include", cache: "no-store" });
+      if (!response.ok) continue;
+      const snapshot = self.SlateEspnBackground.sanitizeResponse(await response.json(), league);
+      if (!snapshot) continue;
+      const result = await deliver({
+        platform: "espn",
+        capturedAt,
+        snapshots: [snapshot],
+      }, false);
+      if (result.ok) {
+        refreshed++;
+        if (result.nextRefreshMs === ESPN_LIVE_REFRESH_MS) nextRefreshMs = ESPN_LIVE_REFRESH_MS;
+      }
+    } catch {
+      // A signed-out or temporarily unavailable ESPN session retries later.
+    }
+  }
+
+  if (!refreshed) {
+    await chrome.storage.local.set({ lastError: "ESPN background refresh could not read any leagues" });
+    await scheduleEspnRefresh(ESPN_IDLE_REFRESH_MS);
+  } else {
+    await scheduleEspnRefresh(nextRefreshMs);
+  }
+}
+
+async function deliver(message, scheduleRefresh = true) {
   const stored = await chrome.storage.local.get(["connections", "dashboardUrl", "connectorToken"]);
   const config = stored.connections?.[message.platform] ?? {
     dashboardUrl: stored.dashboardUrl,
@@ -194,7 +283,7 @@ async function deliver(message) {
   };
   if (!config?.dashboardUrl || !config?.connectorToken) {
     await chrome.storage.local.set({ lastError: "Connector is not paired" });
-    return;
+    return { ok: false };
   }
 
   const payload = message.platform === "espn"
@@ -212,7 +301,7 @@ async function deliver(message) {
         capturedAt: message.capturedAt,
         matchups: (message.matchups ?? []).slice(0, MAX_MATCHUPS).map(sanitizeMatchup).filter(Boolean),
       };
-  if ((payload.snapshots ?? payload.matchups).length === 0) return;
+  if ((payload.snapshots ?? payload.matchups).length === 0) return { ok: false };
 
   try {
     const response = await fetch(`${config.dashboardUrl}/api/connector/ingest`, {
@@ -230,10 +319,20 @@ async function deliver(message) {
       lastUpdated: result.updated ?? 0,
       lastError: null,
     });
+    if (message.platform === "espn" && scheduleRefresh) {
+      await scheduleEspnRefresh(
+        result.nextRefreshMs === ESPN_LIVE_REFRESH_MS
+          ? ESPN_LIVE_REFRESH_MS
+          : ESPN_IDLE_REFRESH_MS
+      );
+    }
+    return { ok: true, nextRefreshMs: result.nextRefreshMs };
   } catch (error) {
     await chrome.storage.local.set({
       lastError: error instanceof Error ? error.message : "Capture failed",
     });
+    if (message.platform === "espn" && scheduleRefresh) await scheduleEspnRefresh(ESPN_IDLE_REFRESH_MS);
+    return { ok: false };
   }
 }
 
@@ -253,8 +352,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "SLATE_ESPN_DISCOVER") {
+    void rememberEspnLeagues(message.leagues).catch(() => undefined);
+    return;
+  }
+
   if (message?.type === "SLATE_CAPTURE" && ["sleeper", "espn"].includes(message.platform)) {
-    void deliver(message);
+    if (message.platform === "espn") {
+      const leagueRefs = (message.snapshots ?? []).map((snapshot) => ({
+        leagueId: snapshot?.leagueId,
+        season: snapshot?.season,
+        teamId: snapshot?.myTeamId,
+      }));
+      void rememberEspnLeagues(leagueRefs)
+        .then(() => deliver(message))
+        .catch(() => undefined);
+    } else {
+      void deliver(message);
+    }
   }
 });
 
@@ -265,8 +380,19 @@ async function restoreDashboardBridge() {
 
 chrome.runtime.onInstalled.addListener(() => {
   void restoreDashboardBridge().catch(() => undefined);
+  void ensureEspnAlarm().catch(() => undefined);
 });
 
 chrome.runtime.onStartup.addListener(() => {
   void restoreDashboardBridge().catch(() => undefined);
+  void ensureEspnAlarm().catch(() => undefined);
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== ESPN_REFRESH_ALARM || espnRefreshInFlight) return;
+  espnRefreshInFlight = refreshEspnLeagues()
+    .catch(() => scheduleEspnRefresh(ESPN_IDLE_REFRESH_MS).catch(() => undefined))
+    .finally(() => {
+      espnRefreshInFlight = null;
+    });
 });

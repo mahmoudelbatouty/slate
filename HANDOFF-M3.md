@@ -318,6 +318,19 @@ The dashboard treats canonical `pre_draft` status as authoritative even when a
 provider publishes placeholder schedule rows, so undrafted ESPN leagues render
 the pre-draft card instead of a fabricated matchup.
 
+Connector 0.5.0 adds Chromium background refresh. The content script retains
+at most ten sanitized numeric `leagueId`/`teamId`/season references in extension
+local storage. A Chrome alarm wakes the service worker, which constructs only
+the exact allowlisted ESPN league-read URL, asks Chromium to perform the request
+through the browser-managed signed-in session, sanitizes the response locally,
+and submits the existing strict snapshot envelope. The extension never calls
+the cookies API and never reads, stores, logs, or transmits passwords, cookie
+values, headers, arbitrary URLs, or raw ESPN responses. The ingest response
+selects a five-minute idle cadence or one-minute live cadence using Slate's NFL
+game window. Chromium must remain open, but no ESPN tab is required. Firefox is
+out of scope; Safari remains an optional later distribution target. Reload and
+verify connector 0.5.0 against a signed-in ESPN account before merging PR #11.
+
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application
 at `https://sports.yahoo.com/developer/access/`. The generic YDN Create

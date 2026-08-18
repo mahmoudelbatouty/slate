@@ -16,7 +16,7 @@ real-account validation.
 4. Reload the extension after pulling connector changes.
 5. Open Slate and press the Sleeper or ESPN logo.
 6. Sign into that provider normally. For Sleeper, open a matchup. For ESPN,
-   land on the fantasy welcome page; connector 0.4.1 discovers up to ten leagues
+   land on the fantasy welcome page; connector 0.5.0 discovers up to ten leagues
    from ESPN's own visible league links and captures their approved league
    responses. Opening an individual league remains a safe fallback.
 
@@ -25,9 +25,11 @@ extension popup once, enter that dashboard URL, and press **Approve dashboard**.
 The URL is not a credential; the popup requests access only to that exact
 origin. No key or token is copied by the user.
 
-The unified Slate dashboard remains the everyday screen. Provider tabs only
-need to be opened or refreshed when their native private data should be synced;
-background refresh while every ESPN tab is closed is not yet implemented.
+The unified Slate dashboard remains the everyday screen. After the first ESPN
+discovery, Chromium can close every ESPN tab: the connector refreshes the saved
+numeric league references every five minutes, or every minute during the live
+NFL window reported by Slate. Chromium must remain open and the user's normal
+ESPN session must remain valid.
 
 ## Pairing security
 
@@ -42,6 +44,11 @@ background refresh while every ESPN tab is closed is not yet implemented.
 ## Data security boundary
 
 - Provider credentials stay with the provider.
+- ESPN background requests rely on the browser-managed session but never read,
+  store, log, or transmit cookie values.
+- Only numeric ESPN league/team/season references are retained locally, capped
+  at ten leagues, and every request is constructed against the exact approved
+  ESPN league-read host and path.
 - The extension cannot read or modify the Slate database.
 - The connector token authorizes only `/api/connector/ingest`.
 - Each token is bound to one platform; cross-platform payloads are rejected.

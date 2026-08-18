@@ -33,7 +33,7 @@ const espnPlayer = z.object({
 }).strict();
 
 const espnTeam = z.object({
-  id: z.string(),
+  id: z.string().regex(/^\d+$/),
   name: z.string().max(160),
   abbreviation: z.string().max(16).nullable(),
   managerName: z.string().max(160).nullable(),
@@ -50,8 +50,8 @@ const espnMatchup = z.object({
   id: z.string(),
   week: z.number().int().min(1).max(25),
   isFinal: z.boolean(),
-  homeTeamId: z.string().nullable(),
-  awayTeamId: z.string().nullable(),
+  homeTeamId: z.string().regex(/^\d+$/).nullable(),
+  awayTeamId: z.string().regex(/^\d+$/).nullable(),
   homePoints: z.number().nullable(),
   awayPoints: z.number().nullable(),
   homeProjected: z.number().nullable(),
@@ -59,13 +59,13 @@ const espnMatchup = z.object({
 }).strict();
 
 export const espnLeagueSnapshot = z.object({
-  leagueId: z.string(),
+  leagueId: z.string().regex(/^\d+$/),
   season: z.number().int().min(2000).max(2100),
   name: z.string().max(200),
   teamCount: z.number().int().min(1).max(32),
   currentWeek: z.number().int().min(1).max(25),
   status: z.enum(["pre_draft", "in_season", "complete"]),
-  myTeamId: z.string().nullable(),
+  myTeamId: z.string().regex(/^\d+$/).nullable(),
   rosterSlots: z.record(z.string(), z.number().int().min(0).max(30)),
   teams: z.array(espnTeam).min(1).max(32),
   matchups: z.array(espnMatchup).max(500),

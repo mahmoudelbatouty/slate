@@ -21,6 +21,9 @@ export async function login(formData: FormData) {
   const next = destination(formData);
   const client = await createAuthClient();
   const { data, error } = await client.auth.signInWithPassword(credentials(formData));
+  if (error?.code === "email_not_confirmed") {
+    redirect(`/login?e=confirm-email&next=${encodeURIComponent(next)}`);
+  }
   if (error || !data.user) redirect(`/login?e=invalid&next=${encodeURIComponent(next)}`);
   await claimLegacyDataForSoleUser(data.user.id);
   redirect(next);

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { safeEqual } from "@/lib/auth";
+import { safeEqual } from "@/lib/safe-equal";
 import { db } from "@/db/admin";
 import { runSync } from "@/sync/run";
 import {

@@ -22,6 +22,15 @@ export default async function Login({
           : "one account, every fantasy platform"}
       </p>
 
+      {message === "check-email" && (
+        <aside className="mt-6 border border-amber bg-ink-raised px-4 py-4" role="status">
+          <p className="mono text-xs tracking-[0.08em] text-bone">ACCOUNT CREATED</p>
+          <p className="mt-2 text-sm leading-relaxed text-bone-dim">
+            Check your email and click the Supabase confirmation link. Then return here and log in.
+          </p>
+        </aside>
+      )}
+
       <form className="mt-7">
         <input type="hidden" name="next" value={next ?? "/"} />
         <label htmlFor="email" className="mono block text-2xs tracking-[0.16em] text-bone-dim">
@@ -49,7 +58,9 @@ export default async function Login({
           className="mono mt-2 w-full border border-ink-line bg-ink-raised px-3 py-3 text-base text-bone outline-none"
         />
         {e && <p className="mono mt-2 text-2xs text-flag">{authMessage(e)}</p>}
-        {message && <p className="mono mt-2 text-2xs text-bone-dim">{statusMessage(message)}</p>}
+        {message && message !== "check-email" && (
+          <p className="mono mt-2 text-2xs text-bone-dim">{statusMessage(message)}</p>
+        )}
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button formAction={login} className="mono cursor-pointer border border-ink-line bg-ink-raised px-4 py-3 text-xs tracking-[0.06em] text-bone">
             LOG IN
@@ -68,6 +79,7 @@ export default async function Login({
 
 function authMessage(code: string) {
   if (code === "invalid") return "Email or password is incorrect.";
+  if (code === "confirm-email") return "Your account exists, but you must confirm it from the email Supabase sent before logging in.";
   if (code === "signup") return "The account could not be created. Try another email or a longer password.";
   if (code === "confirmation") return "That confirmation link is invalid or expired.";
   return "Authentication is unavailable right now.";

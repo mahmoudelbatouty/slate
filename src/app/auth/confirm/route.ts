@@ -1,7 +1,6 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createAuthClient } from "@/lib/supabase/server";
-import { claimLegacyDataForSoleUser } from "@/lib/user-scope";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -21,6 +20,5 @@ export async function GET(request: Request) {
   if (result.error || !result.data.user) {
     return NextResponse.redirect(new URL("/login?e=confirmation", url.origin));
   }
-  await claimLegacyDataForSoleUser(result.data.user.id);
   return NextResponse.redirect(new URL(next, url.origin));
 }

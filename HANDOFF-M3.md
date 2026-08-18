@@ -6,11 +6,13 @@
 - Signed-out dashboard and protected connector routes redirect to `/login`.
 - Added owner-scoped records, indexes, uniqueness, RLS, and connector pairing.
 - Sign-out hides cached fantasy data without deleting it.
-- Existing prototype data is claimed only by the first, sole Auth user.
+- Every account starts empty and sees only records created by its own platform
+  connections. Legacy prototype records remain unowned and are never claimed
+  automatically by login, signup, confirmation, or dashboard rendering.
 - Build, lint, 142 tests, and signed-out browser checks pass.
 
-Before merge: create/confirm the first account and verify login → dashboard →
-sign-out end to end, then finish the owner-scope audit for live sync and Yahoo.
+Before merge: verify account A cannot see account B or unowned prototype data,
+then finish the owner-scope audit for live sync and Yahoo.
 
 This file records the repo owner's approved product-direction change on
 2026-08-12. `CLAUDE.md` and `DESIGN.md` have been updated to match it. If older

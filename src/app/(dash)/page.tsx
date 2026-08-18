@@ -9,7 +9,6 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { getPlatformConnectionStatuses } from "@/lib/connector-status";
 import { currentUser } from "@/lib/supabase/server";
-import { claimLegacyDataForSoleUser } from "@/lib/user-scope";
 import { logout } from "@/app/auth-actions";
 import { redirect } from "next/navigation";
 
@@ -26,7 +25,6 @@ export default async function Dashboard({
   const requested = Number(raw);
   const user = await currentUser();
   if (!user) redirect("/login");
-  await claimLegacyDataForSoleUser(user.id);
 
   const [dashboard, connector] = await Promise.all([
     getDashboard(user.id, Number.isInteger(requested) ? requested : undefined),

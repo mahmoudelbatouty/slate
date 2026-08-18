@@ -3,7 +3,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAuthClient } from "@/lib/supabase/server";
-import { claimLegacyDataForSoleUser } from "@/lib/user-scope";
 
 function destination(formData: FormData): string {
   const value = String(formData.get("next") ?? "/");
@@ -25,7 +24,6 @@ export async function login(formData: FormData) {
     redirect(`/login?e=confirm-email&next=${encodeURIComponent(next)}`);
   }
   if (error || !data.user) redirect(`/login?e=invalid&next=${encodeURIComponent(next)}`);
-  await claimLegacyDataForSoleUser(data.user.id);
   redirect(next);
 }
 
@@ -40,7 +38,6 @@ export async function signup(formData: FormData) {
   });
   if (error) redirect(`/login?e=signup&next=${encodeURIComponent(next)}`);
   if (data.session && data.user) {
-    await claimLegacyDataForSoleUser(data.user.id);
     redirect(next);
   }
   redirect(`/login?message=check-email&next=${encodeURIComponent(next)}`);

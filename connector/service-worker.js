@@ -27,7 +27,7 @@ async function claimPairing(message) {
   try {
     const dashboardOrigin = normalizedOrigin(message.dashboardOrigin);
     if (
-      message.platform !== "sleeper" ||
+      !["sleeper", "espn"].includes(message.platform) ||
       typeof message.challengeId !== "string" ||
       typeof message.claimSecret !== "string" ||
       !message.claimSecret.startsWith("slate_pair_")
@@ -56,14 +56,25 @@ async function claimPairing(message) {
       throw new Error(result.error || "Dashboard rejected pairing");
     }
 
-    await chrome.storage.local.set({
+    const stored = await chrome.storage.local.get("connections");
+    const connections = stored.connections && typeof stored.connections === "object"
+      ? stored.connections
+      : {};
+    connections[result.platform] = {
       dashboardUrl: dashboardOrigin,
       connectorToken: result.token,
-      platform: result.platform,
       installationId: result.installationId,
+    };
+    await chrome.storage.local.set({
+      connections,
+      dashboardUrl: dashboardOrigin,
       lastError: null,
     });
-    await chrome.tabs.create({ url: "https://sleeper.com/?login=" });
+    await chrome.tabs.create({
+      url: result.platform === "espn"
+        ? "https://www.espn.com/fantasy/football/"
+        : "https://sleeper.com/?login=",
+    });
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Pairing failed";
@@ -103,8 +114,12 @@ function sanitizeMatchup(row) {
 }
 
 async function deliver(message) {
-  const config = await chrome.storage.local.get(["dashboardUrl", "connectorToken"]);
-  if (!config.dashboardUrl || !config.connectorToken) {
+  const stored = await chrome.storage.local.get(["connections", "dashboardUrl", "connectorToken"]);
+  const config = stored.connections?.[message.platform] ?? {
+    dashboardUrl: stored.dashboardUrl,
+    connectorToken: stored.connectorToken,
+  };
+  if (!config?.dashboardUrl || !config?.connectorToken) {
     await chrome.storage.local.set({ lastError: "Connector is not paired" });
     return;
   }

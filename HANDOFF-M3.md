@@ -245,6 +245,22 @@ ESPN browser connection and canonical read sync. ESPN credentials stay inside
 ESPN's signed-in browser session and must never be accepted or stored by Slate.
 Yahoo remains the final provider milestone.
 
+### M6 ESPN connector checkpoint
+
+M6 began on `codex/m6-espn-connector`. Pairing now allowlists both Sleeper and
+ESPN while continuing to reject Yahoo from the browser-connector path. The
+extension stores separate Slate-issued ingest credentials per platform so an
+ESPN pairing cannot overwrite an existing Sleeper pairing. Selecting the ESPN
+logo starts the same short-lived challenge/claim flow and opens ESPN's fantasy
+football site for normal provider-hosted sign-in. Slate does not receive or
+store the ESPN password, ESPN cookies, or the user's browser session.
+
+This checkpoint does not ingest ESPN fantasy data yet. The next slice must add
+a narrowly allowlisted ESPN page bridge, record sanitized response fixtures,
+normalize leagues/teams/standings/weekly matchups/rosters into the existing
+canonical adapter contract, and only then mark ESPN connected after a valid
+capture. Never send raw request headers or cookies through the ingest endpoint.
+
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application
 at `https://sports.yahoo.com/developer/access/`. The generic YDN Create

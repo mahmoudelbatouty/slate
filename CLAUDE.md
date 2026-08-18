@@ -252,7 +252,9 @@ Ship each milestone working before starting the next.
   suppress meaningless numbered ranks while every team is still 0-0.
 - **M6 — ESPN connection.** Add the password-free ESPN browser connector and
   normalize its approved reads into the same canonical sync path. ESPN sign-in
-  happens on ESPN; Slate must never accept or persist the user's password.
+  happens on ESPN; Slate must never accept or persist the user's password. The
+  first slice supports independent Sleeper/ESPN connector pairings and opens the
+  ESPN-hosted sign-in surface. Approved ESPN capture and normalization remain.
 - **Final provider milestone — Yahoo.** Apply through Yahoo's reviewed Fantasy
   access process, verify real-account read fixtures, then add official lineup
   edits with confirmation and read-back. Yahoo is not a blocker for M5 or other

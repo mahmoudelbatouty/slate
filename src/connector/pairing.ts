@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const connectorPlatform = z.enum(["sleeper"]);
+export const connectorPlatform = z.enum(["sleeper", "espn"]);
 
 export const pairingRequest = z.object({
   platform: connectorPlatform,

@@ -156,8 +156,10 @@ simultaneous users.
 6. **M5** inline whole-league scoreboard and standings — implemented. Every
    weekly matchup is paired once, the user's game stays first, any game expands
    to its synced lineup, and standings use provider rank/record data.
-7. **M6:** ESPN password-free browser connection and canonical read sync. The
-   user signs in on ESPN; Slate never accepts or stores the ESPN password.
+7. **M6 (in progress):** ESPN password-free browser connection and canonical
+   read sync. Platform-specific pairing and the ESPN-hosted sign-in entry point
+   are implemented; approved ESPN response capture/normalization is next. Slate
+   never accepts or stores the ESPN password.
 8. **Final provider milestone:** complete Yahoo's reviewed OAuth/Fantasy access,
    verify real read fixtures, then add confirmed Yahoo lineup submission
 

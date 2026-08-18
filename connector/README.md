@@ -1,10 +1,11 @@
 # Slate Fantasy Connector
 
 The connector is a Manifest V3 browser extension. It never reads password
-fields, cookies, local storage, or request headers. On Sleeper it observes only
-the response to approved `matchup_legs` GraphQL operations, removes every field
-outside the allowlist, and sends that sanitized data to Slate with a revocable,
-ingest-only token.
+fields, cookies, local storage, or request headers. It observes only approved
+fantasy responses, removes every field outside the allowlist, and sends that
+sanitized data to Slate with a revocable, platform-scoped ingest token. Sleeper
+capture is implemented; ESPN pairing/sign-in is implemented and ESPN capture
+remains pending.
 
 ## Install for development
 
@@ -27,8 +28,9 @@ need to be opened or refreshed when their native private data should be synced.
 
 - Slate creates a random pairing challenge that expires after five minutes.
 - The installed extension claims it once through the active Slate page.
-- The long-lived ingest token is returned only to the extension and stored in
-  extension-local storage. It is never rendered into the dashboard.
+- Each long-lived ingest token is returned only to the extension and stored by
+  platform in extension-local storage. Connecting ESPN cannot replace the
+  Sleeper connection, and tokens are never rendered into the dashboard.
 - Postgres stores only hashes of both the challenge secret and ingest token.
 - Replaying a consumed or expired challenge fails closed.
 

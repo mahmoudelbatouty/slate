@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { pairingClaimRequest, pairingRequest, PAIRING_TTL_MS } from "./pairing";
 
 describe("connector pairing protocol", () => {
-  it("accepts only an allowlisted provider", () => {
+  it("accepts the password-free connector providers", () => {
     expect(pairingRequest.parse({ platform: "sleeper" })).toEqual({ platform: "sleeper" });
-    expect(() => pairingRequest.parse({ platform: "espn" })).toThrow();
+    expect(pairingRequest.parse({ platform: "espn" })).toEqual({ platform: "espn" });
+    expect(() => pairingRequest.parse({ platform: "yahoo" })).toThrow();
     expect(() => pairingRequest.parse({ platform: "sleeper", token: "nope" })).toThrow();
   });
 

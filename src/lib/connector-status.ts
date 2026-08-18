@@ -4,7 +4,7 @@ import { db, dbConfigured } from "@/db/client";
 
 export interface ConnectorStatus {
   configured: boolean;
-  platform: "sleeper";
+  platform: "sleeper" | "espn";
   paired: boolean;
   state: "unconfigured" | "disconnected" | "waiting_for_data" | "connected";
   installationId: string | null;
@@ -15,11 +15,14 @@ export interface ConnectorStatus {
 export interface PlatformConnectionStatuses {
   sleeper: ConnectorStatus;
   yahoo: { configured: boolean; connected: boolean; lastOkAt: string | null };
-  espn: { configured: false; connected: false };
+  espn: ConnectorStatus;
 }
 
 export async function getPlatformConnectionStatuses(): Promise<PlatformConnectionStatuses> {
-  const sleeper = await getConnectorStatus();
+  const [sleeper, espn] = await Promise.all([
+    getConnectorStatus("sleeper"),
+    getConnectorStatus("espn"),
+  ]);
   const yahooConfigured = Boolean(
     process.env.YAHOO_CLIENT_ID
       && process.env.YAHOO_CLIENT_SECRET
@@ -43,15 +46,15 @@ export async function getPlatformConnectionStatuses(): Promise<PlatformConnectio
       connected: yahooConfigured && Boolean(yahooAccount?.last_ok_at),
       lastOkAt: yahooAccount?.last_ok_at ?? null,
     },
-    espn: { configured: false, connected: false },
+    espn,
   };
 }
 
-export async function getConnectorStatus(): Promise<ConnectorStatus> {
+export async function getConnectorStatus(platform: "sleeper" | "espn" = "sleeper"): Promise<ConnectorStatus> {
   if (!dbConfigured()) {
     return {
       configured: false,
-      platform: "sleeper",
+      platform,
       paired: false,
       state: "unconfigured",
       installationId: null,
@@ -64,7 +67,7 @@ export async function getConnectorStatus(): Promise<ConnectorStatus> {
   const { data: installation, error } = await client
     .from("connector_installations")
     .select("id, last_seen_at")
-    .eq("platform", "sleeper")
+    .eq("platform", platform)
     .is("revoked_at", null)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -73,7 +76,7 @@ export async function getConnectorStatus(): Promise<ConnectorStatus> {
   if (!installation) {
     return {
       configured: true,
-      platform: "sleeper",
+      platform,
       paired: false,
       state: "disconnected",
       installationId: null,
@@ -93,7 +96,7 @@ export async function getConnectorStatus(): Promise<ConnectorStatus> {
 
   return {
     configured: true,
-    platform: "sleeper",
+    platform,
     paired: Boolean(capture),
     state: capture ? "connected" : "waiting_for_data",
     installationId: installation.id,

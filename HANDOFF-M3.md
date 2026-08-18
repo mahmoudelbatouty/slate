@@ -252,6 +252,18 @@ authorization codes/access tokens are never stored.
   deny `anon`/`authenticated`, allow `service_role`, and passed a rollback-only
   insert/audit-trigger verification. Generated TypeScript database types match
   the deployed schema.
+- The server-side preview service is implemented in `src/lineup/store.ts` and
+  exposed to future matchup controls through a Server Action. The browser sends
+  only league/team/week and two player IDs; Slate re-reads the owned canonical
+  roster, derives names and current slots, checks both players' NFL lock state,
+  computes the full-lineup hash, and persists a five-minute exact swap preview.
+  No provider request is made by this action.
+- Preview retries reuse an idempotency key derived from both affected players,
+  the expected lineup state, and expiration. Status changes use conditional
+  updates, permit only forward transitions, and automatically append audit
+  events. `verified` additionally requires a sanitized provider read-back hash
+  equal to the expected lineup hash; raw provider payloads are rejected by the
+  audit-result schema.
 - This foundation does **not** enable a real lineup write. Yahoo stays read-only
   until an approved developer app and sanitized roster-update/read-back
   fixtures prove the current official request shape. Sleeper/ESPN stay
@@ -281,6 +293,13 @@ transition. The unique idempotency key prevents retries/double-clicks from
 creating a second provider write for the same expected lineup state.
 Lock state and the current lineup hash must be re-derived server-side during
 confirmation; values returned by the browser are preview-only and untrusted.
+
+The next implementation slice is the Yahoo provider-write boundary: record an
+approved, sanitized roster-update fixture; translate the exact two-player swap
+into Yahoo's current documented request; submit outside the database
+transaction; re-read the roster; and advance the existing command through the
+state machine. Do not render lineup controls before that end-to-end path has
+been verified against a disposable Yahoo lineup.
 
 ### 5. Experimental Sleeper/ESPN lineup actions
 

@@ -135,9 +135,10 @@ simultaneous users.
 2. ~~**M1** Sleeper adapter → sync job → crosswalk → one league rendering live~~ — done
 3. **M2** the "Left to play" band â€” code/schema complete; awaiting initial data sync
 4. **M3** automatic connections, persistent week selector, and complete inline matchups
-5. **M4 (in progress)** Yahoo official read path is merged; the secure,
-   provider-neutral command/audit foundation is next, followed by confirmed
-   lineup editing (Yahoo official; Sleeper/ESPN experimental connector)
+5. **M4 (in progress)** Yahoo official reads plus the secure provider-neutral
+   preview, idempotency, and command/audit foundation are implemented; verified
+   Yahoo lineup submission is next (Sleeper/ESPN connector writes remain
+   experimental)
 6. **M5** whole-league scoreboard expansion
 
 Don't start a milestone until the previous one works against real data.

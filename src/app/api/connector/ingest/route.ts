@@ -30,11 +30,11 @@ export async function POST(request: Request) {
 
   const { data: installation, error: authError } = await db()
     .from("connector_installations")
-    .select("id, platform")
+    .select("id, platform, owner_id")
     .eq("token_hash", hashConnectorToken(token))
     .is("revoked_at", null)
     .maybeSingle();
-  if (authError || !installation) return json({ error: "Unauthorized" }, 401);
+  if (authError || !installation?.owner_id) return json({ error: "Unauthorized" }, 401);
 
   let body: unknown;
   try {
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await storeConnectorCapture(installation.id, parsed.data);
+    const result = await storeConnectorCapture(installation.id, installation.owner_id, parsed.data);
     const nextRefreshMs = parsed.data.platform === "espn"
       ? await espnRefreshDelay(parsed.data).catch(() => IDLE_POLL_MS)
       : undefined;

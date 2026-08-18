@@ -9,6 +9,7 @@ import type { Json } from "@/db/types.gen";
 
 export async function storeConnectorCapture(
   installationId: string,
+  ownerId: string,
   envelope: ConnectorEnvelope
 ): Promise<{ updated: number }> {
   const client = db();
@@ -26,7 +27,7 @@ export async function storeConnectorCapture(
         received_at: new Date().toISOString(),
       }, { onConflict: "installation_id,platform,kind,external_league_id,week" });
       if (error) throw new Error(`connector capture write: ${error.message}`);
-      await storeEspnCanonical(client, snapshot, envelope.capturedAt);
+      await storeEspnCanonical(client, ownerId, snapshot, envelope.capturedAt);
     }
     const { error: seenError } = await client
       .from("connector_installations")
@@ -69,6 +70,7 @@ export async function storeConnectorCapture(
     const { error: projectionError } = await client.from("native_projections").upsert(
       projections.map((projection) => ({
         installation_id: installationId,
+        owner_id: ownerId,
         platform: envelope.platform,
         external_league_id: projection.externalLeagueId,
         external_team_id: projection.externalTeamId,
@@ -76,7 +78,7 @@ export async function storeConnectorCapture(
         projected_points: projection.projectedPoints,
         captured_at: envelope.capturedAt,
       })),
-      { onConflict: "platform,external_league_id,external_team_id,week" }
+      { onConflict: "owner_id,platform,external_league_id,external_team_id,week" }
     );
     if (projectionError) {
       throw new Error(`native projection write: ${projectionError.message}`);
@@ -97,6 +99,7 @@ export async function storeConnectorCapture(
     const { data: league, error: leagueError } = await client
       .from("leagues")
       .select("id")
+      .eq("owner_id", ownerId)
       .eq("platform", envelope.platform)
       .eq("external_id", externalLeagueId)
       .maybeSingle();
@@ -137,11 +140,13 @@ export async function storeConnectorCapture(
 
 async function storeEspnCanonical(
   client: ReturnType<typeof db>,
+  ownerId: string,
   snapshot: Extract<ConnectorEnvelope, { platform: "espn" }>["snapshots"][number],
   capturedAt: string
 ): Promise<void> {
   const canonical = normalizeEspnSnapshot(snapshot);
   const { data: league, error: leagueError } = await client.from("leagues").upsert({
+    owner_id: ownerId,
     platform: "espn",
     external_id: canonical.league.externalId,
     sport: canonical.league.sport,
@@ -156,7 +161,7 @@ async function storeEspnCanonical(
     format: canonical.league.format,
     league_type: canonical.league.leagueType,
     synced_at: capturedAt,
-  }, { onConflict: "platform,external_id,season" }).select("id").single();
+  }, { onConflict: "owner_id,platform,external_id,season" }).select("id").single();
   if (leagueError || !league) throw new Error(`ESPN league upsert: ${leagueError?.message}`);
 
   const { data: teams, error: teamError } = await client.from("teams").upsert(

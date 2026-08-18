@@ -1,5 +1,12 @@
 # Slate
 
+## User accounts and data isolation
+
+Slate now uses Supabase Auth rather than a shared application password. Signed-out
+visitors are redirected to `/login` and receive no fantasy data. Connector
+pairings and league data are scoped to the authenticated user; signing out hides
+cached data without deleting it. Provider passwords are never received or stored.
+
 One screen for fantasy leagues spread across Sleeper, ESPN, and Yahoo.
 Single-user prototype, with verified provider actions where supported. Named
 for the set of games in a window.

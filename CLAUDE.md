@@ -1,5 +1,11 @@
 # Slate
 
+## Authentication and ownership
+
+Use Supabase Auth; never restore the shared `APP_PASSWORD` gate. Scope every
+user-facing top-level query by verified `owner_id`. Signing out hides data and
+must never delete it. Provider passwords and cookies never enter Slate.
+
 One dashboard for fantasy leagues spread across Sleeper, ESPN, and Yahoo.
 
 **Single user for the current prototype.** This runs for the repo owner today.

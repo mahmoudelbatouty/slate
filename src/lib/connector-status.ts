@@ -18,10 +18,10 @@ export interface PlatformConnectionStatuses {
   espn: ConnectorStatus;
 }
 
-export async function getPlatformConnectionStatuses(): Promise<PlatformConnectionStatuses> {
+export async function getPlatformConnectionStatuses(ownerId: string): Promise<PlatformConnectionStatuses> {
   const [sleeper, espn] = await Promise.all([
-    getConnectorStatus("sleeper"),
-    getConnectorStatus("espn"),
+    getConnectorStatus(ownerId, "sleeper"),
+    getConnectorStatus(ownerId, "espn"),
   ]);
   const yahooConfigured = Boolean(
     process.env.YAHOO_CLIENT_ID
@@ -34,6 +34,7 @@ export async function getPlatformConnectionStatuses(): Promise<PlatformConnectio
     const { data, error } = await db()
       .from("platform_accounts")
       .select("last_ok_at")
+      .eq("owner_id", ownerId)
       .eq("platform", "yahoo")
       .maybeSingle();
     if (error) throw new Error(`Yahoo connection status: ${error.message}`);
@@ -50,7 +51,7 @@ export async function getPlatformConnectionStatuses(): Promise<PlatformConnectio
   };
 }
 
-export async function getConnectorStatus(platform: "sleeper" | "espn" = "sleeper"): Promise<ConnectorStatus> {
+export async function getConnectorStatus(ownerId: string, platform: "sleeper" | "espn" = "sleeper"): Promise<ConnectorStatus> {
   if (!dbConfigured()) {
     return {
       configured: false,
@@ -67,6 +68,7 @@ export async function getConnectorStatus(platform: "sleeper" | "espn" = "sleeper
   const { data: installation, error } = await client
     .from("connector_installations")
     .select("id, last_seen_at")
+    .eq("owner_id", ownerId)
     .eq("platform", platform)
     .is("revoked_at", null)
     .order("created_at", { ascending: false })

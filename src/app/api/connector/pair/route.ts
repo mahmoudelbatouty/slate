@@ -1,8 +1,7 @@
-import { cookies } from "next/headers";
-import { AUTH_COOKIE } from "@/lib/auth";
 import { dbConfigured, db } from "@/db/client";
 import { pairingRequest, PAIRING_TTL_MS } from "@/connector/pairing";
 import { createPairingSecret, hashSecret } from "@/lib/connector-auth";
+import { currentUser } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   if (!dbConfigured()) {
@@ -18,8 +17,8 @@ export async function POST(request: Request) {
   const parsed = pairingRequest.safeParse(body);
   if (!parsed.success) return Response.json({ error: "Unsupported platform" }, { status: 422 });
 
-  const authCookie = (await cookies()).get(AUTH_COOKIE)?.value;
-  if (!authCookie) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await currentUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const claimSecret = createPairingSecret();
   const createdAt = new Date();
@@ -30,9 +29,10 @@ export async function POST(request: Request) {
     .from("connector_pairing_challenges")
     .insert({
       platform: parsed.data.platform,
+      owner_id: user.id,
       dashboard_origin: dashboardOrigin,
       challenge_hash: hashSecret(claimSecret),
-      session_hash: hashSecret(authCookie),
+      session_hash: hashSecret(`${user.id}:${claimSecret}`),
       created_at: createdAt.toISOString(),
       expires_at: expiresAt.toISOString(),
     })

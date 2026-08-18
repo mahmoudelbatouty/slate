@@ -1,5 +1,17 @@
 # Handoff — M3/M4: seamless connections, complete matchups, lineup actions
 
+## 2026-08-18 — Supabase Auth ownership foundation
+
+- Replaced `APP_PASSWORD` with Supabase email/password Auth and SSR sessions.
+- Signed-out dashboard and protected connector routes redirect to `/login`.
+- Added owner-scoped records, indexes, uniqueness, RLS, and connector pairing.
+- Sign-out hides cached fantasy data without deleting it.
+- Existing prototype data is claimed only by the first, sole Auth user.
+- Build, lint, 142 tests, and signed-out browser checks pass.
+
+Before merge: create/confirm the first account and verify login → dashboard →
+sign-out end to end, then finish the owner-scope audit for live sync and Yahoo.
+
 This file records the repo owner's approved product-direction change on
 2026-08-12. `CLAUDE.md` and `DESIGN.md` have been updated to match it. If older
 handoffs say Slate is permanently read-only, this handoff and the current brief

@@ -47,14 +47,15 @@ const EMPTY: Dashboard = {
  * `requestedWeek` comes from the URL and is clamped to something real, so
  * a hand-typed ?week=99 shows the current week rather than an error.
  */
-export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
+export async function getDashboard(ownerId: string, requestedWeek?: number): Promise<Dashboard> {
   if (!dbConfigured()) return EMPTY;
 
   const client = db();
 
   const { data: leagues, error } = await client
     .from("leagues")
-    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw, format, league_type");
+    .select("id, name, external_id, platform, season, current_week, synced_at, status, team_count, scoring_raw, format, league_type")
+    .eq("owner_id", ownerId);
 
   if (error) throw new Error(`leagues read: ${error.message}`);
   if (!leagues?.length) return { ...EMPTY, configured: true };
@@ -77,7 +78,8 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   const { data: teams, error: teamError } = await client
     .from("teams")
-    .select("id, league_id, name, manager_name, external_id, is_mine, wins, losses, ties, points_for, points_against, standing");
+    .select("id, league_id, name, manager_name, external_id, is_mine, wins, losses, ties, points_for, points_against, standing")
+    .in("league_id", leagues.map((league) => league.id));
 
   if (teamError) throw new Error(`teams read: ${teamError.message}`);
 
@@ -87,6 +89,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
   const { data: nativeRows, error: nativeError } = await client
     .from("native_projections")
     .select("platform, external_league_id, external_team_id, week, projected_points")
+    .eq("owner_id", ownerId)
     .in(
       "external_league_id",
       leagues.map((league) => league.external_id)

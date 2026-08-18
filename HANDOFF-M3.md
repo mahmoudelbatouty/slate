@@ -236,9 +236,11 @@ scoreboard game can expand inline to the provider-synced starters and bench.
 Chopped leagues keep the existing Chopping Block view because their league-wide
 competition is not a set of head-to-head matchups.
 
-The remaining M5 core-hub slice is a truthful league standings view. Do not
-derive season records from a single week's matchup rows; extend canonical sync
-with provider standings/record data first. After M5, M6 is the password-free
+M5 is complete after the follow-up standings slice. Head-to-head cards expose
+MATCHUPS / STANDINGS tabs; standings use the already canonical provider rank,
+record, points-for, and points-against fields rather than deriving season state
+from one week's matchup rows. When all teams are 0-0 with zero points, show a
+preseason message instead of arbitrary numbered ranks. M6 is the password-free
 ESPN browser connection and canonical read sync. ESPN credentials stay inside
 ESPN's signed-in browser session and must never be accepted or stored by Slate.
 Yahoo remains the final provider milestone.

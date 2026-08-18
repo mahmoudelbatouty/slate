@@ -153,9 +153,9 @@ simultaneous users.
 4. **M3** automatic connections, persistent week selector, and complete inline matchups
 5. **M4** secure provider-neutral preview, idempotency, and command/audit
    foundation — implemented; provider write controls remain disabled
-6. **M5 (in progress)** inline whole-league scoreboard expansion. The first
-   slice pairs every weekly matchup, keeps the user's game first, and expands
-   any game to its synced starters and bench without leaving Slate.
+6. **M5** inline whole-league scoreboard and standings — implemented. Every
+   weekly matchup is paired once, the user's game stays first, any game expands
+   to its synced lineup, and standings use provider rank/record data.
 7. **M6:** ESPN password-free browser connection and canonical read sync. The
    user signs in on ESPN; Slate never accepts or stores the ESPN password.
 8. **Final provider milestone:** complete Yahoo's reviewed OAuth/Fantasy access,

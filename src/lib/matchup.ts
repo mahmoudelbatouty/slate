@@ -69,6 +69,19 @@ export interface LeagueScoreboardRow {
   isFinal: boolean;
 }
 
+export interface LeagueStanding {
+  teamId: string;
+  name: string;
+  managerName: string | null;
+  isMine: boolean;
+  wins: number;
+  losses: number;
+  ties: number;
+  pointsFor: number | null;
+  pointsAgainst: number | null;
+  standing: number | null;
+}
+
 export interface MatchupCard {
   leagueId: string;
   leagueName: string;
@@ -92,6 +105,18 @@ export interface MatchupCard {
   opponent: Side | null;
   chopped: ChoppedSummary | null;
   scoreboard: LeagueScoreboardGame[];
+  standings: LeagueStanding[];
+}
+
+export function orderLeagueStandings(standings: LeagueStanding[]): LeagueStanding[] {
+  return [...standings].sort((a, b) => {
+    if (a.standing !== null || b.standing !== null) {
+      if (a.standing === null) return 1;
+      if (b.standing === null) return -1;
+      if (a.standing !== b.standing) return a.standing - b.standing;
+    }
+    return b.wins - a.wins || (b.pointsFor ?? 0) - (a.pointsFor ?? 0) || a.name.localeCompare(b.name);
+  });
 }
 
 /** Pair provider rows once, keeping the user's game first and every game truthful. */

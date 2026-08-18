@@ -116,25 +116,50 @@ export function LeagueCard({
 }
 
 function LeagueScoreboard({ card }: { card: MatchupCard }) {
+  const [view, setView] = useState<"matchups" | "standings">("matchups");
   return (
     <section
       id={`league-scoreboard-${card.leagueId}`}
       className="mt-4 border-t border-ink-line pt-4"
       aria-label={`${card.leagueName} Week ${card.week} league scoreboard`}
     >
-      <div className="mb-2 flex items-end justify-between gap-3">
+      <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <p className="mono text-[9px] tracking-[0.1em] text-bone">ALL MATCHUPS</p>
           <p className="text-xs text-bone-dim">Open any game for its synced lineup</p>
         </div>
         <span className="mono shrink-0 text-[9px] text-stone">WEEK {card.week}</span>
       </div>
-      <div className="border border-ink-line bg-ink">
-        {card.scoreboard.map((game) => (
-          <ScoreboardGame key={game.key} game={game} />
-        ))}
+      <div className="mb-2 grid grid-cols-2 border border-ink-line" role="tablist" aria-label="League view">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "matchups"}
+          className={`min-h-10 px-3 text-2xs focus-visible:outline-2 focus-visible:outline-amber ${view === "matchups" ? "bg-bone text-ink" : "text-bone hover:bg-ink"}`}
+          onClick={() => setView("matchups")}
+        >
+          MATCHUPS
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "standings"}
+          className={`min-h-10 border-l border-ink-line px-3 text-2xs focus-visible:outline-2 focus-visible:outline-amber ${view === "standings" ? "bg-bone text-ink" : "text-bone hover:bg-ink"}`}
+          onClick={() => setView("standings")}
+        >
+          STANDINGS
+        </button>
       </div>
-      {card.scoreboard.length === 0 ? (
+      {view === "matchups" ? (
+        <div className="border border-ink-line bg-ink">
+          {card.scoreboard.map((game) => (
+            <ScoreboardGame key={game.key} game={game} />
+          ))}
+        </div>
+      ) : (
+        <LeagueStandings card={card} />
+      )}
+      {view === "matchups" && card.scoreboard.length === 0 ? (
         <p className="py-3 text-xs text-bone-dim">
           League matchups will appear when {card.platform} publishes Week {card.week}.
         </p>
@@ -144,6 +169,47 @@ function LeagueScoreboard({ card }: { card: MatchupCard }) {
       </p>
     </section>
   );
+}
+
+function LeagueStandings({ card }: { card: MatchupCard }) {
+  const hasActivity = card.standings.some((team) =>
+    team.wins > 0 || team.losses > 0 || team.ties > 0 || (team.pointsFor ?? 0) > 0 || (team.pointsAgainst ?? 0) > 0
+  );
+  if (!hasActivity) {
+    return (
+      <div className="border border-ink-line bg-ink px-3 py-4" role="tabpanel" aria-label={`${card.leagueName} standings`}>
+        <p className="text-xs text-bone">Standings begin when league play starts.</p>
+        <p className="mt-1 text-xs text-bone-dim">Slate will show the provider-synced rank, record, and points here automatically.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-hidden border border-ink-line bg-ink" role="tabpanel" aria-label={`${card.leagueName} standings`}>
+      <div className="mono grid grid-cols-[28px_minmax(0,1fr)_44px_62px] gap-2 px-3 py-2 text-[8px] tracking-[0.08em] text-stone">
+        <span>RK</span><span>TEAM</span><span className="text-right">REC</span><span className="text-right">PF</span>
+      </div>
+      <ol>
+        {card.standings.map((team) => (
+          <li
+            key={team.teamId}
+            className={`grid grid-cols-[28px_minmax(0,1fr)_44px_62px] items-center gap-2 border-t border-ink-line px-3 py-2 ${team.isMine ? "bg-bone/5" : ""}`}
+          >
+            <span className="mono text-[10px] text-stone">{team.standing ?? "—"}</span>
+            <span className={`min-w-0 truncate text-xs ${team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
+              {team.name}{team.isMine ? " · YOU" : ""}
+            </span>
+            <span className="mono text-right text-[10px] text-bone">{recordLabel(team.wins, team.losses, team.ties)}</span>
+            <span className="mono text-right text-[10px] tabular-nums text-bone">{team.pointsFor?.toFixed(1) ?? "—"}</span>
+          </li>
+        ))}
+      </ol>
+      {card.standings.length === 0 ? <p className="px-3 py-3 text-xs text-bone-dim">Standings have not synced yet.</p> : null}
+    </div>
+  );
+}
+
+function recordLabel(wins: number, losses: number, ties: number): string {
+  return ties > 0 ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
 }
 
 function ScoreboardGame({ game }: { game: LeagueScoreboardGame }) {

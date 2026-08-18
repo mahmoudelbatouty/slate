@@ -271,6 +271,11 @@ repeat refresh behavior. After the first valid capture, compare the canonical
 rows and dashboard against ESPN before merging PR #11. Automatic refresh when
 no ESPN page is open is still a separate remaining slice.
 
+Connector 0.3.1 corrects the post-pairing landing page to ESPN's current
+official fantasy-football URL (`https://www.espn.com/fantasy/football/`). The
+old `https://fantasy.espn.com/football/` root returns a not-found page; league
+pages on that host remain approved for the narrow capture content script.
+
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application
 at `https://sports.yahoo.com/developer/access/`. The generic YDN Create

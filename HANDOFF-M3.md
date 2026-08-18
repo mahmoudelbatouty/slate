@@ -6,13 +6,14 @@ This section supersedes conflicting historical notes later in this file.
 
 ### Repository and verification
 
-- Merge candidate: branch `codex/m6-espn-connector`, PR #11.
-- Latest implementation commit before this documentation update: `a8be7b6`.
+- PR #11 (`codex/m6-espn-connector`) was merged into `main` on 2026-08-18
+  at merge commit `b0b723a`.
+- Latest implementation commit in that PR: `a8be7b6`; its final handoff commit
+  was `fbfe966`.
 - Final local verification: 145 tests pass, ESLint passes, TypeScript passes,
   the production Next.js build passes, and the working tree contains no secrets.
-- PR #11 is approved to merge after its GitHub checks and mergeability are
-  confirmed. After merge, begin the next task from updated `main`; do not reuse
-  the feature branch.
+- Begin the next task from updated `main`; the remote feature branch was deleted
+  after merge and must not be reused.
 
 ### User/account behavior now implemented
 
@@ -85,7 +86,8 @@ This section supersedes conflicting historical notes later in this file.
 
 ### Recommended next work
 
-1. Pull updated `main` and confirm PR #11 is merged.
+1. Pull updated `main` and read this authoritative section before changing the
+   connector or account ownership model.
 2. Deploy to Vercel and configure production Supabase/Yahoo callback values only
    through environment settings; never commit secret values.
 3. Revalidate account A/account B isolation in the deployed environment.

@@ -4,6 +4,7 @@ import {
   buildLeagueScoreboard,
   deepLink,
   MONOGRAM,
+  orderLeagueStandings,
   type MatchupCard,
   type Platform,
 } from "./matchup";
@@ -42,6 +43,7 @@ function card(
     },
     chopped: null,
     scoreboard: [],
+    standings: [],
     ...rest,
   };
 }
@@ -115,6 +117,38 @@ describe("buildLeagueScoreboard", () => {
       teams
     );
     expect(game.right).toBeNull();
+  });
+});
+
+describe("orderLeagueStandings", () => {
+  const standing = (name: string, rank: number | null, wins: number, pointsFor: number) => ({
+    teamId: name,
+    name,
+    managerName: null,
+    isMine: false,
+    wins,
+    losses: 0,
+    ties: 0,
+    pointsFor,
+    pointsAgainst: 0,
+    standing: rank,
+  });
+
+  it("honors provider rank before local record fields", () => {
+    const ordered = orderLeagueStandings([
+      standing("Second", 2, 10, 2000),
+      standing("First", 1, 1, 100),
+    ]);
+    expect(ordered.map((team) => team.name)).toEqual(["First", "Second"]);
+  });
+
+  it("puts missing provider ranks last with a deterministic fallback order", () => {
+    const ordered = orderLeagueStandings([
+      standing("Unranked", null, 8, 1200),
+      standing("Ranked", 1, 1, 100),
+      standing("Higher points", null, 8, 1300),
+    ]);
+    expect(ordered.map((team) => team.name)).toEqual(["Ranked", "Higher points", "Unranked"]);
   });
 });
 

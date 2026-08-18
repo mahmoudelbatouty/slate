@@ -3,6 +3,7 @@ import { db, dbConfigured } from "@/db/client";
 import {
   buildLeagueScoreboard,
   byDrama,
+  orderLeagueStandings,
   type LeagueScoreboardTeam,
   type MatchupCard,
   type MatchupPlayer,
@@ -76,7 +77,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
 
   const { data: teams, error: teamError } = await client
     .from("teams")
-    .select("id, league_id, name, external_id, is_mine");
+    .select("id, league_id, name, manager_name, external_id, is_mine, wins, losses, ties, points_for, points_against, standing");
 
   if (teamError) throw new Error(`teams read: ${teamError.message}`);
 
@@ -276,6 +277,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
         opponent: null,
         chopped: null,
         scoreboard: [],
+        standings: [],
       });
       continue;
     }
@@ -368,6 +370,20 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
           })
         )
       : [];
+    const standings = leagueFormat === "head_to_head"
+      ? orderLeagueStandings((teams ?? []).flatMap((team) => team.league_id === league.id ? [{
+          teamId: team.id,
+          name: team.name ?? `Roster ${team.external_id}`,
+          managerName: team.manager_name,
+          isMine: team.is_mine,
+          wins: team.wins ?? 0,
+          losses: team.losses ?? 0,
+          ties: team.ties ?? 0,
+          pointsFor: team.points_for,
+          pointsAgainst: team.points_against,
+          standing: team.standing,
+        }] : []))
+      : [];
 
     cards.push({
       leagueId: league.id,
@@ -411,6 +427,7 @@ export async function getDashboard(requestedWeek?: number): Promise<Dashboard> {
           : null,
       chopped,
       scoreboard,
+      standings,
     });
   }
 

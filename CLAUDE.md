@@ -244,10 +244,12 @@ Ship each milestone working before starting the next.
   expiration, stale-lineup protection, idempotency, audit history, and verified
   read-back state. Do not expose provider write controls yet.
 - **M5 — full-league expansion.** Whole-league scoreboard toggle on every card,
-  player-level breakdowns, league standings view. The first slice is implemented:
+  player-level breakdowns, league standings view. Implemented:
   every canonical weekly matchup is paired once, the user's game sorts first,
   and any game expands inline to synced starters and bench players. Chopped
   leagues continue to use their league-wide Chopping Block instead of fake H2H.
+  Head-to-head standings use canonical provider rank, record, and points data;
+  suppress meaningless numbered ranks while every team is still 0-0.
 - **M6 — ESPN connection.** Add the password-free ESPN browser connector and
   normalize its approved reads into the same canonical sync path. ESPN sign-in
   happens on ESPN; Slate must never accept or persist the user's password.

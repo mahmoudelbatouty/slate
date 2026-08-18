@@ -254,8 +254,10 @@ Ship each milestone working before starting the next.
   normalize its approved reads into the same canonical sync path. ESPN sign-in
   happens on ESPN; Slate must never accept or persist the user's password. The
   connector supports independent Sleeper/ESPN pairings, ESPN-hosted sign-in, a
-  strict league-response allowlist, and canonical snapshot ingestion. Do not
-  mark M6 complete until a real signed-in capture and refresh have been verified.
+  strict league-response allowlist, canonical snapshot ingestion, and automatic
+  discovery of up to ten leagues from ESPN's visible numeric league links. Do
+  not mark M6 complete until discovery and refresh have been verified against a
+  real signed-in account.
 - **Final provider milestone — Yahoo.** Apply through Yahoo's reviewed Fantasy
   access process, verify real-account read fixtures, then add official lineup
   edits with confirmation and read-back. Yahoo is not a blocker for M5 or other

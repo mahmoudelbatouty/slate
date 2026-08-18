@@ -4,8 +4,9 @@ The connector is a Manifest V3 browser extension. It never reads password
 fields, cookies, local storage, or request headers. It observes only approved
 fantasy responses, removes every field outside the allowlist, and sends that
 sanitized data to Slate with a revocable, platform-scoped ingest token. Sleeper
-capture is implemented. ESPN pairing, sign-in, strict league capture, and
-canonical ingestion are implemented but still require real-account validation.
+capture is implemented. ESPN pairing, sign-in, strict league capture, automatic
+league discovery, and canonical ingestion are implemented but still require
+real-account validation.
 
 ## Install for development
 
@@ -14,9 +15,10 @@ canonical ingestion are implemented but still require real-account validation.
 3. Choose **Load unpacked** and select this `connector/` directory.
 4. Reload the extension after pulling connector changes.
 5. Open Slate and press the Sleeper or ESPN logo.
-6. Sign into that provider normally. For Sleeper, open a matchup; for ESPN,
-   open your fantasy league. The connector captures the full approved league
-   response, including its published schedule, rather than one matchup page.
+6. Sign into that provider normally. For Sleeper, open a matchup. For ESPN,
+   land on the fantasy welcome page; connector 0.4.0 discovers up to ten leagues
+   from ESPN's own visible league links and captures their approved league
+   responses. Opening an individual league remains a safe fallback.
 
 Localhost is approved automatically. For another dashboard origin, open the
 extension popup once, enter that dashboard URL, and press **Approve dashboard**.
@@ -24,7 +26,8 @@ The URL is not a credential; the popup requests access only to that exact
 origin. No key or token is copied by the user.
 
 The unified Slate dashboard remains the everyday screen. Provider tabs only
-need to be opened or refreshed when their native private data should be synced.
+need to be opened or refreshed when their native private data should be synced;
+background refresh while every ESPN tab is closed is not yet implemented.
 
 ## Pairing security
 

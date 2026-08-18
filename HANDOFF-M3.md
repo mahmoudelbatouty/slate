@@ -301,6 +301,17 @@ presence of a published schedule, preventing an undrafted league from being
 misclassified as in-season. Empty pre-draft rosters are expected and must not
 be treated as a failed capture.
 
+Connector 0.4.0 adds automatic ESPN league discovery. After normal ESPN
+sign-in, the content script scans only visible ESPN links for numeric
+`leagueId`, `teamId`, and `seasonId` query parameters. It sends at most ten
+identifier sets to the page bridge, which constructs only the exact allowlisted
+league-read API path and requests the approved combined views. DOM text,
+passwords, cookies, request headers, local storage, browser session data, and
+arbitrary URLs are never transmitted. This removes the need to open every
+league individually when ESPN's home page renders league links. Real-account
+verification must confirm the expected league set and ownership mapping before
+PR #11 is merged. Refresh while no ESPN page is open remains a later slice.
+
 Yahoo's current onboarding differs from the older YDN flow described in parts
 of its documentation. Fantasy API access now starts with a reviewed application
 at `https://sports.yahoo.com/developer/access/`. The generic YDN Create

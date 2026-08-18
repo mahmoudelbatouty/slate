@@ -159,8 +159,10 @@ simultaneous users.
 7. **M6 (in progress):** ESPN password-free browser connection and canonical
    read sync. Pairing, ESPN-hosted sign-in, strict response capture, and
    canonical league/team/standings/roster/matchup ingestion are implemented.
-   Real signed-in ESPN verification and automatic refresh remain. Slate never
-   accepts or stores the ESPN password.
+   Connector 0.4.0 automatically discovers up to ten leagues from ESPN's own
+   visible league links after sign-in. Real-account discovery verification and
+   refresh with no ESPN tab open remain. Slate never accepts or stores the ESPN
+   password.
 8. **Final provider milestone:** complete Yahoo's reviewed OAuth/Fantasy access,
    verify real read fixtures, then add confirmed Yahoo lineup submission
 

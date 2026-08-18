@@ -121,18 +121,45 @@
 
   const originalFetch = window.fetch;
 
-  function requestFullSnapshot(url, snapshot) {
-    if (enrichedLeagues.has(snapshot.leagueId)) return;
-    enrichedLeagues.add(snapshot.leagueId);
+  function addApprovedViews(url, currentWeek) {
     const enriched = new URL(url);
     enriched.searchParams.delete("view");
     ["mTeam", "mRoster", "mMatchup", "mMatchupScore", "mSettings"].forEach((view) => enriched.searchParams.append("view", view));
-    enriched.searchParams.set("scoringPeriodId", String(snapshot.currentWeek));
+    if (currentWeek) enriched.searchParams.set("scoringPeriodId", String(currentWeek));
+    return enriched;
+  }
+
+  function fetchApprovedSnapshot(url, leagueId, currentWeek) {
+    if (enrichedLeagues.has(leagueId)) return;
+    enrichedLeagues.add(leagueId);
+    const enriched = addApprovedViews(url, currentWeek);
     void originalFetch.call(window, enriched.href, { credentials: "include" })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("ESPN enrichment failed")))
       .then((json) => publish(json, enriched.href, false))
-      .catch(() => enrichedLeagues.delete(snapshot.leagueId));
+      .catch(() => enrichedLeagues.delete(leagueId));
   }
+
+  function requestFullSnapshot(url, snapshot) {
+    fetchApprovedSnapshot(url, snapshot.leagueId, snapshot.currentWeek);
+  }
+
+  window.addEventListener("message", (event) => {
+    if (event.source !== window || event.origin !== window.location.origin) return;
+    const message = event.data;
+    if (!message || message.type !== "SLATE_ESPN_DISCOVER" || !Array.isArray(message.leagues)) return;
+
+    for (const league of message.leagues.slice(0, 10)) {
+      const leagueId = typeof league?.leagueId === "string" ? league.leagueId : "";
+      const season = league?.season;
+      const teamId = typeof league?.teamId === "string" ? league.teamId : null;
+      if (!/^\d+$/.test(leagueId) || !Number.isInteger(season) || season < 2000 || season > 2100) continue;
+      if (teamId !== null && !/^\d+$/.test(teamId)) continue;
+
+      const url = new URL(`https://${API_HOST}/apis/v3/games/ffl/seasons/${season}/segments/0/leagues/${leagueId}`);
+      if (teamId) url.searchParams.set("teamId", teamId);
+      fetchApprovedSnapshot(url.href, leagueId, null);
+    }
+  });
 
   window.fetch = async function slateEspnFetch(input, init) {
     const url = input instanceof Request ? input.url : String(input);

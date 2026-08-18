@@ -239,8 +239,24 @@ authorization codes/access tokens are never stored.
 
 #### Current Yahoo checkpoint and next slice
 
-- Read-only OAuth and canonical imports are implemented on
-  `codex/m4-yahoo-read-path`, including per-provider live refresh.
+- Read-only OAuth and canonical imports were merged to `main` in PR #7,
+  including per-provider live refresh, five-minute account refreshes, and
+  missing-week backfill when a league moves from pre-draft to in-season.
+- The provider-neutral lineup-command foundation was started on
+  `codex/m4-lineup-command-foundation`. It adds deterministic lineup hashes,
+  five-minute previews, stale/locked/expired rejection, idempotency keys, and
+  server-only command plus append-only status-event records. Command records
+  contain no provider credentials, cookies, headers, or raw responses.
+- Migration `20260817212000_lineup_command_foundation.sql` was applied to
+  Supabase project `qqxceojybbacughapnom` on 2026-08-17. Both tables have RLS,
+  deny `anon`/`authenticated`, allow `service_role`, and passed a rollback-only
+  insert/audit-trigger verification. Generated TypeScript database types match
+  the deployed schema.
+- This foundation does **not** enable a real lineup write. Yahoo stays read-only
+  until an approved developer app and sanitized roster-update/read-back
+  fixtures prove the current official request shape. Sleeper/ESPN stay
+  read-only until their experimental connector command paths are separately
+  allowlisted and verified.
 - Before enabling lineup writes, connect an approved Yahoo developer app in a
   non-production environment and record sanitized response fixtures for
   leagues, standings, weekly rosters, scoreboards, and roster-update read-back.
@@ -250,6 +266,21 @@ authorization codes/access tokens are never stored.
   confirmation, stale-lineup hash rejection, idempotency, provider submission,
   and read-back verification. Transactions and commissioner actions remain
   out of scope.
+
+#### M4 command state machine
+
+`pending → submitted → verified` is the only successful path. A command may
+instead end as `rejected`, `expired`, or `unknown`. Slate must never render a
+successful edit from a provider 2xx alone; only a provider re-read matching the
+intended lineup may set `verified` and refresh canonical roster rows.
+
+The database transaction that creates or advances a command must finish before
+any provider HTTP/browser operation begins. Submission and read-back run
+outside database locks, then update the command with a conditional status
+transition. The unique idempotency key prevents retries/double-clicks from
+creating a second provider write for the same expected lineup state.
+Lock state and the current lineup hash must be re-derived server-side during
+confirmation; values returned by the browser are preview-only and untrusted.
 
 ### 5. Experimental Sleeper/ESPN lineup actions
 

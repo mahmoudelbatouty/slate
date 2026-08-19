@@ -314,6 +314,7 @@ function WinProbabilityBar({ probability, fallback }: { probability: number | nu
 function MatchupExpansion({ card }: { card: MatchupCard }) {
   const [benchOpen, setBenchOpen] = useState(false);
   const bench = card.mine.lineup?.bench ?? [];
+  const opponentBench = card.opponent?.lineup?.bench ?? [];
   const flagged = bench.filter(isFlagged).length;
 
   return (
@@ -343,23 +344,7 @@ function MatchupExpansion({ card }: { card: MatchupCard }) {
       </div>
 
       {benchOpen && (
-        <div className="flex flex-col gap-[9px] border-t border-ink-line pt-3">
-          <div className="mono flex items-baseline justify-between gap-[10px] text-[calc(9.5px*var(--ui-scale))] text-stone">
-            <span className="tracking-[0.13em]">YOUR BENCH</span>
-            <span className="tracking-[0.1em]">
-              {bench.length} PLAYER{bench.length === 1 ? "" : "S"}
-              {flagged > 0 ? ` · ${flagged} FLAG` : ""}
-            </span>
-          </div>
-          <div className="overflow-hidden rounded-[5px] border border-ink-line">
-            {bench.map((player) => (
-              <BenchRow key={player.externalPlayerId} player={player} />
-            ))}
-            {bench.length === 0 && (
-              <p className="px-3 py-3 text-xs text-bone-dim">No bench players synced for this week.</p>
-            )}
-          </div>
-        </div>
+        <MirroredBench mine={bench} opponent={opponentBench} flagged={flagged} />
       )}
 
       <p className="mono text-[calc(9.5px*var(--ui-scale))] leading-relaxed tracking-[0.07em] text-stone">
@@ -540,31 +525,125 @@ function PlayerPoints({
   );
 }
 
-function BenchRow({ player }: { player: MatchupPlayer }) {
+/**
+ * Both benches, mirrored the way the starters above them are.
+ *
+ * The handoff design shows only your own bench, which answers "who could I
+ * start" but not "what is coming at me" — the opponent's bench is where you
+ * see the boom week you are about to lose to. Benches are paired by position
+ * in each list rather than by lineup order: unlike starters, a bench has no
+ * slots to align against, so row N is simply each side's Nth reserve.
+ */
+export function MirroredBench({
+  mine,
+  opponent,
+  flagged,
+}: {
+  mine: MatchupPlayer[];
+  opponent: MatchupPlayer[];
+  flagged: number;
+}) {
+  const rows = Math.max(mine.length, opponent.length);
+  const opponentFlagged = opponent.filter(isFlagged).length;
+
+  return (
+    <div className="flex flex-col gap-[9px] border-t border-ink-line pt-3">
+      <div className="mono flex items-baseline justify-between gap-[10px] text-[calc(9.5px*var(--ui-scale))] text-stone">
+        <span className="tracking-[0.13em]">BENCH</span>
+        <span className="tracking-[0.1em]">
+          YOU {mine.length}
+          {flagged > 0 ? ` · ${flagged} FLAG` : ""} · OPP {opponent.length}
+          {opponentFlagged > 0 ? ` · ${opponentFlagged} FLAG` : ""}
+        </span>
+      </div>
+
+      {rows === 0 ? (
+        <p className="rounded-[5px] border border-ink-line px-3 py-3 text-xs text-bone-dim">
+          No bench players synced for this week.
+        </p>
+      ) : (
+        <div className="flex flex-col">
+          {Array.from({ length: rows }, (_, index) => {
+            const left = mine[index];
+            const right = opponent[index];
+            // A flagged player on either side tints its own half only, so the
+            // row still reads as two independent rosters.
+            return (
+              <div
+                key={`${left?.externalPlayerId ?? "none"}:${right?.externalPlayerId ?? "none"}:${index}`}
+                className="grid grid-cols-[minmax(0,1fr)_62px_62px_minmax(0,1fr)] items-center gap-2 border-b border-ink-line py-[10px] last:border-b-0"
+              >
+                <BenchIdentity player={left} align="left" />
+                <BenchPoints player={left} align="right" tone="text-bone" />
+                <BenchPoints player={right} align="left" tone="text-bone-dim" />
+                <BenchIdentity player={right} align="right" />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BenchIdentity({
+  player,
+  align,
+}: {
+  player: MatchupPlayer | undefined;
+  align: "left" | "right";
+}) {
+  if (!player) {
+    return (
+      <span className={`mono text-[calc(10px*var(--ui-scale))] text-stone ${align === "right" ? "text-right" : ""}`}>
+        —
+      </span>
+    );
+  }
+
   const flagged = isFlagged(player);
   const meta = [player.nflTeam, playerGameLabel(player), meaningfulStatus(player.injuryStatus)]
     .filter(Boolean)
     .join(" · ");
 
   return (
-    <div
-      className={`grid grid-cols-[minmax(0,1fr)_58px] items-center gap-[10px] border-b border-ink-line px-3 py-[10px] last:border-b-0 ${flagged ? "bg-deep" : ""}`}
-    >
-      <div className="flex min-w-0 flex-col gap-[3px]">
-        <span className="truncate text-[calc(12.5px*var(--ui-scale))] font-semibold text-bone">
-          <SlotTag slot={player.position ?? player.slot} side="left" />
-          {player.name}
-        </span>
-        <span className={`mono truncate text-[calc(9px*var(--ui-scale))] tracking-[0.07em] ${flagged ? "text-flag" : "text-stone"}`}>
-          {meta}
-        </span>
-      </div>
-      <span className="mono text-right text-[calc(12px*var(--ui-scale))] font-medium tabular-nums text-bone-dim">
-        {numberLabel(player.projectedPoints)}
+    <div className={`flex min-w-0 flex-col gap-[3px] ${align === "right" ? "items-end text-right" : ""}`}>
+      <span
+        className={`truncate text-[calc(12.5px*var(--ui-scale))] ${align === "left" ? "font-semibold text-bone" : "text-bone-dim"}`}
+      >
+        {align === "left" && <SlotTag slot={player.position ?? player.slot} side="left" />}
+        {player.name}
+        {align === "right" && <SlotTag slot={player.position ?? player.slot} side="right" />}
+      </span>
+      <span
+        className={`mono truncate text-[calc(9px*var(--ui-scale))] tracking-[0.07em] ${flagged ? "text-flag" : "text-stone"}`}
+      >
+        {meta}
       </span>
     </div>
   );
 }
+
+/** Bench players have not played, so the projection is the number that matters. */
+function BenchPoints({
+  player,
+  align,
+  tone,
+}: {
+  player: MatchupPlayer | undefined;
+  align: "left" | "right";
+  tone: string;
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <div className={`mono text-[calc(12px*var(--ui-scale))] font-medium tabular-nums ${tone}`}>
+        {numberLabel(player?.projectedPoints ?? null)}
+      </div>
+      <div className="mono text-[calc(9px*var(--ui-scale))] tracking-[0.09em] text-stone">PROJ</div>
+    </div>
+  );
+}
+
 
 /* ------------------------------------------------------------- league detail */
 

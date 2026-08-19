@@ -25,7 +25,7 @@ export async function submitAuth(_previous: AuthState, formData: FormData): Prom
   const parsed = parseAuthSubmission(formData);
   if (!parsed.ok) return { status: "error", message: parsed.message, email: parsed.email };
 
-  const { intent, email, password, next } = parsed.value;
+  const { intent, email, password, next, firstName, lastName } = parsed.value;
 
   let client: Awaited<ReturnType<typeof createAuthClient>>;
   try {
@@ -70,7 +70,11 @@ export async function submitAuth(_previous: AuthState, formData: FormData): Prom
     const { data, error } = await client.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: await confirmRedirect(next) },
+      options: {
+        emailRedirectTo: await confirmRedirect(next),
+        // Feeds the header initials and the account sheet. Never required.
+        data: { first_name: firstName, last_name: lastName },
+      },
     });
     if (error) {
       return {

@@ -7,13 +7,20 @@ export type AuthSubmission = {
   email: string;
   password: string;
   next: string;
+  /** Optional display name, collected only when creating an account. */
+  firstName: string;
+  lastName: string;
 };
+
+const NAME_MAX = 60;
 
 const schema = z.object({
   intent: z.enum(["signin", "signup", "resend", "reset"]),
   email: z.string().trim().toLowerCase().pipe(z.email()),
   password: z.string(),
   next: z.string(),
+  firstName: z.string().trim().max(NAME_MAX).default(""),
+  lastName: z.string().trim().max(NAME_MAX).default(""),
 });
 
 /** Only same-origin paths survive, so `?next=` can never bounce a session off-site. */
@@ -37,6 +44,8 @@ export function parseAuthSubmission(
     email: formData.get("email"),
     password: formData.get("password") ?? "",
     next: String(formData.get("next") ?? "/"),
+    firstName: String(formData.get("firstName") ?? "").slice(0, NAME_MAX),
+    lastName: String(formData.get("lastName") ?? "").slice(0, NAME_MAX),
   });
 
   if (!parsed.success) return { ok: false, message: "Enter a valid email address." };

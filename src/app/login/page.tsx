@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/supabase/server";
 import AuthForm from "./AuthForm";
+import { SignInBoard } from "./SignInBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -15,19 +16,22 @@ export default async function Login({
 
   const requested = params.next ?? "/";
   const next = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+  const message = arrival(params.e, params.message);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-app flex-col justify-center px-[18px] py-10">
-      <h1 className="display text-[34px] leading-none">Slate</h1>
-      <p className="mono mt-2 text-2xs text-bone-dim">one account, every fantasy platform</p>
+    <main className="grid min-h-dvh w-full max-w-[1280px] grid-cols-1 signin:grid-cols-[minmax(0,1fr)_560px]">
+      <SignInBoard />
 
-      {arrival(params.e, params.message) && (
-        <p className="mono mt-4 text-2xs leading-relaxed text-bone-dim" role="status">
-          {arrival(params.e, params.message)}
-        </p>
-      )}
-
-      <AuthForm next={next} />
+      <section className="flex flex-col justify-center gap-6 border-ink-line bg-deep px-[18px] py-12 signin:border-l signin:px-12">
+        <div className="mx-auto flex w-full max-w-[440px] flex-col gap-6">
+          {message && (
+            <p className="mono text-[10.5px] leading-relaxed tracking-[0.08em] text-bone-dim" role="status">
+              {message}
+            </p>
+          )}
+          <AuthForm next={next} />
+        </div>
+      </section>
     </main>
   );
 }

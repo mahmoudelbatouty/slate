@@ -75,12 +75,13 @@ async function enabledPlatforms(db: Db, requestedOwnerId?: string): Promise<Enab
     }
   }
 
-  // Preserve the legacy unowned CLI workflow, but never apply its configured
-  // username to an authenticated Slate account.
-  const username = process.env.SLEEPER_USERNAME;
-  if (!requestedOwnerId && username && !out.some((entry) => entry.adapter.platform === "sleeper" && entry.ownerId === null)) {
-    out.push({ adapter: sleeperAdapter, creds: { platform: "sleeper", username }, ownerId: null });
-  }
+  // There is deliberately no ownerless path. SLEEPER_USERNAME used to add one
+  // here, which meant the nightly cron — which calls runSync with no owner —
+  // wrote a third, unowned copy of every league beside the real accounts':
+  // 12 leagues, 140 teams, 1050 matchups, and 21,873 roster entries that no
+  // owner-scoped query could ever return. The env var still drives the
+  // fixture recorder and the smoke script, which talk to Sleeper directly and
+  // write nothing.
 
   if (yahooOAuthConfigured()) {
     for (const account of (accounts ?? []).filter((row) => row.platform === "yahoo")) {

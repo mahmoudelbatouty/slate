@@ -165,6 +165,10 @@ APP_PASSWORD=
 
 - **Sleeper**: the connector discovers the signed-in account's public numeric
   user ID. No username entry is required and no credential is stored.
+  `SLEEPER_USERNAME` drives the fixture recorder and the smoke script only. It
+  must never add a connection to a sync: an ownerless sync writes rows no
+  owner-scoped query can read, which is how 21,873 orphaned roster entries
+  accumulated before `leagues.owner_id` became `not null`.
 - **Yahoo**: one-time OAuth consent at `/admin/connections`. Store the refresh
   token; mint access tokens on demand (1hr life). Refresh tokens are long-lived
   but not eternal — surface a reconnect banner when `last_ok_at` goes stale.

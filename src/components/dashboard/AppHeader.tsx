@@ -66,7 +66,7 @@ export function AppHeader({
               aria-controls="account-sheet"
               className={`flex cursor-pointer items-center gap-[7px] rounded-[4px] border py-[5px] pr-[9px] pl-[6px] ${accountOpen ? "border-amber" : "border-ink-line"}`}
             >
-              <span className="mono grid h-[18px] w-[18px] place-items-center rounded-full border border-ink-line bg-ink-raised text-[calc(8.5px*var(--ui-scale))] text-bone-dim">
+              <span className="mono grid h-[18px] w-[18px] place-items-center rounded-full border border-ink-line bg-ink-raised text-[calc(9.5px*var(--ui-scale))] text-bone-dim">
                 {initials(identity)}
               </span>
               <span className={`mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] ${accountOpen ? "text-bone" : "text-bone-dim"}`}>

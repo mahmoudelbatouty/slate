@@ -23,11 +23,11 @@ export function WeekSelect({
 
   return (
     <div className="flex items-center gap-[9px] border-b border-ink-line bg-deep px-[18px] pb-[14px]">
-      <span className="mono shrink-0 text-[9.5px] tracking-[0.13em] text-stone">SEASON WEEK</span>
+      <span className="mono shrink-0 text-[calc(9.5px*var(--ui-scale))] tracking-[0.13em] text-stone">SEASON WEEK</span>
       <div className="relative flex items-center">
         <select
           aria-label="Fantasy week"
-          className="week-select mono cursor-pointer rounded-[3px] border border-ink-line bg-ink-raised py-[7px] pr-[30px] pl-[11px] text-[10.5px] tracking-[0.06em] text-bone"
+          className="week-select mono cursor-pointer rounded-[3px] border border-ink-line bg-ink-raised py-[7px] pr-[30px] pl-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.06em] text-bone"
           value={selected ?? ""}
           disabled={pending}
           onChange={(event) => {
@@ -46,11 +46,11 @@ export function WeekSelect({
             </option>
           ))}
         </select>
-        <span className="mono pointer-events-none absolute right-[11px] text-[9px] text-stone" aria-hidden>
+        <span className="mono pointer-events-none absolute right-[11px] text-[calc(9px*var(--ui-scale))] text-stone" aria-hidden>
           ▼
         </span>
       </div>
-      <span className="mono text-[9.5px] tracking-[0.1em] text-stone">
+      <span className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] text-stone">
         {pending ? "LOADING…" : liveState}
       </span>
     </div>

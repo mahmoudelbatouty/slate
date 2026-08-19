@@ -62,7 +62,7 @@ function Segment({
       type="button"
       onClick={onSelect}
       aria-pressed={active}
-      className={`mono cursor-pointer px-[9px] py-[6px] text-[9.5px] tracking-[0.1em] ${border ? "border-l border-ink-line" : ""} ${active ? "bg-bone text-ink" : "text-bone-dim"}`}
+      className={`mono cursor-pointer px-[9px] py-[6px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] ${border ? "border-l border-ink-line" : ""} ${active ? "bg-bone text-ink" : "text-bone-dim"}`}
     >
       {label}
     </button>

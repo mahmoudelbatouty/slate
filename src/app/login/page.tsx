@@ -25,7 +25,7 @@ export default async function Login({
       <section className="flex flex-col justify-center gap-6 border-ink-line bg-deep px-[18px] py-12 signin:border-l signin:px-12">
         <div className="mx-auto flex w-full max-w-[440px] flex-col gap-6">
           {message && (
-            <p className="mono text-[10.5px] leading-relaxed tracking-[0.08em] text-bone-dim" role="status">
+            <p className="mono text-[calc(10.5px*var(--ui-scale))] leading-relaxed tracking-[0.08em] text-bone-dim" role="status">
               {message}
             </p>
           )}

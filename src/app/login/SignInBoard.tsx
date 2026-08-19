@@ -19,7 +19,7 @@ export function SignInBoard() {
       <div className="flex items-center justify-between gap-4">
         <span className="flex items-center gap-[10px]">
           <SlateMark size={24} />
-          <span className="display text-[15px]">Slate</span>
+          <span className="display text-[calc(15px*var(--ui-scale))]">Slate</span>
         </span>
         <ThemeToggle />
       </div>
@@ -28,14 +28,14 @@ export function SignInBoard() {
         <h1 className="display text-[clamp(36px,3.6vw,52px)] leading-none tracking-[-0.028em]">
           One screen for every league you&apos;re in.
         </h1>
-        <p className="max-w-[520px] text-[16.5px] leading-relaxed text-bone-dim">
+        <p className="max-w-[520px] text-[calc(16.5px*var(--ui-scale))] leading-relaxed text-bone-dim">
           Slate pulls your Sleeper, ESPN, and Yahoo leagues into a single live board — every matchup,
           every remaining starter, ordered by which game is actually close.
         </p>
       </div>
 
       <div className="max-w-[600px] overflow-hidden rounded-[6px] border border-ink-line bg-ink-raised">
-        <div className="mono flex items-center justify-between border-b border-ink-line bg-deep px-[15px] py-[11px] text-[10.5px] tracking-[0.13em] text-stone">
+        <div className="mono flex items-center justify-between border-b border-ink-line bg-deep px-[15px] py-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.13em] text-stone">
           <span>SAMPLE BOARD · WHAT SUNDAY LOOKS LIKE</span>
           <span className="flex items-center gap-[6px] text-amber">
             <i className="pulse h-[5px] w-[5px] rounded-full bg-amber" aria-hidden />
@@ -47,18 +47,18 @@ export function SignInBoard() {
             className="flex items-center justify-between gap-4 border-b border-ink-line px-[15px] py-[13px] last:border-b-0"
             key={row.league}
           >
-            <span className="text-[13px] text-bone">{row.league}</span>
+            <span className="text-[calc(13px*var(--ui-scale))] text-bone">{row.league}</span>
             <span className={`display text-base tabular-nums ${row.tone}`}>{row.score}</span>
           </div>
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <span className="mono text-[10.5px] tracking-[0.13em] text-stone">SYNCS</span>
+        <span className="mono text-[calc(10.5px*var(--ui-scale))] tracking-[0.13em] text-stone">SYNCS</span>
         <span className="flex items-center gap-[14px]">
-          <PlatformMark platform="sleeper" variant="mark" size={18} />
-          <PlatformMark platform="espn" variant="mark" size={18} />
-          <PlatformMark platform="yahoo" variant="mark" size={18} />
+          <PlatformMark platform="sleeper" size={18} />
+          <PlatformMark platform="espn" size={18} />
+          <PlatformMark platform="yahoo" size={18} />
         </span>
       </div>
     </section>

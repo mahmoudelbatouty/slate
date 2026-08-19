@@ -13,7 +13,7 @@ export function AroundTheLeague({ games, week }: { games: NflGameBox[]; week: nu
       className="flex flex-col gap-[10px] border-b border-ink-line px-[18px] pt-[14px] pb-[15px]"
       aria-label={week ? `NFL games, week ${week}` : "NFL games"}
     >
-      <div className="mono flex items-baseline justify-between gap-[10px] text-[9.5px] text-stone">
+      <div className="mono flex items-baseline justify-between gap-[10px] text-[calc(9.5px*var(--ui-scale))] text-stone">
         <span className="tracking-[0.13em]">AROUND THE LEAGUE</span>
         <span className="tracking-[0.1em]">{scoreboardSummary(games)}</span>
       </div>
@@ -44,7 +44,7 @@ function GameBox({ game }: { game: NflGameBox }) {
         pre={pre}
       />
       <span
-        className={`mono border-t border-ink-line pt-[7px] text-[9px] tracking-[0.1em] ${game.phase === "live" ? "text-amber" : "text-stone"}`}
+        className={`mono border-t border-ink-line pt-[7px] text-[calc(9px*var(--ui-scale))] tracking-[0.1em] ${game.phase === "live" ? "text-amber" : "text-stone"}`}
       >
         {game.status}
       </span>
@@ -66,8 +66,8 @@ function TeamRow({
   const tone = pre || !leading ? "text-bone-dim" : "text-bone";
   return (
     <div className={`mono flex items-center justify-between gap-2 ${tone}`}>
-      <span className="text-[11px] tracking-[0.07em]">{team}</span>
-      <span className="text-[14px] font-medium tabular-nums">{points ?? "—"}</span>
+      <span className="text-[calc(11px*var(--ui-scale))] tracking-[0.07em]">{team}</span>
+      <span className="text-[calc(14px*var(--ui-scale))] font-medium tabular-nums">{points ?? "—"}</span>
     </div>
   );
 }

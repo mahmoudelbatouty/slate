@@ -31,6 +31,7 @@ import {
   type NotificationKey,
 } from "@/lib/preferences";
 import { buildTickerItems } from "@/lib/ticker";
+import { useConnections } from "@/lib/useConnections";
 import type { WeekOption } from "@/lib/weeks";
 
 const TOAST_MS = 3_600;
@@ -93,6 +94,8 @@ export function DashboardShell({
     toastTimer.current = window.setTimeout(() => setToast(""), TOAST_MS);
   }, []);
 
+  const connections = useConnections(statuses, showToast);
+
   function move(activeKey: string, targetKey: string) {
     const next = moveMatchupCard(ordered, activeKey, targetKey);
     if (next === ordered) return;
@@ -113,7 +116,7 @@ export function DashboardShell({
     write(NOTIFICATION_STORAGE_KEY, serialize(next));
   }
 
-  const connected = connectedPlatforms(statuses);
+  const connected = connectedPlatforms(connections.statuses);
   const leagueRows: LeagueRow[] = ordered.map((card) => ({
     key: matchupOrderKey(card),
     name: card.leagueName,
@@ -132,6 +135,11 @@ export function DashboardShell({
         lastSyncedAt={lastSyncedAt}
         accountOpen={accountOpen}
         onToggleAccount={() => setAccountOpen((value) => !value)}
+        onConnectPlatform={(platform) => {
+          // Open the sheet either way: it is where the result shows up.
+          setAccountOpen(true);
+          connections.connect(platform);
+        }}
       />
 
       <WeekSelect weeks={weeks} selected={week} liveState={weekState} />
@@ -143,7 +151,6 @@ export function DashboardShell({
       {accountOpen && (
         <AccountSheet
           identity={identity}
-          statuses={statuses}
           notice={notice}
           leagueCounts={leagueCounts(cards)}
           leagues={leagueRows}
@@ -153,6 +160,7 @@ export function DashboardShell({
           onMoveLeague={move}
           onToast={showToast}
           onClose={() => setAccountOpen(false)}
+          connections={connections}
         />
       )}
 
@@ -180,7 +188,7 @@ export function DashboardShell({
           role="status"
         >
           <span className="h-[5px] w-[5px] rounded-full bg-turf" aria-hidden />
-          <span className="text-[12.5px] text-bone">{toast}</span>
+          <span className="text-[calc(12.5px*var(--ui-scale))] text-bone">{toast}</span>
         </div>
       )}
     </div>
@@ -197,12 +205,12 @@ function EmptyState({
   return (
     <section className="flex flex-1 flex-col items-center justify-center gap-4 px-[18px] py-[60px] text-center">
       <SlateMark size={44} lit={false} />
-      <h2 className="display text-[18px]">No leagues yet</h2>
-      <p className="max-w-[300px] text-[13.5px] leading-relaxed text-bone-dim">{message}</p>
+      <h2 className="display text-[calc(18px*var(--ui-scale))]">No leagues yet</h2>
+      <p className="max-w-[300px] text-[calc(13.5px*var(--ui-scale))] leading-relaxed text-bone-dim">{message}</p>
       <button
         type="button"
         onClick={onOpenConnections}
-        className="mono mt-1 cursor-pointer rounded-[4px] border border-ink-line bg-ink-raised px-[18px] py-3 text-[11px] tracking-[0.1em] text-bone"
+        className="mono mt-1 cursor-pointer rounded-[4px] border border-ink-line bg-ink-raised px-[18px] py-3 text-[calc(11px*var(--ui-scale))] tracking-[0.1em] text-bone"
       >
         OPEN CONNECTIONS
       </button>

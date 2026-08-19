@@ -128,10 +128,31 @@ still render 12 cards, four with full lineups including the restored empty FLEX
 slots. **The 294 transactions were the only content not duplicated under an owned
 league**; nothing reads that table today and the providers can re-sync it.
 
+**There are now two real accounts** (`0be3128c…` and `1aada003…`) sharing several
+leagues, so owned rows legitimately duplicate each other on
+`(platform, external_id)`. That is not corruption — do not "deduplicate" it. Only
+`owner_id is null` ever marked a prototype row, and none remain.
+
+`CLAUDE.md` still opens with "Single user for the current prototype. This runs
+for the repo owner today." That is no longer literally true, and the owner-scope
+rule two lines above it is what the code follows. Left as-is because it states
+product direction, not a fact about the data — but do not read it as licence to
+skip owner scoping.
+
 **Known follow-ups, none blocking.**
-- `leagues` still holds pre-auth rows with `owner_id is null` — duplicates of
-  live leagues that no owner-scoped query returns. Harmless, but they inflate
-  every table scan and should be cleaned up.
+
+- Only `leagues.owner_id` is `not null`. `platform_accounts`, `sync_runs`,
+  `connector_installations`, `connector_pairing_challenges`, and
+  `native_projections` still allow a null owner; all are clean today, and the
+  code path that produced ownerless rows is gone, but the constraint would make
+  that structural.
+- The 700px `--ui-scale` step (1.22) is interpolated between the phone
+  calibration and the derived desktop value, not measured on its own.
+- `transactions` is empty. Nothing reads it; the sync writes it only for leagues
+  whose adapter reports transactions, and no UI surfaces them yet.
+- Notification delivery is still unwired — preferences are browser-local only.
+- Best-ball and playoff-bracket cards remain unbuilt because no adapter reports
+  either shape.
 
 ### Session decisions — 2026-08-18, later same day
 

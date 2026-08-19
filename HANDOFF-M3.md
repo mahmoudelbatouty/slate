@@ -95,9 +95,40 @@ follows. Note `teams.avatar_url` still stores `sleepercdn.com` URLs from the
 adapter; nothing renders them today, and anything that starts to will need a
 remote pattern restored or the images proxied.
 
-**Known follow-ups, none blocking.**
+### Session decisions — 2026-08-18, late: measured type scale, prototype rows dropped
 
-- `--ui-scale` is a first guess at desktop legibility, not a measured one.
+**`--ui-scale` is derived now, not guessed.** Legibility tracks x-height rather
+than nominal size. Measured from the loaded fonts: DM Mono 0.49em, Public Sans
+and Archivo 0.52em, system UI 0.50em — and DM Mono carries roughly two thirds of
+the text here. A 12px system caption is a common desktop floor (x-height 6.0px);
+matching it optically in DM Mono needs 12.2px, and the dominant label size is
+9.5px (36 of 166 declarations), giving 1.29 → **1.3**. The two 8.5px labels rose
+to 9.5px so nothing renders below 11.7px, above the 11px floor Apple's HIG sets
+for UI text. Card prose gained a `max-w-[68ch]` cap: at the wide shell those
+sentences ran ~120 characters per line, about double the readable band.
+
+**The pre-auth prototype rows are gone, and so is what fed them.** These were the
+database Slate used through M1–M6: `20260818033339_user_owned_auth.sql` added
+`owner_id` nullable and left them unowned, then `4a4cba7` removed the one-time
+ownership claim so accounts start empty and cannot see prototype records. Both
+real accounts had re-synced their leagues fresh, and every week present in an
+unowned league was also present in an owned copy.
+
+`SLEEPER_USERNAME` was still adding an ownerless Sleeper connection in
+`enabledPlatforms`, and `runSync` accepts no owner from the cron route — so any
+ownerless sync wrote a third copy of every league beside the two accounts'. That
+path is removed; the env var now drives only the fixture recorder and smoke
+script, which write nothing. `20260819030000_drop_unowned_rows.sql` cleared the
+data and set `leagues.owner_id not null` so a recurrence fails loudly.
+
+Applied to the live project 2026-08-18. Counts moved exactly as predicted:
+leagues 36→24, teams 420→280, matchups 3150→2100, roster_entries 67,108→45,235,
+transactions 294→0, sync_runs 79→64, connector_installations 24→16. Both accounts
+still render 12 cards, four with full lineups including the restored empty FLEX
+slots. **The 294 transactions were the only content not duplicated under an owned
+league**; nothing reads that table today and the providers can re-sync it.
+
+**Known follow-ups, none blocking.**
 - `leagues` still holds pre-auth rows with `owner_id is null` — duplicates of
   live leagues that no owner-scoped query returns. Harmless, but they inflate
   every table scan and should be cleaned up.

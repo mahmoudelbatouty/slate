@@ -11,13 +11,15 @@
   --font-body: "Public Sans", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, monospace;
 
-  --text-hero: 44px;
-  --text-score: 28px;
-  --text-lead: 20px;
-  --text-base: 16px;
-  --text-sm: 14px;
-  --text-xs: 12px;
-  --text-2xs: 11px;
+  /* Named sizes ride the same --ui-scale as the components' literal sizes,
+     so a page mixing both stays in proportion. */
+  --text-hero: calc(44px * var(--ui-scale));
+  --text-score: calc(28px * var(--ui-scale));
+  --text-lead: calc(20px * var(--ui-scale));
+  --text-base: calc(16px * var(--ui-scale));
+  --text-sm: calc(14px * var(--ui-scale));
+  --text-xs: calc(12px * var(--ui-scale));
+  --text-2xs: calc(11px * var(--ui-scale));
 
   --breakpoint-wide: 1000px;
   --breakpoint-signin: 1150px;
@@ -70,6 +72,28 @@
   --color-flag: #b0402f;
   --color-stone: #8b939a;
   --color-mark-off: #c3c5bc;
+}
+
+/* Type scale.
+   The handoff sizes are calibrated for the 560px phone shell. On a desktop
+   monitor the same 9–13px labels read as fine print, so every component's
+   font-size is multiplied by --ui-scale and this is the one place it moves.
+   Spacing is deliberately left alone: the design's padding is generous, and
+   letting the type grow into it is what makes the wide shell readable. */
+:root {
+  --ui-scale: 1;
+}
+
+@media (min-width: 700px) {
+  :root {
+    --ui-scale: 1.12;
+  }
+}
+
+@media (min-width: 1000px) {
+  :root {
+    --ui-scale: 1.22;
+  }
 }
 
 @layer base {
@@ -176,13 +200,20 @@
   background: var(--color-ink-line);
 }
 
+/* Provider marks keep their official colors in both themes. Inverting them
+   was hue-shifting ESPN red and Yahoo purple to green, which misreads as a
+   game-state color and breaks both brands' guidelines.
+
+   Yahoo's #7D2EFF only clears 2.96:1 against --ink-raised, so Floodlight
+   lifts its luminance to ~4.4:1. Hue and saturation are untouched: this is a
+   legibility adjustment, not a recolor. ESPN red already clears 3:1 on both
+   grounds and is left exactly as shipped. */
 .platform-mark-image {
-  opacity: 0.8;
+  opacity: 1;
 }
 
-[data-theme="daybreak"] .platform-mark-image {
-  filter: invert(1);
-  opacity: 0.82;
+[data-theme="floodlight"] .platform-mark-image--lift {
+  filter: brightness(1.5);
 }
 
 @media (prefers-reduced-motion: reduce) {

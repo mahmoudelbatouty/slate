@@ -5,9 +5,9 @@ import { logout } from "@/app/auth-actions";
 import { PlatformMark } from "@/components/PlatformMark";
 import { useReorder } from "@/components/dashboard/useReorder";
 import { displayName, initials, type AccountIdentity } from "@/lib/account";
-import { connectionNotice, startPairing } from "@/lib/connector-pairing";
-import type { ConnectorStatus, PlatformConnectionStatuses } from "@/lib/connector-status";
+import { connectionNotice } from "@/lib/connector-pairing";
 import type { Platform } from "@/lib/matchup";
+import { title, type Connections } from "@/lib/useConnections";
 import { NOTIFICATIONS, type NotificationKey } from "@/lib/preferences";
 
 export interface LeagueRow {
@@ -21,7 +21,7 @@ type Tab = "" | "notifs" | "order";
 
 export function AccountSheet({
   identity,
-  statuses,
+  connections,
   notice,
   leagueCounts,
   leagues,
@@ -33,7 +33,7 @@ export function AccountSheet({
   onClose,
 }: {
   identity: AccountIdentity;
-  statuses: PlatformConnectionStatuses;
+  connections: Connections;
   notice?: string;
   leagueCounts: Record<Platform, number>;
   leagues: LeagueRow[];
@@ -73,12 +73,12 @@ export function AccountSheet({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-[11px]">
-          <span className="mono grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full border border-ink-line bg-ink-raised text-[11px] text-bone-dim">
+          <span className="mono grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full border border-ink-line bg-ink-raised text-[calc(11px*var(--ui-scale))] text-bone-dim">
             {initials(identity)}
           </span>
           <div className="flex min-w-0 flex-col gap-[3px]">
             <span className="display truncate text-sm leading-tight">{displayName(identity)}</span>
-            <span className="mono truncate text-[10px] tracking-[0.08em] text-stone">
+            <span className="mono truncate text-[calc(10px*var(--ui-scale))] tracking-[0.08em] text-stone">
               {identity.email ?? ""}
             </span>
           </div>
@@ -86,14 +86,14 @@ export function AccountSheet({
         <button
           type="button"
           onClick={onClose}
-          className="mono shrink-0 cursor-pointer text-[10.5px] tracking-[0.09em] text-bone-dim"
+          className="mono shrink-0 cursor-pointer text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] text-bone-dim"
         >
           CLOSE ↑
         </button>
       </div>
 
-      <Connections
-        statuses={statuses}
+      <ConnectionList
+        connections={connections}
         notice={notice}
         leagueCounts={leagueCounts}
         syncing={syncing}
@@ -118,7 +118,7 @@ export function AccountSheet({
                 onToggle={() => onToggleNotification(setting.key)}
               />
             ))}
-            <p className="mono border-t border-ink-line px-[13px] py-[10px] text-[9px] leading-relaxed tracking-[0.07em] text-stone">
+            <p className="mono border-t border-ink-line px-[13px] py-[10px] text-[calc(9px*var(--ui-scale))] leading-relaxed tracking-[0.07em] text-stone">
               SAVED IN THIS BROWSER · DELIVERY IS NOT WIRED UP YET
             </p>
           </div>
@@ -136,7 +136,7 @@ export function AccountSheet({
         <form action={logout}>
           <button
             type="submit"
-            className="mono flex w-full cursor-pointer items-center justify-center rounded-[4px] border border-flag px-[13px] py-[11px] text-[10.5px] tracking-[0.09em] text-flag"
+            className="mono flex w-full cursor-pointer items-center justify-center rounded-[4px] border border-flag px-[13px] py-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] text-flag"
           >
             SIGN OUT
           </button>
@@ -160,7 +160,7 @@ function Accordion({
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className={`mono flex cursor-pointer items-center justify-between gap-[10px] rounded-[4px] border bg-ink-raised px-[13px] py-[11px] text-left text-[10.5px] tracking-[0.09em] text-bone ${open ? "border-amber" : "border-ink-line"}`}
+      className={`mono flex cursor-pointer items-center justify-between gap-[10px] rounded-[4px] border bg-ink-raised px-[13px] py-[11px] text-left text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] text-bone ${open ? "border-amber" : "border-ink-line"}`}
     >
       {label}
       <span className="text-stone" aria-hidden>{open ? "↑" : "→"}</span>
@@ -182,8 +182,8 @@ function NotificationRow({
   return (
     <div className="flex items-center justify-between gap-3 border-b border-ink-line bg-ink-raised px-[13px] py-3">
       <div className="flex min-w-0 flex-col gap-[3px]">
-        <span className="truncate text-[12.5px] font-semibold text-bone">{label}</span>
-        <span className="mono truncate text-[9.5px] tracking-[0.07em] text-stone">{meta}</span>
+        <span className="truncate text-[calc(12.5px*var(--ui-scale))] font-semibold text-bone">{label}</span>
+        <span className="mono truncate text-[calc(9.5px*var(--ui-scale))] tracking-[0.07em] text-stone">{meta}</span>
       </div>
       <button
         type="button"
@@ -212,7 +212,7 @@ function LeagueOrder({
 
   return (
     <div className="flex flex-col gap-[9px]">
-      <span className="mono text-[9.5px] tracking-[0.11em] text-stone">
+      <span className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">
         DRAG TO REORDER · TAP SHOWN TO HIDE
       </span>
       <div className="overflow-hidden rounded-[5px] border border-ink-line">
@@ -224,7 +224,7 @@ function LeagueOrder({
           >
             <button
               type="button"
-              className="mono cursor-grab touch-none text-[12px] text-stone"
+              className="mono cursor-grab touch-none text-[calc(12px*var(--ui-scale))] text-stone"
               aria-label={`Reorder ${league.name}. Position ${index + 1} of ${leagues.length}. Drag, or use arrow keys.`}
               onKeyDown={(event) => {
                 const target =
@@ -239,17 +239,17 @@ function LeagueOrder({
             </button>
             <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
               <span
-                className={`truncate text-[12.5px] font-semibold ${league.hidden ? "text-stone" : "text-bone"}`}
+                className={`truncate text-[calc(12.5px*var(--ui-scale))] font-semibold ${league.hidden ? "text-stone" : "text-bone"}`}
               >
                 {league.name}
               </span>
-              <span className="mono truncate text-[9px] tracking-[0.1em] text-stone">{league.meta}</span>
+              <span className="mono truncate text-[calc(9px*var(--ui-scale))] tracking-[0.1em] text-stone">{league.meta}</span>
             </div>
             <button
               type="button"
               onClick={() => onToggleHidden(league.key)}
               aria-pressed={league.hidden}
-              className={`mono shrink-0 cursor-pointer rounded-[3px] border border-ink-line px-[9px] py-[6px] text-[9px] tracking-[0.11em] ${league.hidden ? "text-stone" : "text-bone"}`}
+              className={`mono shrink-0 cursor-pointer rounded-[3px] border border-ink-line px-[9px] py-[6px] text-[calc(9px*var(--ui-scale))] tracking-[0.11em] ${league.hidden ? "text-stone" : "text-bone"}`}
             >
               {league.hidden ? "HIDDEN" : "SHOWN"}
             </button>
@@ -263,24 +263,26 @@ function LeagueOrder({
   );
 }
 
-function Connections({
-  statuses,
+function ConnectionList({
+  connections,
   notice,
   leagueCounts,
   syncing,
   onResync,
   onToast,
 }: {
-  statuses: PlatformConnectionStatuses;
+  connections: Connections;
   notice?: string;
   leagueCounts: Record<Platform, number>;
   syncing: boolean;
   onResync: () => void;
   onToast: (message: string) => void;
 }) {
-  const [sleeper, setSleeper] = useState(statuses.sleeper);
-  const [espn, setEspn] = useState(statuses.espn);
-  const [pairing, setPairing] = useState<Platform | null>(null);
+  // Status, polling, and the handshake itself belong to the shared hook, so
+  // the header's provider marks and these rows drive the same flow.
+  const { statuses, pairing, connect } = connections;
+  const sleeper = statuses.sleeper;
+  const espn = statuses.espn;
 
   useEffect(() => {
     const message = connectionNotice(notice);
@@ -291,35 +293,15 @@ function Connections({
     window.history.replaceState(window.history.state, "", url);
   }, [notice, onToast]);
 
-  useWaitingForData(sleeper, setSleeper);
-  useWaitingForData(espn, setEspn);
-
-  async function connect(platform: "sleeper" | "espn") {
-    setPairing(platform);
-    try {
-      await startPairing(platform);
-      const next = await fetchConnectorStatus(platform);
-      if (next) {
-        if (platform === "sleeper") setSleeper(next);
-        else setEspn(next);
-      }
-      onToast(`${title(platform)} pairing approved. Slate is waiting for its first sync.`);
-    } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : "Pairing failed.");
-    } finally {
-      setPairing(null);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-[9px]">
       <div className="mono flex items-baseline justify-between gap-[10px]">
-        <span className="text-[9.5px] tracking-[0.13em] text-stone">CONNECTIONS</span>
+        <span className="text-[calc(9.5px*var(--ui-scale))] tracking-[0.13em] text-stone">CONNECTIONS</span>
         <button
           type="button"
           onClick={onResync}
           disabled={syncing}
-          className="cursor-pointer text-[10px] tracking-[0.09em] text-amber disabled:cursor-wait"
+          className="cursor-pointer text-[calc(10px*var(--ui-scale))] tracking-[0.09em] text-amber disabled:cursor-wait"
         >
           {syncing ? "SYNCING…" : "RESYNC ALL"}
         </button>
@@ -386,17 +368,17 @@ function ConnectionRow({
   href?: string;
 }) {
   const buttonClass =
-    "mono shrink-0 cursor-pointer rounded-[3px] border border-ink-line px-[11px] py-[7px] text-[9.5px] tracking-[0.11em] text-bone disabled:cursor-wait";
+    "mono shrink-0 cursor-pointer rounded-[3px] border border-ink-line px-[11px] py-[7px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-bone disabled:cursor-wait";
 
   return (
     <div className="flex items-center gap-3 border-b border-ink-line bg-ink-raised px-[13px] py-3 last:border-b-0">
-      <PlatformMark platform={platform} variant="mark" size={16} dim={!connected} />
+      <PlatformMark platform={platform} size={16} dim={!connected} />
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="text-[13px] font-semibold text-bone">{title(platform)}</span>
-        <span className="mono truncate text-[9.5px] tracking-[0.07em] text-stone">{meta}</span>
+        <span className="text-[calc(13px*var(--ui-scale))] font-semibold text-bone">{title(platform)}</span>
+        <span className="mono truncate text-[calc(9.5px*var(--ui-scale))] tracking-[0.07em] text-stone">{meta}</span>
       </div>
       {connected ? (
-        <span className="mono flex shrink-0 items-center gap-[6px] text-[9.5px] tracking-[0.11em] text-turf">
+        <span className="mono flex shrink-0 items-center gap-[6px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-turf">
           <i className="h-[5px] w-[5px] rounded-full bg-turf" aria-hidden />
           SYNCED
         </span>
@@ -409,35 +391,13 @@ function ConnectionRow({
           {busy ? "CONNECTING…" : "CONNECT"}
         </button>
       ) : (
-        <span className="mono shrink-0 text-[9.5px] tracking-[0.11em] text-stone">SETUP NEEDED</span>
+        <span className="mono shrink-0 text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">SETUP NEEDED</span>
       )}
     </div>
   );
-}
-
-/** Polls only while a fresh pairing has yet to deliver its first capture. */
-function useWaitingForData(status: ConnectorStatus, setStatus: (next: ConnectorStatus) => void) {
-  useEffect(() => {
-    if (status.state !== "waiting_for_data") return;
-    const interval = window.setInterval(async () => {
-      const next = await fetchConnectorStatus(status.platform);
-      if (!next) return;
-      setStatus(next);
-      if (next.state === "connected") window.clearInterval(interval);
-    }, 3_000);
-    return () => window.clearInterval(interval);
-  }, [status.state, status.platform, setStatus]);
-}
-
-async function fetchConnectorStatus(platform: "sleeper" | "espn"): Promise<ConnectorStatus | null> {
-  const response = await fetch(`/api/connector/status?platform=${platform}`, { cache: "no-store" });
-  return response.ok ? ((await response.json()) as ConnectorStatus) : null;
 }
 
 function leagueLabel(count: number): string {
   return `${count} league${count === 1 ? "" : "s"}`;
 }
 
-function title(platform: Platform): string {
-  return platform === "espn" ? "ESPN" : platform === "yahoo" ? "Yahoo" : "Sleeper";
-}

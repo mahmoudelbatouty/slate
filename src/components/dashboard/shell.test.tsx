@@ -19,6 +19,7 @@ function header(over: Partial<Parameters<typeof AppHeader>[0]> = {}) {
       lastSyncedAt="2026-09-13T20:50:00.000Z"
       accountOpen={false}
       onToggleAccount={() => {}}
+      onConnectPlatform={() => {}}
       {...over}
     />
   );
@@ -43,6 +44,13 @@ describe("AppHeader", () => {
 
   it("reads as preseason when no week is selected", () => {
     expect(header({ week: null })).toContain("Preseason");
+  });
+
+  it("offers a connect control for a platform that is not connected", () => {
+    const markup = header({ connected: ["sleeper"] });
+    expect(markup).toContain("Connect ESPN");
+    expect(markup).toContain("Connect Yahoo");
+    expect(markup).toContain("Sleeper is connected");
   });
 });
 

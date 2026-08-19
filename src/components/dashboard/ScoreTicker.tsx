@@ -31,7 +31,7 @@ function TickerButton({ item }: { item: TickerItem }) {
       type="button"
       title={`Jump to ${item.home}`}
       onClick={() => jumpTo(item.target)}
-      className="mono flex cursor-pointer items-center gap-[9px] border-r border-ink-line px-4 text-[11px] tracking-[0.04em] whitespace-nowrap text-bone-dim"
+      className="mono flex cursor-pointer items-center gap-[9px] border-r border-ink-line px-4 text-[calc(11px*var(--ui-scale))] tracking-[0.04em] whitespace-nowrap text-bone-dim"
     >
       <span className={item.isMine ? "text-amber" : "text-bone-dim"}>{item.home}</span>
       <span className="tabular-nums text-bone">{item.score}</span>

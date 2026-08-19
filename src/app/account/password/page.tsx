@@ -11,7 +11,7 @@ export default async function NewPassword() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-app flex-col justify-center px-[18px] py-10">
-      <h1 className="display text-[34px] leading-none">Slate</h1>
+      <h1 className="display text-[calc(34px*var(--ui-scale))] leading-none">Slate</h1>
       <p className="mono mt-2 text-2xs text-bone-dim">choose a new password</p>
       <p className="mt-4 text-sm leading-relaxed text-bone-dim">
         Signed in as <span className="text-bone">{user.email}</span> from your reset link.

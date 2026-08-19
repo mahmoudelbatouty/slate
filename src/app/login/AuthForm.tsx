@@ -9,8 +9,8 @@ type Mode = "signin" | "signup" | "reset";
 const initial: AuthState = { status: "idle" };
 
 const field =
-  "rounded-[4px] border border-ink-line bg-ink-raised px-[14px] py-[13px] text-[15px] text-bone outline-none focus:border-amber";
-const label = "mono text-[10.5px] tracking-[0.13em] text-bone-dim";
+  "rounded-[4px] border border-ink-line bg-ink-raised px-[14px] py-[13px] text-[calc(15px*var(--ui-scale))] text-bone outline-none focus:border-amber";
+const label = "mono text-[calc(10.5px*var(--ui-scale))] tracking-[0.13em] text-bone-dim";
 
 export default function AuthForm({ next }: { next: string }) {
   const [mode, setMode] = useState<Mode>("signin");
@@ -32,10 +32,10 @@ export default function AuthForm({ next }: { next: string }) {
   return (
     <>
       <div>
-        <h2 className="display text-[22px] tracking-[-0.01em]">
+        <h2 className="display text-[calc(22px*var(--ui-scale))] tracking-[-0.01em]">
           {resetting ? "Reset password" : creating ? "Create account" : "Sign in"}
         </h2>
-        <p className="mt-2 text-[13.5px] text-bone-dim">
+        <p className="mt-2 text-[calc(13.5px*var(--ui-scale))] text-bone-dim">
           {resetting ? "Remembered it?" : creating ? "Already have one?" : "No account yet?"}{" "}
           <button
             type="button"
@@ -55,9 +55,9 @@ export default function AuthForm({ next }: { next: string }) {
             <div className="flex items-center justify-between gap-[10px]">
               <span className={label}>NAME</span>
               <span className="flex items-center gap-2">
-                <span className="mono text-[9.5px] tracking-[0.1em] text-stone">YOUR ICON</span>
+                <span className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] text-stone">YOUR ICON</span>
                 <span
-                  className={`mono grid h-[26px] w-[26px] place-items-center rounded-full border border-ink-line bg-ink-raised text-[10px] ${first || last ? "text-bone" : "text-stone"}`}
+                  className={`mono grid h-[26px] w-[26px] place-items-center rounded-full border border-ink-line bg-ink-raised text-[calc(10px*var(--ui-scale))] ${first || last ? "text-bone" : "text-stone"}`}
                 >
                   {first || last ? initials({ firstName: first, lastName: last, email: null }) : "—"}
                 </span>
@@ -85,7 +85,7 @@ export default function AuthForm({ next }: { next: string }) {
                 aria-label="Last name"
               />
             </div>
-            <span className="text-[11px] leading-relaxed text-stone">
+            <span className="text-[calc(11px*var(--ui-scale))] leading-relaxed text-stone">
               Shown on your account and as your initials in the header. League team names still come
               from each platform.
             </span>
@@ -123,14 +123,14 @@ export default function AuthForm({ next }: { next: string }) {
               className={field}
             />
             {creating && (
-              <span className="mono text-[10px] tracking-[0.08em] text-stone">AT LEAST 8 CHARACTERS</span>
+              <span className="mono text-[calc(10px*var(--ui-scale))] tracking-[0.08em] text-stone">AT LEAST 8 CHARACTERS</span>
             )}
           </label>
         )}
 
         <p aria-live="polite" className="empty:hidden">
           {state.status === "error" && (
-            <span className="mono block text-[10.5px] leading-relaxed text-flag">{state.message}</span>
+            <span className="mono block text-[calc(10.5px*var(--ui-scale))] leading-relaxed text-flag">{state.message}</span>
           )}
         </p>
 
@@ -155,7 +155,7 @@ export default function AuthForm({ next }: { next: string }) {
           <button
             type="button"
             onClick={() => setMode("reset")}
-            className="mono cursor-pointer self-start border-b border-ink-line text-[11.5px] tracking-[0.06em] text-bone-dim"
+            className="mono cursor-pointer self-start border-b border-ink-line text-[calc(11.5px*var(--ui-scale))] tracking-[0.06em] text-bone-dim"
           >
             FORGOT PASSWORD?
           </button>
@@ -181,7 +181,7 @@ export default function AuthForm({ next }: { next: string }) {
         )}
       </form>
 
-      <p className="border-t border-ink-line pt-5 text-[11.5px] leading-relaxed text-stone">
+      <p className="border-t border-ink-line pt-5 text-[calc(11.5px*var(--ui-scale))] leading-relaxed text-stone">
         Slate never receives or stores your Sleeper, ESPN, or Yahoo password. This password is handled
         by Supabase only for your Slate account.
       </p>
@@ -196,21 +196,21 @@ function CheckEmail({ email, next, resent }: { email: string; next: string; rese
   return (
     <section className="flex flex-col gap-3" aria-live="polite">
       <div className="flex flex-col gap-[10px] rounded-[4px] border border-amber bg-ink-raised px-[18px] py-[18px]">
-        <span className="mono flex items-center gap-2 text-[11px] tracking-[0.11em] text-bone">
+        <span className="mono flex items-center gap-2 text-[calc(11px*var(--ui-scale))] tracking-[0.11em] text-bone">
           <i className="h-[5px] w-[5px] rounded-full bg-amber" aria-hidden />
           {sentAgain ? "CONFIRMATION EMAIL SENT AGAIN" : "CONFIRMATION EMAIL SENT"}
         </span>
-        <p className="text-[13.5px] leading-relaxed text-bone-dim">
+        <p className="text-[calc(13.5px*var(--ui-scale))] leading-relaxed text-bone-dim">
           We emailed a confirmation link to <span className="text-bone">{email}</span>. Open it to
           finish creating your Slate account, then come back and sign in.
         </p>
-        <p className="text-[11.5px] leading-relaxed text-stone">
+        <p className="text-[calc(11.5px*var(--ui-scale))] leading-relaxed text-stone">
           Nothing in your inbox? Check spam — the message comes from Supabase.
         </p>
       </div>
 
       {state.status === "error" && (
-        <p className="mono text-[10.5px] leading-relaxed text-flag">{state.message}</p>
+        <p className="mono text-[calc(10.5px*var(--ui-scale))] leading-relaxed text-flag">{state.message}</p>
       )}
 
       <form action={action} className="grid gap-2">
@@ -220,7 +220,7 @@ function CheckEmail({ email, next, resent }: { email: string; next: string; rese
         <button
           type="submit"
           disabled={pending}
-          className="mono cursor-pointer rounded-[4px] border border-ink-line bg-ink-raised px-4 py-[14px] text-[11.5px] tracking-[0.08em] text-bone disabled:cursor-wait"
+          className="mono cursor-pointer rounded-[4px] border border-ink-line bg-ink-raised px-4 py-[14px] text-[calc(11.5px*var(--ui-scale))] tracking-[0.08em] text-bone disabled:cursor-wait"
         >
           {pending ? "SENDING…" : "RESEND CONFIRMATION EMAIL"}
         </button>
@@ -228,7 +228,7 @@ function CheckEmail({ email, next, resent }: { email: string; next: string; rese
 
       <a
         href={`/login?next=${encodeURIComponent(next)}`}
-        className="mono rounded-[4px] border border-ink-line px-4 py-[14px] text-center text-[11.5px] tracking-[0.08em] text-bone-dim"
+        className="mono rounded-[4px] border border-ink-line px-4 py-[14px] text-center text-[calc(11.5px*var(--ui-scale))] tracking-[0.08em] text-bone-dim"
       >
         BACK TO SIGN IN
       </a>
@@ -240,19 +240,19 @@ function ResetSent({ email, next }: { email: string; next: string }) {
   return (
     <section className="flex flex-col gap-4" aria-live="polite">
       <div className="flex flex-col gap-[10px] rounded-[4px] border border-amber bg-ink-raised px-[18px] py-[18px]">
-        <span className="mono text-[11px] tracking-[0.11em] text-bone">RESET LINK SENT</span>
-        <p className="text-[13.5px] leading-relaxed text-bone-dim">
+        <span className="mono text-[calc(11px*var(--ui-scale))] tracking-[0.11em] text-bone">RESET LINK SENT</span>
+        <p className="text-[calc(13.5px*var(--ui-scale))] leading-relaxed text-bone-dim">
           If <span className="text-bone">{email}</span> has a Slate account, a password reset link is
           on its way. Open it to choose a new password.
         </p>
-        <p className="text-[11.5px] leading-relaxed text-stone">
+        <p className="text-[calc(11.5px*var(--ui-scale))] leading-relaxed text-stone">
           Nothing in your inbox? Check spam — the message comes from Supabase.
         </p>
       </div>
 
       <a
         href={`/login?next=${encodeURIComponent(next)}`}
-        className="mono rounded-[4px] border border-ink-line px-4 py-[14px] text-center text-[11.5px] tracking-[0.08em] text-bone-dim"
+        className="mono rounded-[4px] border border-ink-line px-4 py-[14px] text-center text-[calc(11.5px*var(--ui-scale))] tracking-[0.08em] text-bone-dim"
       >
         BACK TO SIGN IN
       </a>

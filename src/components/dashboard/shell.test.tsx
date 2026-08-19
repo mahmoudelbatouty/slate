@@ -50,7 +50,7 @@ describe("AppHeader", () => {
     const markup = header({ connected: ["sleeper"] });
     expect(markup).toContain("Connect ESPN");
     expect(markup).toContain("Connect Yahoo");
-    expect(markup).toContain("Sleeper is connected");
+    expect(markup).toContain("Sleeper is connected. Sign in again on Sleeper.");
   });
 });
 

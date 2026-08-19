@@ -330,9 +330,7 @@ function ConnectionList({
                 ? "Sign in with Yahoo"
                 : "Setup needs developer credentials"
           }
-          href={
-            statuses.yahoo.configured && !statuses.yahoo.connected ? "/api/auth/yahoo/start" : undefined
-          }
+          href={statuses.yahoo.configured ? "/api/auth/yahoo/start" : undefined}
         />
         <ConnectionRow
           platform="espn"
@@ -377,21 +375,32 @@ function ConnectionRow({
         <span className="text-[calc(13px*var(--ui-scale))] font-semibold text-bone">{title(platform)}</span>
         <span className="mono truncate text-[calc(9.5px*var(--ui-scale))] tracking-[0.07em] text-stone">{meta}</span>
       </div>
-      {connected ? (
+      {connected && (
         <span className="mono flex shrink-0 items-center gap-[6px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-turf">
           <i className="h-[5px] w-[5px] rounded-full bg-turf" aria-hidden />
           SYNCED
         </span>
-      ) : href ? (
-        <a className={buttonClass} href={href}>
-          CONNECT
+      )}
+      {/* A connected platform keeps its way back to the provider's own sign-in
+          page: sessions lapse, and this is the only route to fixing that. */}
+      {href ? (
+        <a className={buttonClass} href={href} aria-label={`${connected ? "Reconnect" : "Connect"} ${title(platform)}`}>
+          {connected ? "RECONNECT" : "CONNECT"}
         </a>
       ) : onConnect ? (
-        <button type="button" className={buttonClass} disabled={busy} onClick={onConnect}>
-          {busy ? "CONNECTING…" : "CONNECT"}
+        <button
+          type="button"
+          className={buttonClass}
+          disabled={busy}
+          onClick={onConnect}
+          aria-label={`${connected ? "Reconnect" : "Connect"} ${title(platform)}. Signs in on ${title(platform)}.`}
+        >
+          {busy ? (connected ? "RECONNECTING…" : "CONNECTING…") : connected ? "RECONNECT" : "CONNECT"}
         </button>
       ) : (
-        <span className="mono shrink-0 text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">SETUP NEEDED</span>
+        !connected && (
+          <span className="mono shrink-0 text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">SETUP NEEDED</span>
+        )
       )}
     </div>
   );

@@ -31,6 +31,8 @@ export interface NflGameBox {
   awayPoints: number | null;
   status: string;
   phase: GamePhase;
+  /** ISO kickoff, or null when the provider has not scheduled one yet. */
+  startTime: string | null;
   /** Null before kickoff — neither side leads a game nobody has played. */
   leader: "home" | "away" | null;
 }
@@ -39,7 +41,7 @@ export function buildScoreboard(rows: NflGameRow[]): NflGameBox[] {
   return rows
     .filter((row) => !row.canceled && (row.homeTeam || row.awayTeam))
     .map(toBox)
-    .sort(byPhase);
+    .sort(byKickoff);
 }
 
 /** "2 LIVE · 1 FINAL · 11 TO PLAY", dropping whichever counts are zero. */
@@ -68,6 +70,7 @@ function toBox(row: NflGameRow): NflGameBox {
     awayPoints,
     status: statusLabel(row, phase),
     phase,
+    startTime: row.startTime,
     leader:
       phase === "upcoming" || homePoints === null || awayPoints === null || homePoints === awayPoints
         ? null
@@ -123,7 +126,22 @@ function timeRemaining(raw: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function byPhase(a: NflGameBox, b: NflGameBox): number {
-  const rank = { live: 0, final: 1, upcoming: 2 } as const;
-  return rank[a.phase] - rank[b.phase] || a.away.localeCompare(b.away);
+/**
+ * Kickoff order, earliest first — the rail reads as the day's timeline, so
+ * finished games sit left of what is playing and what is still to come.
+ *
+ * The rail used to lead with live games and then sort alphabetically by away
+ * team, which put seven Sunday 1pm kickoffs in an order matching nothing a
+ * viewer could see. Games with no scheduled time sort last rather than first:
+ * an unscheduled game is the least useful thing to lead with. Ties break on
+ * away team so a slot's seven simultaneous games hold a stable order between
+ * renders instead of shuffling with whatever the query returned.
+ */
+function byKickoff(a: NflGameBox, b: NflGameBox): number {
+  if (a.startTime !== b.startTime) {
+    if (a.startTime === null) return 1;
+    if (b.startTime === null) return -1;
+    return a.startTime < b.startTime ? -1 : 1;
+  }
+  return a.away.localeCompare(b.away);
 }

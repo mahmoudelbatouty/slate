@@ -274,7 +274,9 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
       .from("nfl_games")
       .select("game_id, home_team, away_team, start_time, status, is_over, in_progress, canceled, quarter, raw")
       .eq("week", week)
-      .in("season", [...new Set(leagues.map((league) => league.season))]);
+      .in("season", [...new Set(leagues.map((league) => league.season))])
+      .order("start_time", { ascending: true, nullsFirst: false })
+      .order("away_team", { ascending: true });
     if (gameError) throw new Error(`nfl games read: ${gameError.message}`);
     games = buildScoreboard(
       (gameRows ?? []).map((row): NflGameRow => ({

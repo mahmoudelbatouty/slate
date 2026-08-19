@@ -49,13 +49,47 @@ describe("buildScoreboard", () => {
     expect(buildScoreboard([row({ canceled: true })])).toHaveLength(0);
   });
 
-  it("sorts live games first and settled games before kickoffs", () => {
+  it("orders the rail by kickoff, so it reads as the day's timeline", () => {
     const games = buildScoreboard([
-      row({ gameId: "pre", awayTeam: "ARI" }),
-      row({ gameId: "final", awayTeam: "BAL", isOver: true }),
-      row({ gameId: "live", awayTeam: "CIN", inProgress: true }),
+      row({ gameId: "sunday-night", startTime: "2026-09-14T00:20:00.000Z" }),
+      row({ gameId: "thursday", startTime: "2026-09-11T00:15:00.000Z" }),
+      row({ gameId: "sunday-early", startTime: "2026-09-13T17:00:00.000Z" }),
+      row({ gameId: "sunday-late", startTime: "2026-09-13T20:25:00.000Z" }),
     ]);
-    expect(games.map((game) => game.gameId)).toEqual(["live", "final", "pre"]);
+    expect(games.map((game) => game.gameId)).toEqual([
+      "thursday",
+      "sunday-early",
+      "sunday-late",
+      "sunday-night",
+    ]);
+  });
+
+  it("keeps kickoff order regardless of phase, rather than hoisting live games", () => {
+    const games = buildScoreboard([
+      row({ gameId: "late-pre", startTime: "2026-09-13T20:25:00.000Z" }),
+      row({ gameId: "early-live", startTime: "2026-09-13T17:00:00.000Z", inProgress: true }),
+      row({ gameId: "earliest-final", startTime: "2026-09-11T00:15:00.000Z", isOver: true }),
+    ]);
+    expect(games.map((game) => game.gameId)).toEqual(["earliest-final", "early-live", "late-pre"]);
+  });
+
+  it("breaks a shared kickoff slot on away team, so simultaneous games hold still", () => {
+    const slot = "2026-09-13T17:00:00.000Z";
+    const games = buildScoreboard([
+      row({ gameId: "c", awayTeam: "NYJ", startTime: slot }),
+      row({ gameId: "a", awayTeam: "ATL", startTime: slot }),
+      row({ gameId: "b", awayTeam: "BUF", startTime: slot }),
+    ]);
+    expect(games.map((game) => game.away)).toEqual(["ATL", "BUF", "NYJ"]);
+  });
+
+  it("sorts an unscheduled game last rather than leading with it", () => {
+    const games = buildScoreboard([
+      row({ gameId: "tbd", awayTeam: "ARI", startTime: null }),
+      row({ gameId: "scheduled", awayTeam: "ZZZ", startTime: "2026-09-13T17:00:00.000Z" }),
+    ]);
+    expect(games.map((game) => game.gameId)).toEqual(["scheduled", "tbd"]);
+    expect(games[1].status).toBe("TBD");
   });
 });
 

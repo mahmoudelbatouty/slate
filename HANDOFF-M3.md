@@ -83,10 +83,20 @@ button beside the SYNCED dot, the header marks run the same action, and Yahoo's
 row keeps its link to `/api/auth/yahoo/start` once configured. Slate still never
 sees a provider password, cookie, or token.
 
+**Every provider mark is bundled.** The Sleeper icon was the last asset a page
+render fetched from a platform host — a hot-link to a content-hashed
+`sleepercdn.com` filename, which blanked offline and would 404 whenever Sleeper
+rotates the hash. Its largest `.ico` frame is now `public/brands/sleeper-mark.png`
+(48×48), so `PlatformMark` treats all three platforms the same and drops the
+`unoptimized` special case; Next's optimizer serves it at 1.2KB instead of 4.2KB.
+`images.remotePatterns` is gone from `next.config.ts` with it — **a page render
+now reaches no external host at all**, matching the rule the data path already
+follows. Note `teams.avatar_url` still stores `sleepercdn.com` URLs from the
+adapter; nothing renders them today, and anything that starts to will need a
+remote pattern restored or the images proxied.
+
 **Known follow-ups, none blocking.**
 
-- The Sleeper icon still loads from `sleepercdn.com`; the design handoff asks
-  for it to be bundled locally so it survives offline.
 - `--ui-scale` is a first guess at desktop legibility, not a measured one.
 - `leagues` still holds pre-auth rows with `owner_id is null` — duplicates of
   live leagues that no owner-scoped query returns. Harmless, but they inflate

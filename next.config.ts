@@ -1,15 +1,8 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "sleepercdn.com",
-        pathname: "/**",
-      },
-    ],
-  },
-};
+// No `images.remotePatterns`: every provider mark is bundled under
+// `public/brands`, so a page render reaches no external host. Restoring a
+// remote pattern would also re-open the third-party request this removed.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

@@ -10,9 +10,11 @@ import type { Platform } from "@/lib/matchup";
 const PLATFORMS: Platform[] = ["sleeper", "yahoo", "espn"];
 
 /**
- * Sticky header. Everything on the right edge — the account chip, the provider
- * marks, and the sync line — opens the same account sheet, because "why is this
- * stale" and "what am I connected to" are the same question.
+ * Sticky header. The account chip and the sync line open the account sheet,
+ * because "why is this stale" and "what am I connected to" are the same
+ * question. Each provider mark is its own control: tapping a disconnected one
+ * starts that platform's connect flow rather than dropping you in the sheet to
+ * find the button yourself.
  */
 export function AppHeader({
   week,
@@ -23,6 +25,7 @@ export function AppHeader({
   lastSyncedAt,
   accountOpen,
   onToggleAccount,
+  onConnectPlatform,
 }: {
   week: number | null;
   identity: AccountIdentity;
@@ -32,6 +35,7 @@ export function AppHeader({
   lastSyncedAt: string | null;
   accountOpen: boolean;
   onToggleAccount: () => void;
+  onConnectPlatform: (platform: Platform) => void;
 }) {
   const tick = useClock();
   const now = tick === null ? null : new Date();
@@ -44,11 +48,11 @@ export function AppHeader({
         <div className="flex flex-col gap-[7px]">
           <span className="flex items-center gap-2">
             <SlateMark />
-            <span className="mono text-[10px] tracking-[0.14em] text-stone">
+            <span className="mono text-[calc(10px*var(--ui-scale))] tracking-[0.14em] text-stone">
               {now ? `${day} · ${time}` : "SLATE"}
             </span>
           </span>
-          <h1 className="display text-[30px] leading-none tracking-[-0.02em]">
+          <h1 className="display text-[calc(30px*var(--ui-scale))] leading-none tracking-[-0.02em]">
             {week ? `Week ${week}` : "Preseason"}
           </h1>
         </div>
@@ -62,10 +66,10 @@ export function AppHeader({
               aria-controls="account-sheet"
               className={`flex cursor-pointer items-center gap-[7px] rounded-[4px] border py-[5px] pr-[9px] pl-[6px] ${accountOpen ? "border-amber" : "border-ink-line"}`}
             >
-              <span className="mono grid h-[18px] w-[18px] place-items-center rounded-full border border-ink-line bg-ink-raised text-[8.5px] text-bone-dim">
+              <span className="mono grid h-[18px] w-[18px] place-items-center rounded-full border border-ink-line bg-ink-raised text-[calc(8.5px*var(--ui-scale))] text-bone-dim">
                 {initials(identity)}
               </span>
-              <span className={`mono text-[9.5px] tracking-[0.1em] ${accountOpen ? "text-bone" : "text-bone-dim"}`}>
+              <span className={`mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] ${accountOpen ? "text-bone" : "text-bone-dim"}`}>
                 ACCOUNT
               </span>
             </button>
@@ -73,34 +77,51 @@ export function AppHeader({
           </div>
 
           {liveCount > 0 && (
-            <span className="mono flex items-center gap-[6px] text-[10px] tracking-[0.1em] text-amber">
+            <span className="mono flex items-center gap-[6px] text-[calc(10px*var(--ui-scale))] tracking-[0.1em] text-amber">
               <i className="pulse h-[5px] w-[5px] rounded-full bg-amber" aria-hidden />
               {liveCount} LIVE
             </span>
           )}
 
-          <button
-            type="button"
-            onClick={onToggleAccount}
-            className="flex cursor-pointer items-center gap-2"
-            aria-label="Open connections and account"
-          >
+          <div className="flex items-center gap-2">
             <span className="flex items-center gap-[6px]">
-              {PLATFORMS.map((platform) => (
-                <span
-                  key={platform}
-                  className={connected.includes(platform) ? "opacity-100" : "opacity-30"}
-                >
-                  <PlatformMark platform={platform} variant="mark" size={14} />
-                </span>
-              ))}
+              {PLATFORMS.map((platform) => {
+                const isConnected = connected.includes(platform);
+                return (
+                  <button
+                    key={platform}
+                    type="button"
+                    onClick={() => onConnectPlatform(platform)}
+                    className={`flex cursor-pointer items-center ${isConnected ? "opacity-100" : "opacity-40 hover:opacity-100"}`}
+                    title={isConnected ? `${label(platform)} · connected` : `Connect ${label(platform)}`}
+                    aria-label={
+                      isConnected
+                        ? `${label(platform)} is connected. Open connections.`
+                        : `Connect ${label(platform)}`
+                    }
+                  >
+                    <PlatformMark platform={platform} size={14} />
+                  </button>
+                );
+              })}
             </span>
-            <SyncLine iso={lastSyncedAt} leagueCount={leagueCount} tick={tick} />
-          </button>
+            <button
+              type="button"
+              onClick={onToggleAccount}
+              className="cursor-pointer"
+              aria-label="Open connections and account"
+            >
+              <SyncLine iso={lastSyncedAt} leagueCount={leagueCount} tick={tick} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function label(platform: Platform): string {
+  return platform === "espn" ? "ESPN" : platform === "yahoo" ? "Yahoo" : "Sleeper";
 }
 
 function SyncLine({
@@ -119,7 +140,7 @@ function SyncLine({
   const synced = !iso ? "NEVER SYNCED" : tick === null ? "SYNCED …" : `SYNCED ${ago(new Date(iso))}`;
 
   return (
-    <span className="mono text-[10px] tracking-[0.08em] text-stone">
+    <span className="mono text-[calc(10px*var(--ui-scale))] tracking-[0.08em] text-stone">
       {leagueCount === 0 ? leagues : `${synced} · ${leagues}`}
     </span>
   );

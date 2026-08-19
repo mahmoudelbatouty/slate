@@ -17,6 +17,10 @@ import {
   type StarterGame,
 } from "./game-state";
 import { canonicalLeagueType, choppedSummary } from "./league-format";
+import { preferProjection, type NativeProjection } from "./projection";
+import { fillEmptyStarterSlots } from "./lineup-slots";
+import { readAll, readAllIn } from "./read-all";
+import { rosterPositionsFromRaw } from "@/sync/slots";
 import { buildScoreboard, type NflGameBox, type NflGameRow } from "./nfl-scoreboard";
 
 export type { WeekOption } from "./weeks";
@@ -75,22 +79,30 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
 
   // Whole weeks rather than just my own row, deliberately: M5's
   // whole-league toggle needs exactly this data and it's a few dozen rows.
-  const { data: rows, error: matchupError } = await client
-    .from("matchups")
-    .select("league_id, week, matchup_key, points, projected_points, is_final, team_id, opponent_team_id")
-    .in(
-      "league_id",
-      leagues.map((l) => l.id)
-    );
+  const rows = await readAll(
+    (from, to) =>
+      client
+        .from("matchups")
+        .select("league_id, week, matchup_key, points, projected_points, is_final, team_id, opponent_team_id")
+        .in(
+          "league_id",
+          leagues.map((l) => l.id)
+        )
+        .order("id")
+        .range(from, to),
+    "matchups read"
+  );
 
-  if (matchupError) throw new Error(`matchups read: ${matchupError.message}`);
-
-  const { data: teams, error: teamError } = await client
-    .from("teams")
-    .select("id, league_id, name, manager_name, external_id, is_mine, wins, losses, ties, points_for, points_against, standing")
-    .in("league_id", leagues.map((league) => league.id));
-
-  if (teamError) throw new Error(`teams read: ${teamError.message}`);
+  const teams = await readAll(
+    (from, to) =>
+      client
+        .from("teams")
+        .select("id, league_id, name, manager_name, external_id, is_mine, wins, losses, ties, points_for, points_against, standing")
+        .in("league_id", leagues.map((league) => league.id))
+        .order("id")
+        .range(from, to),
+    "teams read"
+  );
 
   // A league whose newest provider run errored keeps rendering its last good
   // scores, but says so on the card. Newest-first, then first-seen wins.
@@ -114,28 +126,33 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
     }
   }
 
-  const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
-  const rowByTeam = new Map((rows ?? []).map((r) => [`${r.week}:${r.team_id}`, r]));
+  const teamById = new Map(teams.map((t) => [t.id, t]));
+  const rowByTeam = new Map(rows.map((r) => [`${r.week}:${r.team_id}`, r]));
 
-  const { data: nativeRows, error: nativeError } = await client
-    .from("native_projections")
-    .select("platform, external_league_id, external_team_id, week, projected_points")
-    .eq("owner_id", ownerId)
-    .in(
-      "external_league_id",
-      leagues.map((league) => league.external_id)
-    );
-  if (nativeError) throw new Error(`native projections read: ${nativeError.message}`);
+  const nativeRows = await readAll(
+    (from, to) =>
+      client
+        .from("native_projections")
+        .select("platform, external_league_id, external_team_id, week, projected_points, captured_at")
+        .eq("owner_id", ownerId)
+        .in(
+          "external_league_id",
+          leagues.map((league) => league.external_id)
+        )
+        .order("id")
+        .range(from, to),
+    "native projections read"
+  );
   const nativeByTeam = new Map(
-    (nativeRows ?? []).map((row) => [
+    nativeRows.map((row) => [
       `${row.platform}:${row.external_league_id}:${row.external_team_id}:${row.week}`,
-      row.projected_points,
+      { points: row.projected_points, capturedAt: row.captured_at },
     ])
   );
 
   // The full season remains selectable, including future/unsynced weeks and
   // preseason. Provider settings can narrow or extend the normal 18-week rail.
-  const weeks = buildWeekOptions(leagueWeekMetadata, (rows ?? []).map((row) => row.week));
+  const weeks = buildWeekOptions(leagueWeekMetadata, rows.map((row) => row.week));
 
   const week = resolveWeek(
     requestedWeek,
@@ -143,47 +160,64 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
     currentWeek
   );
 
-  const selectedRows = (rows ?? []).filter((row) => row.week === week);
+  const selectedRows = rows.filter((row) => row.week === week);
   const relevantTeamIds = new Set<string>();
   for (const row of selectedRows) relevantTeamIds.add(row.team_id);
 
   const lineupsByTeam = new Map<string, TeamLineup>();
   if (week && relevantTeamIds.size > 0) {
-    const { data: entries, error: entryError } = await client
-      .from("roster_entries")
-      .select("team_id, player_id, external_player_id, slot, is_starter, lineup_order, current_points, projected_points")
-      .eq("week", week)
-      .in("team_id", [...relevantTeamIds]);
-    if (entryError) throw new Error(`lineup read: ${entryError.message}`);
-
-    const playerIds = [...new Set((entries ?? []).flatMap((entry) => entry.player_id ? [entry.player_id] : []))];
-    const seasons = [...new Set(leagues.map((league) => league.season))];
-    const [{ data: playerRows, error: playerError }, { data: gameRows, error: gameDetailError }] =
-      await Promise.all([
-        playerIds.length
-          ? client.from("players").select("id, full_name, position, team_abbr, status").in("id", playerIds)
-          : Promise.resolve({ data: [], error: null }),
+    const entries = await readAllIn(
+      [...relevantTeamIds],
+      (chunk, from, to) =>
         client
-          .from("nfl_games")
-          .select("season, home_team, away_team, start_time, status, is_over, in_progress, canceled, quarter")
+          .from("roster_entries")
+          .select("team_id, player_id, external_player_id, slot, is_starter, lineup_order, current_points, projected_points")
           .eq("week", week)
-          .in("season", seasons),
-      ]);
-    if (playerError) throw new Error(`lineup player read: ${playerError.message}`);
-    if (gameDetailError) throw new Error(`lineup game read: ${gameDetailError.message}`);
+          .in("team_id", chunk)
+          .order("id")
+          .range(from, to),
+      "lineup read"
+    );
 
-    const playerById = new Map((playerRows ?? []).map((player) => [player.id, player]));
-    const seasonByTeam = new Map(teams?.map((team) => [
+    const playerIds = [...new Set(entries.flatMap((entry) => entry.player_id ? [entry.player_id] : []))];
+    const seasons = [...new Set(leagues.map((league) => league.season))];
+    const [playerRows, gameRows] = await Promise.all([
+      readAllIn(
+        playerIds,
+        (chunk, from, to) =>
+          client
+            .from("players")
+            .select("id, full_name, position, team_abbr, status")
+            .in("id", chunk)
+            .order("id")
+            .range(from, to),
+        "lineup player read"
+      ),
+      readAll(
+        (from, to) =>
+          client
+            .from("nfl_games")
+            .select("season, home_team, away_team, start_time, status, is_over, in_progress, canceled, quarter")
+            .eq("week", week)
+            .in("season", seasons)
+            .order("game_id")
+            .range(from, to),
+        "lineup game read"
+      ),
+    ]);
+
+    const playerById = new Map(playerRows.map((player) => [player.id, player]));
+    const seasonByTeam = new Map(teams.map((team) => [
       team.id,
       leagues.find((league) => league.id === team.league_id)?.season ?? null,
     ]) ?? []);
     const gameByTeam = new Map<string, NonNullable<typeof gameRows>[number]>();
-    for (const game of gameRows ?? []) {
+    for (const game of gameRows) {
       if (game.home_team) gameByTeam.set(`${game.season}:${game.home_team}`, game);
       if (game.away_team) gameByTeam.set(`${game.season}:${game.away_team}`, game);
     }
 
-    for (const entry of entries ?? []) {
+    for (const entry of entries) {
       const player = entry.player_id ? playerById.get(entry.player_id) : undefined;
       const season = seasonByTeam.get(entry.team_id);
       const game = player?.team_abbr && season
@@ -219,8 +253,17 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
       lineupsByTeam.set(entry.team_id, lineup);
     }
 
-    for (const lineup of lineupsByTeam.values()) {
+    // Slot gaps are restored per team, so the ordered roster positions come
+    // from that team's own league rather than a shared assumption.
+    const leagueByTeam = new Map(
+      teams.map((team) => [team.id, leagues.find((league) => league.id === team.league_id)])
+    );
+    for (const [teamId, lineup] of lineupsByTeam) {
       lineup.starters.sort(byLineupOrder);
+      lineup.starters = fillEmptyStarterSlots(
+        lineup.starters,
+        rosterPositionsFromRaw(leagueByTeam.get(teamId)?.scoring_raw)
+      );
       lineup.bench.sort(byBenchPosition);
     }
   }
@@ -251,14 +294,21 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
 
   let starterGames: StarterGame[] = [];
   if (week) {
-    const { data: starterRows, error: starterError } = await client
-      .from("starter_game_state")
-      .select("league_id, team_id, is_mine, start_time, is_over, in_progress, canceled, quarter, projected_points")
-      .eq("week", week)
-      .in("league_id", leagues.map((league) => league.id));
+    const starterRows = await readAll(
+      (from, to) =>
+        client
+          .from("starter_game_state")
+          .select("league_id, team_id, is_mine, start_time, is_over, in_progress, canceled, quarter, projected_points")
+          .eq("week", week)
+          .in("league_id", leagues.map((league) => league.id))
+          // The view has no key of its own; this pair is unique per row.
+          .order("team_id")
+          .order("external_player_id")
+          .range(from, to),
+      "starter game state read"
+    );
 
-    if (starterError) throw new Error(`starter game state read: ${starterError.message}`);
-    starterGames = (starterRows ?? []).flatMap((row) =>
+    starterGames = starterRows.flatMap((row) =>
       row.league_id && row.team_id
         ? [{
             leagueId: row.league_id,
@@ -287,11 +337,11 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
   for (const league of leagues) {
     const cardWeek = week ?? 1;
 
-    const mineTeamForLeague = (teams ?? []).find(
+    const mineTeamForLeague = teams.find(
       (team) => team.league_id === league.id && team.is_mine
     );
 
-    const mineRow = (rows ?? []).find(
+    const mineRow = rows.find(
       (r) =>
         r.league_id === league.id &&
         r.week === week &&
@@ -357,6 +407,10 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
           `${league.platform}:${league.external_id}:${oppTeam.external_id}:${week}`
         )
       : undefined;
+    const projection = (
+      native: NativeProjection | undefined,
+      computed: number | null
+    ) => preferProjection(native, computed, league.synced_at);
     const mineStarters = startersByTeam.get(mineTeam.id) ?? [];
     const opponentStarters = oppTeam ? startersByTeam.get(oppTeam.id) ?? [] : [];
     const probability = oppTeam && oppRow
@@ -369,7 +423,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
         )
       : null;
     const chopped = leagueFormat === "chopped"
-      ? choppedSummary((rows ?? []).flatMap((row) => {
+      ? choppedSummary(rows.flatMap((row) => {
           if (row.league_id !== league.id || row.week !== week) return [];
           const team = teamById.get(row.team_id);
           if (!team) return [];
@@ -380,7 +434,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
             teamId: team.id,
             name: team.name ?? `Roster ${team.external_id}`,
             points: row.points,
-            projected: native ?? row.projected_points,
+            projected: preferProjection(native, row.projected_points, league.synced_at),
             isMine: team.is_mine,
           }];
         }))
@@ -402,11 +456,11 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
                 teamId: row.team_id,
                 opponentTeamId: row.opponent_team_id,
                 points: row.points,
-                projected: native ?? row.projected_points,
+                projected: preferProjection(native, row.projected_points, league.synced_at),
                 isFinal: row.is_final,
               };
             }),
-          (teams ?? []).flatMap((team): LeagueScoreboardTeam[] => {
+          teams.flatMap((team): LeagueScoreboardTeam[] => {
             if (team.league_id !== league.id) return [];
             const row = selectedRows.find((candidate) => candidate.team_id === team.id);
             if (!row) return [];
@@ -418,7 +472,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
               externalId: team.external_id,
               name: team.name ?? `Roster ${team.external_id}`,
               points: row.points,
-              projected: native ?? row.projected_points,
+              projected: preferProjection(native, row.projected_points, league.synced_at),
               lineup: lineupsByTeam.get(team.id),
               isMine: team.is_mine,
               starterStatus: summarizeStarterStates(startersByTeam.get(team.id) ?? []),
@@ -427,7 +481,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
         )
       : [];
     const standings = leagueFormat === "head_to_head"
-      ? orderLeagueStandings((teams ?? []).flatMap((team) => team.league_id === league.id ? [{
+      ? orderLeagueStandings(teams.flatMap((team) => team.league_id === league.id ? [{
           teamId: team.id,
           name: team.name ?? `Roster ${team.external_id}`,
           managerName: team.manager_name,
@@ -468,7 +522,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
         externalId: mineTeam.external_id,
         name: mineTeam.name ?? "My team",
         points: mineRow.points,
-        projected: nativeMine ?? mineRow.projected_points,
+        projected: projection(nativeMine, mineRow.projected_points),
         lineup: lineupsByTeam.get(mineTeam.id),
       },
       opponent:
@@ -478,7 +532,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
               externalId: oppTeam.external_id,
               name: oppTeam.name ?? "Opponent",
               points: oppRow.points,
-              projected: nativeOpponent ?? oppRow.projected_points,
+              projected: projection(nativeOpponent, oppRow.projected_points),
               lineup: lineupsByTeam.get(oppTeam.id),
             }
           : null,

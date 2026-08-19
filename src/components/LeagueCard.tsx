@@ -56,7 +56,7 @@ export function LeagueCard({
 
         {card.platform === "yahoo" && (
           <a
-            className="mono text-right text-[9px] tracking-[0.08em] text-stone underline-offset-2 hover:text-bone hover:underline"
+            className="mono text-right text-[calc(9px*var(--ui-scale))] tracking-[0.08em] text-stone underline-offset-2 hover:text-bone hover:underline"
             href="https://football.fantasysports.yahoo.com/"
             target="_blank"
             rel="noreferrer"
@@ -94,12 +94,12 @@ function CardHeader({
     <div className="flex items-center justify-between gap-[10px]">
       <div className="flex min-w-0 items-center gap-[10px]">
         {reorderHandle}
-        <PlatformMark platform={card.platform} variant="mark" size={16} dim={muted} />
+        <PlatformMark platform={card.platform} size={16} dim={muted} />
         <div className="min-w-0">
           <div className={`display truncate text-sm leading-tight ${muted ? "text-bone-dim" : "text-bone"}`}>
             {card.leagueName}
           </div>
-          <div className="mono mt-[3px] truncate text-[9.5px] tracking-[0.1em] text-stone">
+          <div className="mono mt-[3px] truncate text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] text-stone">
             {[
               card.leagueFormat === "chopped" ? "CHOPPED" : null,
               card.leagueType.toUpperCase(),
@@ -127,18 +127,18 @@ function StateLabel({
   preDraft: boolean;
 }) {
   if (failed) {
-    return <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-flag">SYNC FAILED</span>;
+    return <span className="mono shrink-0 text-[calc(10px*var(--ui-scale))] tracking-[0.1em] text-flag">SYNC FAILED</span>;
   }
   if (preDraft) {
-    return <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-stone">PRE-DRAFT</span>;
+    return <span className="mono shrink-0 text-[calc(10px*var(--ui-scale))] tracking-[0.1em] text-stone">PRE-DRAFT</span>;
   }
-  if (bye) return <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-stone">BYE</span>;
+  if (bye) return <span className="mono shrink-0 text-[calc(10px*var(--ui-scale))] tracking-[0.1em] text-stone">BYE</span>;
   if (card.isFinal) {
-    return <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-stone">FINAL</span>;
+    return <span className="mono shrink-0 text-[calc(10px*var(--ui-scale))] tracking-[0.1em] text-stone">FINAL</span>;
   }
   if (card.isLive) {
     return (
-      <span className="mono flex shrink-0 items-center gap-[6px] text-[10px] tracking-[0.1em] text-amber">
+      <span className="mono flex shrink-0 items-center gap-[6px] text-[calc(10px*var(--ui-scale))] tracking-[0.1em] text-amber">
         <i className="pulse h-[5px] w-[5px] rounded-full bg-amber" aria-hidden />
         LIVE
       </span>
@@ -146,7 +146,7 @@ function StateLabel({
   }
   const started = (card.mine.points ?? 0) + (card.opponent?.points ?? 0) > 0;
   return (
-    <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-stone">
+    <span className="mono shrink-0 text-[calc(10px*var(--ui-scale))] tracking-[0.1em] text-stone">
       {started ? "IN PROGRESS" : "PREGAME"}
     </span>
   );
@@ -164,7 +164,7 @@ function HeadToHeadBody({ card }: { card: MatchupCard }) {
       <>
         <FinalScores card={card} diff={diff} />
         <div className="flex flex-col gap-[11px] border-t border-ink-line pt-[10px]">
-          <span className="mono text-[10.5px] text-stone">{marginLabel(diff, true)}</span>
+          <span className="mono text-[calc(10.5px*var(--ui-scale))] text-stone">{marginLabel(diff, true)}</span>
           <div className="grid grid-cols-2 gap-2">
             <CardButton open={matchupOpen} onClick={() => setMatchupOpen((v) => !v)} label="MATCHUP" />
             <CardButton open={leagueOpen} onClick={() => setLeagueOpen((v) => !v)} label="LEAGUE" />
@@ -186,7 +186,7 @@ function HeadToHeadBody({ card }: { card: MatchupCard }) {
       <WinProbabilityBar probability={card.winProbability} fallback={marginLabel(diff, false)} />
 
       <div className="flex flex-col gap-[11px] border-t border-ink-line pt-3">
-        <span className="mono text-[10.5px] tracking-[0.06em] text-bone-dim">
+        <span className="mono text-[calc(10.5px*var(--ui-scale))] tracking-[0.06em] text-bone-dim">
           YOU {card.starterStatus.mine.remaining} LEFT · OPP {card.starterStatus.opponent?.remaining ?? "—"} LEFT
         </span>
         <div className="grid grid-cols-2 gap-2">
@@ -215,7 +215,7 @@ function CardButton({
       type="button"
       onClick={onClick}
       aria-expanded={open}
-      className="mono min-h-11 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[10.5px] tracking-[0.09em] text-bone hover:bg-ink"
+      className="mono min-h-11 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] text-bone hover:bg-ink"
     >
       {open ? `HIDE ${label} ↑` : `VIEW ${label} ↓`}
     </button>
@@ -226,8 +226,8 @@ function ScoreRow({ side, isMine, isFinal }: { side: Side | null; isMine: boolea
   if (!side) {
     return (
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[14.5px] text-bone-dim">No opponent this week</span>
-        <span className="display text-[30px] leading-none text-bone-dim">—</span>
+        <span className="text-[calc(14.5px*var(--ui-scale))] text-bone-dim">No opponent this week</span>
+        <span className="display text-[calc(30px*var(--ui-scale))] leading-none text-bone-dim">—</span>
       </div>
     );
   }
@@ -235,15 +235,15 @@ function ScoreRow({ side, isMine, isFinal }: { side: Side | null; isMine: boolea
   return (
     <div className="flex items-baseline justify-between gap-3">
       <div className="min-w-0">
-        <div className={`truncate text-[14.5px] ${isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
+        <div className={`truncate text-[calc(14.5px*var(--ui-scale))] ${isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
           {side.name}
         </div>
-        <div className={`mono mt-[2px] text-[10.5px] ${isMine ? "text-bone-dim" : "text-stone"}`}>
+        <div className={`mono mt-[2px] text-[calc(10.5px*var(--ui-scale))] ${isMine ? "text-bone-dim" : "text-stone"}`}>
           {isFinal ? "final" : `proj ${side.projected?.toFixed(1) ?? "—"}`}
         </div>
       </div>
       <span
-        className={`display shrink-0 text-[30px] leading-none tabular-nums ${isMine ? "text-bone" : "text-bone-dim"}`}
+        className={`display shrink-0 text-[calc(30px*var(--ui-scale))] leading-none tabular-nums ${isMine ? "text-bone" : "text-bone-dim"}`}
       >
         {side.points?.toFixed(1) ?? "—"}
       </span>
@@ -263,12 +263,12 @@ function FinalScores({ card, diff }: { card: MatchupCard; diff: number }) {
         return (
           <div className="flex items-baseline justify-between gap-3" key={isMine ? "mine" : "opp"}>
             <span
-              className={`min-w-0 truncate text-[14px] ${isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+              className={`min-w-0 truncate text-[calc(14px*var(--ui-scale))] ${isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
             >
               {side?.name ?? "No opponent"}
             </span>
             <span
-              className={`display shrink-0 text-[22px] leading-none tabular-nums ${won ? "text-turf" : isMine ? "text-bone" : "text-bone-dim"}`}
+              className={`display shrink-0 text-[calc(22px*var(--ui-scale))] leading-none tabular-nums ${won ? "text-turf" : isMine ? "text-bone" : "text-bone-dim"}`}
             >
               {side?.points?.toFixed(1) ?? "—"}
             </span>
@@ -284,7 +284,7 @@ function WinProbabilityBar({ probability, fallback }: { probability: number | nu
     return (
       <div className="mono flex flex-col gap-[6px]" aria-label={`Win odds unavailable, ${fallback}`}>
         <span className="h-[3px] rounded-[2px] bg-ink-line" aria-hidden />
-        <div className="flex justify-between text-[10px] tracking-[0.06em] text-stone">
+        <div className="flex justify-between text-[calc(10px*var(--ui-scale))] tracking-[0.06em] text-stone">
           <span>WIN ODDS UNAVAILABLE</span>
           <span>{fallback.toUpperCase()}</span>
         </div>
@@ -301,7 +301,7 @@ function WinProbabilityBar({ probability, fallback }: { probability: number | nu
         <i className="block bg-turf" style={{ width: `${mine}%` }} />
         <i className="block flex-1 bg-flag" />
       </div>
-      <div className="mono flex justify-between text-[10px] tracking-[0.06em]">
+      <div className="mono flex justify-between text-[calc(10px*var(--ui-scale))] tracking-[0.06em]">
         <span className="text-turf">YOU {mine}%</span>
         <span className="text-flag">OPP {opponent}%</span>
       </div>
@@ -329,14 +329,14 @@ function MatchupExpansion({ card }: { card: MatchupCard }) {
       <MirroredStarters mine={card.mine} opponent={card.opponent} />
 
       <div className="flex items-center justify-between gap-[10px]">
-        <span className="mono text-[9.5px] tracking-[0.09em] text-stone">
+        <span className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.09em] text-stone">
           LINEUP CHANGES HAPPEN IN {card.platform.toUpperCase()}
         </span>
         <button
           type="button"
           onClick={() => setBenchOpen((value) => !value)}
           aria-expanded={benchOpen}
-          className="mono cursor-pointer border-b border-ink-line text-[10.5px] tracking-[0.08em] text-bone-dim"
+          className="mono cursor-pointer border-b border-ink-line text-[calc(10.5px*var(--ui-scale))] tracking-[0.08em] text-bone-dim"
         >
           {benchOpen ? "HIDE BENCH ↑" : "BENCH ↓"}
         </button>
@@ -344,7 +344,7 @@ function MatchupExpansion({ card }: { card: MatchupCard }) {
 
       {benchOpen && (
         <div className="flex flex-col gap-[9px] border-t border-ink-line pt-3">
-          <div className="mono flex items-baseline justify-between gap-[10px] text-[9.5px] text-stone">
+          <div className="mono flex items-baseline justify-between gap-[10px] text-[calc(9.5px*var(--ui-scale))] text-stone">
             <span className="tracking-[0.13em]">YOUR BENCH</span>
             <span className="tracking-[0.1em]">
               {bench.length} PLAYER{bench.length === 1 ? "" : "S"}
@@ -362,7 +362,7 @@ function MatchupExpansion({ card }: { card: MatchupCard }) {
         </div>
       )}
 
-      <p className="mono text-[9.5px] leading-relaxed tracking-[0.07em] text-stone">
+      <p className="mono text-[calc(9.5px*var(--ui-scale))] leading-relaxed tracking-[0.07em] text-stone">
         SCORES, PROJECTIONS, AND LINEUPS SYNC FROM {card.platform.toUpperCase()} · LAST PROVIDER SYNC{" "}
         {syncLabel(card.syncedAt)}
       </p>
@@ -391,7 +391,7 @@ function StarterStateTable({
 
   return (
     <div className="overflow-hidden rounded-[5px] border border-ink-line">
-      <div className="mono grid grid-cols-[minmax(0,1fr)_54px_54px] border-b border-ink-line bg-deep px-3 py-[9px] text-[9.5px] text-stone">
+      <div className="mono grid grid-cols-[minmax(0,1fr)_54px_54px] border-b border-ink-line bg-deep px-3 py-[9px] text-[calc(9.5px*var(--ui-scale))] text-stone">
         <span className="tracking-[0.11em]">WEEK {week} STARTERS</span>
         <span className="text-right tracking-[0.08em]">{leftLabel}</span>
         <span className="text-right tracking-[0.08em]">{rightLabel}</span>
@@ -401,11 +401,11 @@ function StarterStateTable({
           className="mono grid grid-cols-[minmax(0,1fr)_54px_54px] border-b border-ink-line px-3 py-2 last:border-b-0"
           key={row.label}
         >
-          <span className={`text-[10.5px] tracking-[0.09em] ${row.live ? "text-amber" : "text-bone-dim"}`}>
+          <span className={`text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] ${row.live ? "text-amber" : "text-bone-dim"}`}>
             {row.label}
           </span>
-          <span className="text-right text-[11px] font-medium tabular-nums text-bone">{row.mine}</span>
-          <span className="text-right text-[11px] font-medium tabular-nums text-bone-dim">
+          <span className="text-right text-[calc(11px*var(--ui-scale))] font-medium tabular-nums text-bone">{row.mine}</span>
+          <span className="text-right text-[calc(11px*var(--ui-scale))] font-medium tabular-nums text-bone-dim">
             {row.opponent ?? "—"}
           </span>
         </div>
@@ -437,11 +437,11 @@ function MirroredStarters({
     <div className="flex flex-col">
       <div className="grid grid-cols-2 gap-3 border-b border-ink-line pb-[10px]">
         <div className="min-w-0">
-          <div className="mono text-[9.5px] tracking-[0.11em] text-stone">{leftLabel}</div>
+          <div className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">{leftLabel}</div>
           <div className="display mt-[3px] truncate text-sm">{mine.name}</div>
         </div>
         <div className="min-w-0 text-right">
-          <div className="mono text-[9.5px] tracking-[0.11em] text-stone">{rightLabel}</div>
+          <div className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">{rightLabel}</div>
           <div className="display mt-[3px] truncate text-sm text-bone-dim">
             {opponent?.name ?? "No opponent"}
           </div>
@@ -471,8 +471,22 @@ function MirroredStarters({
 
 function PlayerIdentity({ player, align }: { player: MatchupPlayer | undefined; align: "left" | "right" }) {
   if (!player) {
-    return <span className={`mono text-[10px] text-stone ${align === "right" ? "text-right" : ""}`}>—</span>;
+    return <span className={`mono text-[calc(10px*var(--ui-scale))] text-stone ${align === "right" ? "text-right" : ""}`}>—</span>;
   }
+  // An unfilled starting slot is roster state worth seeing, not an absence to
+  // paper over — it is the one thing on this card the manager can still fix.
+  if (player.isEmptySlot) {
+    return (
+      <div className={`flex min-w-0 flex-col gap-[3px] ${align === "right" ? "items-end text-right" : ""}`}>
+        <span className="mono truncate text-[calc(11px*var(--ui-scale))] tracking-[0.06em] text-stone">
+          {align === "left" && <SlotTag slot={player.slot} side="left" />}
+          EMPTY
+          {align === "right" && <SlotTag slot={player.slot} side="right" />}
+        </span>
+      </div>
+    );
+  }
+
   const meta = [player.nflTeam, playerGameLabel(player), meaningfulStatus(player.injuryStatus)]
     .filter(Boolean)
     .join(" · ");
@@ -480,14 +494,14 @@ function PlayerIdentity({ player, align }: { player: MatchupPlayer | undefined; 
   return (
     <div className={`flex min-w-0 flex-col gap-[3px] ${align === "right" ? "items-end text-right" : ""}`}>
       <span
-        className={`truncate text-[12.5px] ${align === "left" ? "font-semibold text-bone" : "text-bone-dim"}`}
+        className={`truncate text-[calc(12.5px*var(--ui-scale))] ${align === "left" ? "font-semibold text-bone" : "text-bone-dim"}`}
       >
         {align === "left" && <SlotTag slot={player.slot} side="left" />}
         {player.name}
         {align === "right" && <SlotTag slot={player.slot} side="right" />}
       </span>
       <span
-        className={`mono truncate text-[9px] tracking-[0.07em] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}
+        className={`mono truncate text-[calc(9px*var(--ui-scale))] tracking-[0.07em] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}
       >
         {meta}
       </span>
@@ -498,7 +512,7 @@ function PlayerIdentity({ player, align }: { player: MatchupPlayer | undefined; 
 function SlotTag({ slot, side }: { slot: string | null; side: "left" | "right" }) {
   return (
     <span
-      className={`mono text-[9px] tracking-[0.08em] text-stone ${side === "left" ? "mr-[6px]" : "ml-[6px]"}`}
+      className={`mono text-[calc(9px*var(--ui-scale))] tracking-[0.08em] text-stone ${side === "left" ? "mr-[6px]" : "ml-[6px]"}`}
     >
       {slotLabel(slot)}
     </span>
@@ -516,10 +530,10 @@ function PlayerPoints({
 }) {
   return (
     <div className={align === "right" ? "text-right" : ""}>
-      <div className={`mono text-[13px] font-medium tabular-nums ${tone}`}>
+      <div className={`mono text-[calc(13px*var(--ui-scale))] font-medium tabular-nums ${tone}`}>
         {numberLabel(player?.currentPoints ?? null)}
       </div>
-      <div className="mono text-[9.5px] tabular-nums text-stone">
+      <div className="mono text-[calc(9.5px*var(--ui-scale))] tabular-nums text-stone">
         {numberLabel(player?.projectedPoints ?? null)}
       </div>
     </div>
@@ -537,15 +551,15 @@ function BenchRow({ player }: { player: MatchupPlayer }) {
       className={`grid grid-cols-[minmax(0,1fr)_58px] items-center gap-[10px] border-b border-ink-line px-3 py-[10px] last:border-b-0 ${flagged ? "bg-deep" : ""}`}
     >
       <div className="flex min-w-0 flex-col gap-[3px]">
-        <span className="truncate text-[12.5px] font-semibold text-bone">
+        <span className="truncate text-[calc(12.5px*var(--ui-scale))] font-semibold text-bone">
           <SlotTag slot={player.position ?? player.slot} side="left" />
           {player.name}
         </span>
-        <span className={`mono truncate text-[9px] tracking-[0.07em] ${flagged ? "text-flag" : "text-stone"}`}>
+        <span className={`mono truncate text-[calc(9px*var(--ui-scale))] tracking-[0.07em] ${flagged ? "text-flag" : "text-stone"}`}>
           {meta}
         </span>
       </div>
-      <span className="mono text-right text-[12px] font-medium tabular-nums text-bone-dim">
+      <span className="mono text-right text-[calc(12px*var(--ui-scale))] font-medium tabular-nums text-bone-dim">
         {numberLabel(player.projectedPoints)}
       </span>
     </div>
@@ -564,10 +578,10 @@ function LeagueExpansion({ card }: { card: MatchupCard }) {
     >
       <div className="flex items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <span className="mono text-[9.5px] tracking-[0.13em] text-stone">ALL MATCHUPS</span>
-          <span className="text-[13px] text-bone-dim">Open any game for its synced lineup</span>
+          <span className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.13em] text-stone">ALL MATCHUPS</span>
+          <span className="text-[calc(13px*var(--ui-scale))] text-bone-dim">Open any game for its synced lineup</span>
         </div>
-        <span className="mono shrink-0 text-[9.5px] tracking-[0.11em] text-stone">WEEK {card.week}</span>
+        <span className="mono shrink-0 text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">WEEK {card.week}</span>
       </div>
 
       <div className="grid grid-cols-2 overflow-hidden rounded-[4px] border border-ink-line" role="tablist">
@@ -590,7 +604,7 @@ function LeagueExpansion({ card }: { card: MatchupCard }) {
         <LeagueStandings card={card} />
       )}
 
-      <p className="mono text-[9.5px] leading-relaxed tracking-[0.07em] text-stone">
+      <p className="mono text-[calc(9.5px*var(--ui-scale))] leading-relaxed tracking-[0.07em] text-stone">
         SCORES, PROJECTIONS, AND LINEUPS SYNC FROM {card.platform.toUpperCase()} · LAST PROVIDER SYNC{" "}
         {syncLabel(card.syncedAt)}
       </p>
@@ -615,7 +629,7 @@ function Tab({
       role="tab"
       aria-selected={active}
       onClick={onSelect}
-      className={`mono min-h-11 cursor-pointer px-2 py-[11px] text-[10.5px] tracking-[0.1em] ${border ? "border-l border-ink-line" : ""} ${active ? "bg-bone text-ink" : "text-bone-dim hover:bg-ink"}`}
+      className={`mono min-h-11 cursor-pointer px-2 py-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.1em] ${border ? "border-l border-ink-line" : ""} ${active ? "bg-bone text-ink" : "text-bone-dim hover:bg-ink"}`}
     >
       {label}
     </button>
@@ -632,17 +646,17 @@ function ScoreboardGame({ game, week }: { game: LeagueScoreboardGame; week: numb
       <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-[10px] px-[13px] py-3">
         <div className="flex min-w-0 flex-col gap-[3px]">
           <span
-            className={`truncate text-[13px] ${game.left.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+            className={`truncate text-[calc(13px*var(--ui-scale))] ${game.left.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
           >
             {game.left.name}
           </span>
           {game.left.isMine && (
-            <span className="mono text-[9px] tracking-[0.12em] text-amber">YOU</span>
+            <span className="mono text-[calc(9px*var(--ui-scale))] tracking-[0.12em] text-amber">YOU</span>
           )}
         </div>
         <div className="flex items-start gap-[9px]">
           <GameScore points={game.left.points} projected={game.left.projected} isFinal={game.isFinal} />
-          <span className="mono pt-[2px] text-[11px] text-stone">·</span>
+          <span className="mono pt-[2px] text-[calc(11px*var(--ui-scale))] text-stone">·</span>
           <GameScore
             points={game.right?.points ?? null}
             projected={game.right?.projected ?? null}
@@ -652,17 +666,17 @@ function ScoreboardGame({ game, week }: { game: LeagueScoreboardGame; week: numb
         </div>
         <div className="flex min-w-0 flex-col items-end gap-[3px]">
           <span
-            className={`truncate text-right text-[13px] ${game.right?.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+            className={`truncate text-right text-[calc(13px*var(--ui-scale))] ${game.right?.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
           >
             {game.right?.name ?? "Bye"}
           </span>
           {game.right?.isMine && (
-            <span className="mono text-[9px] tracking-[0.12em] text-amber">YOU</span>
+            <span className="mono text-[calc(9px*var(--ui-scale))] tracking-[0.12em] text-amber">YOU</span>
           )}
         </div>
       </summary>
       <div className="border-t border-ink-line px-[13px] pt-3 pb-4">
-        <div className="mono flex items-center justify-between pb-3 text-[9px] tracking-[0.08em] text-stone">
+        <div className="mono flex items-center justify-between pb-3 text-[calc(9px*var(--ui-scale))] tracking-[0.08em] text-stone">
           <span>{game.isLive ? "LIVE" : game.isFinal ? "FINAL" : "PREGAME"}</span>
         </div>
         <StarterStateTable
@@ -698,13 +712,13 @@ function GameScore({
 }) {
   return (
     <div className={align === "right" ? "text-right" : ""}>
-      <div className="mono text-[14px] font-medium tabular-nums text-bone">
+      <div className="mono text-[calc(14px*var(--ui-scale))] font-medium tabular-nums text-bone">
         {points === null ? "—" : points.toFixed(1)}
       </div>
       {!isFinal && (
         <>
-          <div className="mono mt-[3px] text-[8.5px] tracking-[0.09em] text-stone">PROJ</div>
-          <div className="mono text-[9.5px] tabular-nums text-stone">
+          <div className="mono mt-[3px] text-[calc(8.5px*var(--ui-scale))] tracking-[0.09em] text-stone">PROJ</div>
+          <div className="mono text-[calc(9.5px*var(--ui-scale))] tabular-nums text-stone">
             {projected === null ? "—" : projected.toFixed(1)}
           </div>
         </>
@@ -731,7 +745,7 @@ function LeagueStandings({ card }: { card: MatchupCard }) {
 
   return (
     <div className="overflow-hidden rounded-[5px] border border-ink-line" role="tabpanel">
-      <div className="mono grid grid-cols-[26px_minmax(0,1fr)_58px_62px] gap-2 border-b border-ink-line bg-deep px-[13px] py-[9px] text-[9.5px] tracking-[0.1em] text-stone">
+      <div className="mono grid grid-cols-[26px_minmax(0,1fr)_58px_62px] gap-2 border-b border-ink-line bg-deep px-[13px] py-[9px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] text-stone">
         <span>#</span>
         <span>TEAM</span>
         <span className="text-right">REC</span>
@@ -742,16 +756,16 @@ function LeagueStandings({ card }: { card: MatchupCard }) {
           key={team.teamId}
           className={`grid grid-cols-[26px_minmax(0,1fr)_58px_62px] items-center gap-2 border-b border-ink-line px-[13px] py-[11px] last:border-b-0 ${team.isMine ? "bg-deep" : ""}`}
         >
-          <span className="mono text-[10.5px] text-stone">{team.standing ?? index + 1}</span>
+          <span className="mono text-[calc(10.5px*var(--ui-scale))] text-stone">{team.standing ?? index + 1}</span>
           <span
-            className={`truncate text-[13px] ${team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+            className={`truncate text-[calc(13px*var(--ui-scale))] ${team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
           >
             {team.name}
           </span>
-          <span className="mono text-right text-[11px] font-medium tabular-nums text-bone-dim">
+          <span className="mono text-right text-[calc(11px*var(--ui-scale))] font-medium tabular-nums text-bone-dim">
             {recordLabel(team.wins, team.losses, team.ties)}
           </span>
-          <span className="mono text-right text-[11px] font-medium tabular-nums text-bone">
+          <span className="mono text-right text-[calc(11px*var(--ui-scale))] font-medium tabular-nums text-bone">
             {team.pointsFor?.toFixed(1) ?? "—"}
           </span>
         </div>
@@ -773,22 +787,22 @@ function ChoppedBody({ card }: { card: MatchupCard }) {
     <>
       <div className="flex items-end justify-between gap-3">
         <div>
-          <div className="mono text-[9.5px] tracking-[0.11em] text-stone">SURVIVAL RANK</div>
-          <div className="display mt-1 text-[26px] leading-none">
+          <div className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">SURVIVAL RANK</div>
+          <div className="display mt-1 text-[calc(26px*var(--ui-scale))] leading-none">
             {summary?.myRank ?? "—"}
             <span className="text-sm text-bone-dim">/{total || "—"}</span>
           </div>
         </div>
         <div className="text-right">
-          <div className="mono text-[9.5px] tracking-[0.11em] text-stone">PROJECTED</div>
-          <div className="display mt-[5px] text-[20px] leading-none tabular-nums">
+          <div className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">PROJECTED</div>
+          <div className="display mt-[5px] text-[calc(20px*var(--ui-scale))] leading-none tabular-nums">
             {mine?.projected?.toFixed(1) ?? mine?.points?.toFixed(1) ?? "—"}
           </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-[11px] border-t border-ink-line pt-[11px]">
-        <span className="mono text-[10.5px] tracking-[0.06em] text-bone-dim">
+        <span className="mono text-[calc(10.5px*var(--ui-scale))] tracking-[0.06em] text-bone-dim">
           CHOP ZONE: <span className="text-flag">{chop?.name ?? "Waiting for scores"}</span>
           {summary?.marginAboveChop !== null && summary?.marginAboveChop !== undefined
             ? ` · +${summary.marginAboveChop.toFixed(1)} CLEAR`
@@ -798,7 +812,7 @@ function ChoppedBody({ card }: { card: MatchupCard }) {
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          className="mono min-h-11 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[10.5px] tracking-[0.09em] text-bone hover:bg-ink"
+          className="mono min-h-11 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] text-bone hover:bg-ink"
         >
           {open ? "HIDE CHOPPING BLOCK ↑" : "CHOPPING BLOCK ↓"}
         </button>
@@ -820,16 +834,16 @@ function ChoppingBlock({ card }: { card: MatchupCard }) {
     <section className="flex flex-col gap-3 border-t border-ink-line pt-[13px]" aria-label="Chopping block">
       <div className="flex items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <span className="mono text-[9.5px] tracking-[0.13em] text-stone">CHOPPING BLOCK</span>
-          <span className="text-[13px] text-bone-dim">Lowest score at final whistle is out</span>
+          <span className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.13em] text-stone">CHOPPING BLOCK</span>
+          <span className="text-[calc(13px*var(--ui-scale))] text-bone-dim">Lowest score at final whistle is out</span>
         </div>
-        <span className="mono shrink-0 text-[9.5px] tracking-[0.11em] text-stone">
+        <span className="mono shrink-0 text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">
           WEEK {card.week} · {standings.length} LEFT
         </span>
       </div>
 
       <div className="overflow-hidden rounded-[5px] border border-ink-line">
-        <div className="mono grid grid-cols-[24px_minmax(0,1fr)_62px_62px] gap-2 border-b border-ink-line bg-deep px-[13px] py-[9px] text-[9.5px] tracking-[0.1em] text-stone">
+        <div className="mono grid grid-cols-[24px_minmax(0,1fr)_62px_62px] gap-2 border-b border-ink-line bg-deep px-[13px] py-[9px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] text-stone">
           <span>#</span>
           <span>TEAM</span>
           <span className="text-right">LIVE</span>
@@ -841,35 +855,35 @@ function ChoppingBlock({ card }: { card: MatchupCard }) {
             <div key={team.teamId}>
               {chopped && (
                 <div className="flex items-center gap-[9px] border-b border-ink-line bg-deep px-[13px] py-[7px]">
-                  <span className="mono shrink-0 text-[9px] tracking-[0.13em] text-flag">CHOP LINE</span>
+                  <span className="mono shrink-0 text-[calc(9px*var(--ui-scale))] tracking-[0.13em] text-flag">CHOP LINE</span>
                   <span className="h-px flex-1 bg-flag opacity-55" aria-hidden />
-                  <span className="mono shrink-0 text-[9px] tracking-[0.09em] text-stone">SAFE ABOVE</span>
+                  <span className="mono shrink-0 text-[calc(9px*var(--ui-scale))] tracking-[0.09em] text-stone">SAFE ABOVE</span>
                 </div>
               )}
               <div
                 className={`grid grid-cols-[24px_minmax(0,1fr)_62px_62px] items-center gap-2 border-b border-ink-line px-[13px] py-[11px] last:border-b-0 ${team.isMine ? "bg-deep" : ""}`}
               >
-                <span className={`mono text-[10.5px] ${chopped ? "text-flag" : "text-stone"}`}>
+                <span className={`mono text-[calc(10.5px*var(--ui-scale))] ${chopped ? "text-flag" : "text-stone"}`}>
                   {index + 1}
                 </span>
                 <div className="flex min-w-0 items-center gap-2">
                   <span
-                    className={`truncate text-[13px] ${chopped ? "font-semibold text-flag" : team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+                    className={`truncate text-[calc(13px*var(--ui-scale))] ${chopped ? "font-semibold text-flag" : team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
                   >
                     {team.name}
                   </span>
                   {team.isMine && (
-                    <span className="mono shrink-0 text-[9px] tracking-[0.11em] text-amber">YOU</span>
+                    <span className="mono shrink-0 text-[calc(9px*var(--ui-scale))] tracking-[0.11em] text-amber">YOU</span>
                   )}
                   {chopped && !team.isMine && (
-                    <span className="mono shrink-0 text-[9px] tracking-[0.11em] text-flag">CHOP ZONE</span>
+                    <span className="mono shrink-0 text-[calc(9px*var(--ui-scale))] tracking-[0.11em] text-flag">CHOP ZONE</span>
                   )}
                 </div>
-                <span className="mono text-right text-[12px] font-medium tabular-nums text-bone-dim">
+                <span className="mono text-right text-[calc(12px*var(--ui-scale))] font-medium tabular-nums text-bone-dim">
                   {team.points?.toFixed(1) ?? "—"}
                 </span>
                 <span
-                  className={`mono text-right text-[12px] font-medium tabular-nums ${chopped ? "text-flag" : "text-bone"}`}
+                  className={`mono text-right text-[calc(12px*var(--ui-scale))] font-medium tabular-nums ${chopped ? "text-flag" : "text-bone"}`}
                 >
                   {team.projected?.toFixed(1) ?? "—"}
                 </span>
@@ -884,9 +898,9 @@ function ChoppingBlock({ card }: { card: MatchupCard }) {
         )}
       </div>
 
-      <div className="mono flex items-center justify-between gap-[10px] text-[9.5px] tracking-[0.09em]">
+      <div className="mono flex items-center justify-between gap-[10px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.09em]">
         <span className="text-stone">YOUR MARGIN TO THE LINE</span>
-        <span className={`text-[11px] font-medium tabular-nums ${margin !== null && margin >= 0 ? "text-turf" : "text-flag"}`}>
+        <span className={`text-[calc(11px*var(--ui-scale))] font-medium tabular-nums ${margin !== null && margin >= 0 ? "text-turf" : "text-flag"}`}>
           {margin === null ? "—" : `${margin >= 0 ? "+" : ""}${margin.toFixed(1)}`}
         </span>
       </div>
@@ -933,22 +947,22 @@ function FinalBoxScore({ card }: { card: MatchupCard }) {
   const opponentStarters = card.opponent?.lineup?.starters ?? [];
   const rows = buildBoxScore(mineStarters, opponentStarters);
   const won = (card.mine.points ?? 0) >= (card.opponent?.points ?? 0);
-  const top = [...mineStarters, ...opponentStarters].sort(
-    (a, b) => (b.currentPoints ?? 0) - (a.currentPoints ?? 0)
-  )[0];
+  const top = [...mineStarters, ...opponentStarters]
+    .filter((player) => !player.isEmptySlot)
+    .sort((a, b) => (b.currentPoints ?? 0) - (a.currentPoints ?? 0))[0];
 
   return (
     <section className="flex flex-col gap-3 border-t border-ink-line pt-[13px]" aria-label="Final box score">
       <div className="flex items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <span className="mono text-[9.5px] tracking-[0.13em] text-stone">FINAL BOX SCORE</span>
-          <span className="text-[13px] text-bone-dim">Locked when the last game ended</span>
+          <span className="mono text-[calc(9.5px*var(--ui-scale))] tracking-[0.13em] text-stone">FINAL BOX SCORE</span>
+          <span className="text-[calc(13px*var(--ui-scale))] text-bone-dim">Locked when the last game ended</span>
         </div>
-        <span className="mono shrink-0 text-[9.5px] tracking-[0.11em] text-stone">WEEK {card.week}</span>
+        <span className="mono shrink-0 text-[calc(9.5px*var(--ui-scale))] tracking-[0.11em] text-stone">WEEK {card.week}</span>
       </div>
 
       <div className="overflow-hidden rounded-[5px] border border-ink-line">
-        <div className="mono grid grid-cols-[minmax(0,1fr)_58px_58px] gap-2 border-b border-ink-line bg-deep px-3 py-[9px] text-[9.5px] tracking-[0.1em] text-stone">
+        <div className="mono grid grid-cols-[minmax(0,1fr)_58px_58px] gap-2 border-b border-ink-line bg-deep px-3 py-[9px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.1em] text-stone">
           <span>BY POSITION</span>
           <span className="truncate text-right">YOU</span>
           <span className="truncate text-right">OPP</span>
@@ -961,17 +975,17 @@ function FinalBoxScore({ card }: { card: MatchupCard }) {
               className={`mono grid grid-cols-[minmax(0,1fr)_58px_58px] items-center gap-2 border-b border-ink-line px-3 py-[10px] last:border-b-0 ${total ? "bg-deep" : ""}`}
             >
               <span
-                className={`text-[10.5px] tracking-[0.09em] ${total ? "font-medium text-bone" : "text-bone-dim"}`}
+                className={`text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] ${total ? "font-medium text-bone" : "text-bone-dim"}`}
               >
                 {row.label}
               </span>
               <span
-                className={`text-right text-[11.5px] font-medium tabular-nums ${total && won ? "text-turf" : "text-bone"}`}
+                className={`text-right text-[calc(11.5px*var(--ui-scale))] font-medium tabular-nums ${total && won ? "text-turf" : "text-bone"}`}
               >
                 {row.mine.toFixed(1)}
               </span>
               <span
-                className={`text-right text-[11.5px] font-medium tabular-nums ${total && !won ? "text-turf" : "text-bone-dim"}`}
+                className={`text-right text-[calc(11.5px*var(--ui-scale))] font-medium tabular-nums ${total && !won ? "text-turf" : "text-bone-dim"}`}
               >
                 {row.opponent.toFixed(1)}
               </span>
@@ -980,11 +994,11 @@ function FinalBoxScore({ card }: { card: MatchupCard }) {
         })}
       </div>
 
-      <div className="mono flex items-center justify-between gap-[10px] text-[9.5px] tracking-[0.09em] text-stone">
+      <div className="mono flex items-center justify-between gap-[10px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.09em] text-stone">
         <span className="truncate">
           {top ? `TOP SCORER · ${top.name.toUpperCase()} ${numberLabel(top.currentPoints)}` : "NO LINEUP SYNCED"}
         </span>
-        <span className="mono shrink-0 text-[10.5px] tracking-[0.08em] text-turf">
+        <span className="mono shrink-0 text-[calc(10.5px*var(--ui-scale))] tracking-[0.08em] text-turf">
           {recordLabel(
             card.standings.find((team) => team.isMine)?.wins ?? 0,
             card.standings.find((team) => team.isMine)?.losses ?? 0,
@@ -1001,11 +1015,11 @@ function FinalBoxScore({ card }: { card: MatchupCard }) {
 function ByeBody({ card }: { card: MatchupCard }) {
   return (
     <>
-      <p className="text-[13px] leading-relaxed text-bone-dim">
+      <p className="text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
         No opponent this week — an odd team count means you sit out week {card.week}. Your score still
         counts toward the points-for tiebreak.
       </p>
-      <span className="mono border-t border-ink-line pt-[11px] text-[10.5px] tracking-[0.06em] text-stone">
+      <span className="mono border-t border-ink-line pt-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.06em] text-stone">
         NEXT GAME WEEK {card.week + 1}
       </span>
     </>
@@ -1015,13 +1029,13 @@ function ByeBody({ card }: { card: MatchupCard }) {
 function PreDraftBody({ card }: { card: MatchupCard }) {
   return (
     <>
-      <p className="text-[13px] leading-relaxed text-bone-dim">
+      <p className="text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
         Nothing to score yet. Slate fills this card the moment picks start.
         {card.leagueFormat === "chopped"
           ? " The Chopping Block appears after the draft."
           : " Matchups and projections appear after the draft."}
       </p>
-      <div className="mono flex items-center justify-between gap-[10px] border-t border-ink-line pt-[11px] text-[10.5px] tracking-[0.06em] text-stone">
+      <div className="mono flex items-center justify-between gap-[10px] border-t border-ink-line pt-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.06em] text-stone">
         <span className="truncate">{card.mine.teamId ? card.mine.name.toUpperCase() : "ROSTER PENDING"}</span>
         <span>{card.teamCount ? `${card.teamCount} TEAMS` : ""}</span>
       </div>
@@ -1055,7 +1069,7 @@ function FailedBody({
 
   return (
     <>
-      <p className="text-[13px] leading-relaxed text-bone-dim">
+      <p className="text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
         {retrying
           ? `Retrying now — reconnecting to ${title(card.platform)}.`
           : `${title(card.platform)} stopped returning this league ${syncLabel(card.syncFailure?.at ?? null)}. Scores below are from the last good sync.`}
@@ -1065,14 +1079,14 @@ function FailedBody({
           type="button"
           onClick={retry}
           disabled={retrying}
-          className="mono min-h-11 flex-1 cursor-pointer rounded-[4px] border border-flag px-[10px] py-[11px] text-[10.5px] tracking-[0.09em] text-flag disabled:cursor-wait"
+          className="mono min-h-11 flex-1 cursor-pointer rounded-[4px] border border-flag px-[10px] py-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] text-flag disabled:cursor-wait"
         >
           {retrying ? "RETRYING…" : "RETRY SYNC"}
         </button>
         <button
           type="button"
           onClick={onOpenConnections}
-          className="mono min-h-11 flex-1 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[10.5px] tracking-[0.09em] text-bone-dim"
+          className="mono min-h-11 flex-1 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[calc(10.5px*var(--ui-scale))] tracking-[0.09em] text-bone-dim"
         >
           CONNECTIONS
         </button>

@@ -22,6 +22,13 @@ export interface Side {
 
 export interface MatchupPlayer {
   externalPlayerId: string;
+  /**
+   * A starting slot the provider shows as empty. The player fields carry
+   * placeholder values; only `slot` and `lineupOrder` mean anything. Kept in
+   * the lineup because the gap is real roster state — an unfilled FLEX is the
+   * difference between "ten starters" and "eight and two holes".
+   */
+  isEmptySlot?: boolean;
   name: string;
   position: string | null;
   nflTeam: string | null;

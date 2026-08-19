@@ -24,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="floodlight" suppressHydrationWarning>
-      <body className="bg-ink text-bone">
+      <body className="flex min-h-dvh flex-col items-center bg-ink text-bone">
         {children}
         <Script
           id="slate-theme-boot"

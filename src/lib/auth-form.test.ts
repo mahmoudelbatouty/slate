@@ -24,8 +24,30 @@ describe("parseAuthSubmission", () => {
     );
     expect(result).toEqual({
       ok: true,
-      value: { intent: "signin", email: "owner@example.com", password: "longenough", next: "/" },
+      value: {
+        intent: "signin",
+        email: "owner@example.com",
+        password: "longenough",
+        next: "/",
+        firstName: "",
+        lastName: "",
+      },
     });
+  });
+
+  it("trims an optional display name for sign-up", () => {
+    const result = parseAuthSubmission(
+      form({
+        intent: "signup",
+        email: "owner@example.com",
+        password: "longenough",
+        next: "/",
+        firstName: "  Mahmoud ",
+        lastName: " Elbatouty ",
+      })
+    );
+    expect(result.ok && result.value.firstName).toBe("Mahmoud");
+    expect(result.ok && result.value.lastName).toBe("Elbatouty");
   });
 
   it("rejects an unknown intent", () => {

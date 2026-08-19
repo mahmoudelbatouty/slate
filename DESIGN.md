@@ -47,6 +47,8 @@ actually need to see fast: am I winning, is it live, is it final.
 --turf:       #4E9B6E;  /* winning / positive delta */
 --flag:       #CC5847;  /* losing / negative delta */
 --stone:      #5A6670;  /* final, settled, inert */
+--deep:       #0c1216;  /* header, ticker, table headers, active rows */
+--mark-off:   #39454f;  /* inactive logo squares */
 ```
 
 Amber is rationed. If more than roughly 10% of the screen is amber, something is
@@ -66,10 +68,26 @@ Same semantics, inverted. For anyone who won't use a dark app outdoors.
 --turf:       #2F7A4E;
 --flag:       #B0402F;
 --stone:      #8B939A;
+--deep:       #F7F7F3;
+--mark-off:   #C3C5BC;
 ```
 
 Implement as a `data-theme` attribute on `<html>` swapping the same variable
-names. Components never reference a hex directly.
+names (`floodlight` / `daybreak`). Components never reference a hex directly.
+
+### Shell layout
+
+The signed-in shell is one bordered column: `max-width` 560px, widening to
+1080px at the 1000px breakpoint, where the card grid becomes two columns and the
+first two cards span the full width. Top to bottom it is a sticky header
+(clock, week, account chip, theme toggle, live count, provider marks + sync
+line), the week `<select>`, the score ticker, the "around the league" NFL rail,
+the collapsible account sheet, the card grid, and a self-clearing confirmation
+strip pinned to the bottom.
+
+The full card-by-card spec for this shell — every state, expansion, and string —
+lives in `slate_update/design_handoff/design_updated.md`. The HTML prototypes it
+was written from are large bundles and stay out of the repo.
 
 ---
 

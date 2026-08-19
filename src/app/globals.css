@@ -19,13 +19,18 @@
   --text-xs: 12px;
   --text-2xs: 11px;
 
+  --breakpoint-wide: 1000px;
+  --breakpoint-signin: 1150px;
+
   --container-app: 560px;
+  --container-wide: 1080px;
 
   /* Floodlight — default. Declared here (not just :root) so Tailwind
      generates bg-ink / text-bone-dim / border-ink-line utilities from them.
      The [data-theme] blocks below re-point the same variables, so the
      utilities swap wholesale. Components never name a hex. */
   --color-ink: #0f151a;
+  --color-deep: #0c1216; /* header, ticker, table headers, active rows */
   --color-ink-raised: #171f26;
   --color-ink-line: #253039;
   --color-bone: #e8e5de;
@@ -33,12 +38,14 @@
   --color-amber: #f2a33c; /* LIVE only. ration it. */
   --color-turf: #4e9b6e; /* winning / positive */
   --color-flag: #cc5847; /* losing / negative */
-  --color-stone: #73808a; /* final, settled, inert — readable at small sizes */
+  --color-stone: #5a6670; /* mono labels, metadata */
+  --color-mark-off: #39454f; /* inactive logo squares */
 }
 
 /* Floodlight — default */
 [data-theme="floodlight"] {
   --color-ink: #0f151a;
+  --color-deep: #0c1216;
   --color-ink-raised: #171f26;
   --color-ink-line: #253039;
   --color-bone: #e8e5de;
@@ -46,12 +53,14 @@
   --color-amber: #f2a33c;
   --color-turf: #4e9b6e;
   --color-flag: #cc5847;
-  --color-stone: #73808a;
+  --color-stone: #5a6670;
+  --color-mark-off: #39454f;
 }
 
 /* Daybreak — light alternate */
 [data-theme="daybreak"] {
   --color-ink: #edede7;
+  --color-deep: #f7f7f3;
   --color-ink-raised: #f7f7f3;
   --color-ink-line: #d4d5cc;
   --color-bone: #161c21;
@@ -59,7 +68,8 @@
   --color-amber: #c77a16;
   --color-turf: #2f7a4e;
   --color-flag: #b0402f;
-  --color-stone: #60686e;
+  --color-stone: #8b939a;
+  --color-mark-off: #c3c5bc;
 }
 
 @layer base {
@@ -109,6 +119,44 @@
 
 .pulse {
   animation: slate-pulse 2s ease-in-out infinite;
+}
+
+/* The ticker runs its item list twice, so -50% lands exactly on the seam. */
+@keyframes slate-ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-run {
+  width: max-content;
+  animation: slate-ticker 42s linear infinite;
+}
+
+.ticker-strip:hover .ticker-run {
+  animation-play-state: paused;
+}
+
+/* Horizontal rails scroll but never show a bar — the content is the affordance. */
+.rail-hidden {
+  scrollbar-width: none;
+}
+
+.rail-hidden::-webkit-scrollbar {
+  height: 0;
+}
+
+/* Native select, restyled. Keeps keyboard and mobile pickers for free. */
+.week-select {
+  appearance: none;
+}
+
+.week-select option {
+  background: var(--color-ink-raised);
+  color: var(--color-bone);
 }
 
 .week-rail {

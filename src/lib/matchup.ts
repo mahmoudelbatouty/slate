@@ -82,6 +82,11 @@ export interface LeagueStanding {
   standing: number | null;
 }
 
+export interface SyncFailure {
+  message: string | null;
+  at: string | null;
+}
+
 export interface MatchupCard {
   leagueId: string;
   leagueName: string;
@@ -101,6 +106,8 @@ export interface MatchupCard {
     opponent: StarterSummary | null;
   };
   syncedAt: string | null;
+  /** Set only when this league's most recent provider run failed. */
+  syncFailure?: SyncFailure | null;
   mine: Side;
   opponent: Side | null;
   chopped: ChoppedSummary | null;

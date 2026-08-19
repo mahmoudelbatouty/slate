@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Design handoff prototypes are large bundled HTML; the spec beside them is tracked.
+slate_update/design_handoff/*.html

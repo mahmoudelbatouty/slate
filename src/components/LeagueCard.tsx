@@ -717,7 +717,7 @@ function GameScore({
       </div>
       {!isFinal && (
         <>
-          <div className="mono mt-[3px] text-[calc(8.5px*var(--ui-scale))] tracking-[0.09em] text-stone">PROJ</div>
+          <div className="mono mt-[3px] text-[calc(9.5px*var(--ui-scale))] tracking-[0.09em] text-stone">PROJ</div>
           <div className="mono text-[calc(9.5px*var(--ui-scale))] tabular-nums text-stone">
             {projected === null ? "—" : projected.toFixed(1)}
           </div>
@@ -1015,7 +1015,7 @@ function FinalBoxScore({ card }: { card: MatchupCard }) {
 function ByeBody({ card }: { card: MatchupCard }) {
   return (
     <>
-      <p className="text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
+      <p className="max-w-[68ch] text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
         No opponent this week — an odd team count means you sit out week {card.week}. Your score still
         counts toward the points-for tiebreak.
       </p>
@@ -1029,7 +1029,7 @@ function ByeBody({ card }: { card: MatchupCard }) {
 function PreDraftBody({ card }: { card: MatchupCard }) {
   return (
     <>
-      <p className="text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
+      <p className="max-w-[68ch] text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
         Nothing to score yet. Slate fills this card the moment picks start.
         {card.leagueFormat === "chopped"
           ? " The Chopping Block appears after the draft."
@@ -1069,7 +1069,7 @@ function FailedBody({
 
   return (
     <>
-      <p className="text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
+      <p className="max-w-[68ch] text-[calc(13px*var(--ui-scale))] leading-relaxed text-bone-dim">
         {retrying
           ? `Retrying now — reconnecting to ${title(card.platform)}.`
           : `${title(card.platform)} stopped returning this league ${syncLabel(card.syncFailure?.at ?? null)}. Scores below are from the last good sync.`}

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LeagueCard, buildBoxScore, marginLabel } from "./LeagueCard";
+import { LeagueCard, MirroredBench, buildBoxScore, marginLabel } from "./LeagueCard";
 import { EMPTY_STARTER_SUMMARY, type StarterSummary } from "@/lib/game-state";
 import type { MatchupCard, MatchupPlayer } from "@/lib/matchup";
 
@@ -141,5 +141,58 @@ describe("marginLabel", () => {
     expect(marginLabel(13.7, false)).toBe("up 13.7");
     expect(marginLabel(-13.7, true)).toBe("lost by 13.7");
     expect(marginLabel(0, true)).toBe("tied");
+  });
+});
+
+describe("MirroredBench", () => {
+  const mine = [
+    player({ externalPlayerId: "b1", name: "Tyjae Spears", position: "RB", slot: "BN", projectedPoints: 11.2, currentPoints: null }),
+    player({ externalPlayerId: "b2", name: "Dalton Kincaid", position: "TE", slot: "BN", projectedPoints: 8.91, currentPoints: null, injuryStatus: "Questionable" }),
+  ];
+  const theirs = [
+    player({ externalPlayerId: "b3", name: "Bo Nix", position: "QB", slot: "BN", projectedPoints: 15.02, currentPoints: null }),
+  ];
+
+  it("shows the opponent's bench beside your own", () => {
+    const markup = renderToStaticMarkup(<MirroredBench mine={mine} opponent={theirs} flagged={1} />);
+    expect(markup).toContain("Tyjae Spears");
+    expect(markup).toContain("Bo Nix");
+  });
+
+  it("counts both sides in the header, flags included", () => {
+    const markup = renderToStaticMarkup(<MirroredBench mine={mine} opponent={theirs} flagged={1} />);
+    expect(markup).toContain("YOU 2");
+    expect(markup).toContain("1 FLAG");
+    expect(markup).toContain("OPP 1");
+  });
+
+  it("pairs by position in each list, since a bench has no slots to align", () => {
+    const markup = renderToStaticMarkup(<MirroredBench mine={mine} opponent={theirs} flagged={0} />);
+    // Row 1 pairs both first reserves; row 2 has only yours, so the opponent
+    // half falls back to the em dash rather than shifting a player up.
+    expect(markup.indexOf("Tyjae Spears")).toBeLessThan(markup.indexOf("Dalton Kincaid"));
+    expect(markup).toContain("—");
+  });
+
+  it("renders as many rows as the longer bench", () => {
+    const markup = renderToStaticMarkup(<MirroredBench mine={mine} opponent={theirs} flagged={0} />);
+    expect(markup.match(/grid-cols-\[minmax\(0,1fr\)_62px_62px_minmax\(0,1fr\)\]/g)).toHaveLength(2);
+  });
+
+  it("leads with projections, because nobody on a bench has played", () => {
+    const markup = renderToStaticMarkup(<MirroredBench mine={mine} opponent={theirs} flagged={0} />);
+    expect(markup).toContain("11.2");
+    expect(markup).toContain("15.02");
+    expect(markup).toContain("PROJ");
+  });
+
+  it("tints only the flagged player's own half", () => {
+    const markup = renderToStaticMarkup(<MirroredBench mine={mine} opponent={theirs} flagged={1} />);
+    expect(markup.match(/text-flag/g)).toHaveLength(1);
+  });
+
+  it("says so when neither side has a synced bench", () => {
+    const markup = renderToStaticMarkup(<MirroredBench mine={[]} opponent={[]} flagged={0} />);
+    expect(markup).toContain("No bench players synced");
   });
 });

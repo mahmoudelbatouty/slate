@@ -40,18 +40,25 @@ export function useConnections(
     [initial.yahoo.connected, sleeper, espn]
   );
 
+  /**
+   * Runs for a connected platform too. Pairing is how you get back to the
+   * provider's own sign-in page — the connector opens it — so a connected
+   * Sleeper or ESPN still needs this path when its session lapses or you want
+   * to sign in as someone else. Guarding it behind "not connected" left no way
+   * back to the provider at all.
+   */
   const connect = useCallback(
     (platform: Platform) => {
       if (platform === "yahoo") {
         // Yahoo's start route is a server redirect out to Yahoo's consent
         // screen, so this has to leave the app rather than route inside it.
-        if (!initial.yahoo.connected && initial.yahoo.configured) {
+        if (initial.yahoo.configured) {
           window.location.assign(new URL("/api/auth/yahoo/start", window.location.origin));
         }
         return;
       }
-      if ((platform === "sleeper" ? sleeper : espn).state === "connected") return;
 
+      const connectedNow = (platform === "sleeper" ? sleeper : espn).state === "connected";
       setPairing(platform);
       void (async () => {
         try {
@@ -61,7 +68,11 @@ export function useConnections(
             if (platform === "sleeper") setSleeper(next);
             else setEspn(next);
           }
-          onToast(`${title(platform)} pairing approved. Slate is waiting for its first sync.`);
+          onToast(
+            connectedNow
+              ? `${title(platform)} reconnected. Slate is waiting for its next capture.`
+              : `${title(platform)} pairing approved. Slate is waiting for its first sync.`
+          );
         } catch (cause) {
           onToast(cause instanceof Error ? cause.message : "Pairing failed.");
         } finally {

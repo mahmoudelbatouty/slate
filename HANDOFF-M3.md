@@ -128,10 +128,18 @@ still render 12 cards, four with full lineups including the restored empty FLEX
 slots. **The 294 transactions were the only content not duplicated under an owned
 league**; nothing reads that table today and the providers can re-sync it.
 
-**There are now two real accounts** (`0be3128c…` and `1aada003…`) sharing several
-leagues, so owned rows legitimately duplicate each other on
-`(platform, external_id)`. That is not corruption — do not "deduplicate" it. Only
-`owner_id is null` ever marked a prototype row, and none remain.
+**Two Auth accounts exist** (`0be3128c…` and `1aada003…`), both the repo owner's
+— the second was created to check that a second account sees only its own data.
+It does, so owner scoping is confirmed end to end rather than merely intended.
+
+The side effect is that both accounts synced the same real leagues, so owned rows
+duplicate each other on `(platform, external_id)`. That is expected and correct;
+each row is scoped to its owner. Do not "deduplicate" it. Only `owner_id is null`
+ever marked a prototype row, and none remain.
+
+If the test account is retired, deleting the Auth user cascades its leagues,
+teams, matchups, and roster entries — roughly half of what is left — so expect
+the row counts above to halve again.
 
 `CLAUDE.md` still opens with "Single user for the current prototype. This runs
 for the repo owner today." That is no longer literally true, and the owner-scope

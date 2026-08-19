@@ -4,6 +4,94 @@
 
 This section supersedes conflicting historical notes later in this file.
 
+### Session decisions — 2026-08-18, evening: design refresh and refinements
+
+**The updated design shell is merged.** `e33f824`, merged as `9af08db`. The
+signed-in shell and the sign-in screen were rebuilt from
+`slate_update/design_handoff` — every surface driven by synced data, not the
+prototype's inline fixtures. New surfaces: sticky header (clock, week, account
+chip, theme toggle, live count, provider marks), a week `<select>` replacing the
+swipe rail, a seamless score ticker that scrolls to a card, an "around the
+league" rail from `nfl_games`, a collapsible account sheet (connections,
+notification preferences, league order and visibility), and a self-clearing
+confirmation strip. Cards gained the design's states: live, final with a
+by-position box score, chopped with a chop line, bye, pre-draft, and a
+sync-failed card driven by the newest failed `sync_runs` row.
+
+Not built, because no adapter reports either shape today: best-ball and
+playoff-bracket cards. Notification preferences and league visibility are stored
+in the browser next to the saved card order; **no delivery is wired up**.
+
+**Refinements from the first real pass.** `5ef1373`, merged as `f5cffe9`. Four
+UI corrections and three data fixes, the last two of which were real bugs the
+redesign only made visible.
+
+*UI*
+
+- Provider marks in the header are one button each. A disconnected mark starts
+  that platform's flow; a connected one re-runs pairing (see the reconnect note
+  below). The handshake moved out of `AccountSheet` into `src/lib/useConnections.ts`
+  so the marks and the sheet's rows drive one flow rather than two copies.
+- Every league card is full width. The handoff's two-column tail boxed the
+  quieter card types (best ball, bye, pre-draft, sync failed) into half-width
+  tiles that read as a different component.
+- Font sizes ride `--ui-scale` in `globals.css`: 1 on a phone, 1.12 at 700px,
+  1.22 at 1000px. The handoff sizes are calibrated for the 560px shell and read
+  as fine print on a monitor. **This is the one knob** — every literal
+  `text-[Npx]` is `text-[calc(Npx*var(--ui-scale))]` and the named `@theme`
+  sizes scale with it.
+- Provider marks keep their official colors in both themes. The Daybreak
+  `invert(1)` was hue-shifting ESPN red and Yahoo purple to green, which reads
+  as a game-state color and breaks both brands' guidelines. Yahoo's `#7D2EFF`
+  clears only 2.96:1 against `--ink-raised`, so Floodlight lifts its luminance
+  to ~4.4:1 via `.platform-mark-image--lift`; hue and saturation are untouched.
+
+*Data — all three verified against the live Supabase project and Sleeper*
+
+- **Stale native projections no longer win forever.** `src/lib/projection.ts`.
+  The connector's captured provider figure used to override the computed one
+  unconditionally. Measured across NCL Dynasty, the computed dot product matched
+  the captured figure **to the cent for nine of ten teams**; the tenth was the
+  owner's, whose lineup had changed after the capture, so the card showed 140.02
+  against a lineup projecting 172.25. A capture now wins only while it is at
+  least as fresh as the league's last provider sync — or whenever Slate could
+  not compute anything at all, which keeps ESPN and a failed projections host
+  working as before. **The scoring math itself was never wrong.**
+- **PostgREST's 1000-row cap was silently truncating the dashboard.**
+  `src/lib/read-all.ts`. A twelve-league account has ~1500 week-1 roster entries
+  and ~1050 matchup rows, so entire leagues rendered with no lineup and no
+  error — "A League Has No Name" was showing zero starters. Every unbounded read
+  in `dashboard.ts` now pages through `readAll`, and long `.in()` lists are
+  batched through `readAllIn` at 200 ids: once the row cap was lifted, the
+  player-id list alone made a URL long enough to fail the request outright.
+  **Any new unbounded read must use these helpers**, and each must impose a
+  stable sort or paging will skip and repeat rows.
+- **Empty starting slots are restored.** `src/lib/lineup-slots.ts`. Sleeper
+  sends `"0"` for a slot the manager left empty and the adapter drops it, so
+  Elite Dynasty rendered eight starters where Sleeper shows ten. Gaps are
+  rebuilt from the league's ordered `roster_positions` and the stored
+  `lineupOrder`, and render as `FLEX · EMPTY`. Anything whose order does not
+  line up cleanly is left alone rather than guessed at. This satisfies M3's
+  "retain starter-slot gaps" requirement, which was previously unmet.
+
+**Reconnect is a first-class path again.** The pre-redesign login control ran
+pairing for a *connected* platform too, labeled "Reconnect" — that handshake is
+how the connector opens the provider's own sign-in page. The first refinement
+pass guarded `connect()` behind "not connected" and removed the only route back
+to Sleeper or ESPN when a session lapsed. Connected rows now carry a RECONNECT
+button beside the SYNCED dot, the header marks run the same action, and Yahoo's
+row keeps its link to `/api/auth/yahoo/start` once configured. Slate still never
+sees a provider password, cookie, or token.
+
+**Known follow-ups, none blocking.**
+
+- The Sleeper icon still loads from `sleepercdn.com`; the design handoff asks
+  for it to be bundled locally so it survives offline.
+- `--ui-scale` is a first guess at desktop legibility, not a measured one.
+- `leagues` still holds pre-auth rows with `owner_id is null` — duplicates of
+  live leagues that no owner-scoped query returns. Harmless, but they inflate
+  every table scan and should be cleaned up.
+
 ### Session decisions — 2026-08-18, later same day
 
 **Login rewrite merged.** PR #12, squashed to `2987ba6`. Sign-in and sign-up are
@@ -744,19 +832,31 @@ league-setting operations are out of scope until lineup edits are reliable.
 
 ## Files to start with
 
-- `src/components/ConnectorStatus.tsx`
+- `src/lib/useConnections.ts` — the one connect/reconnect flow
+- `src/components/dashboard/AccountSheet.tsx` — connections, prefs, league order
+- `src/components/dashboard/AppHeader.tsx` — provider marks, sync line
 - `src/app/api/connector/pair/route.ts`
 - `src/app/api/connector/ingest/route.ts`
 - `src/connector/protocol.ts`
 - `src/connector/store.ts`
 - `connector/popup.js`
 - `connector/service-worker.js`
-- `src/components/WeekPicker.tsx`
+- `src/components/dashboard/WeekSelect.tsx`
 - `src/lib/dashboard.ts`
+- `src/lib/read-all.ts` — every unbounded read goes through this
 - `src/components/LeagueCard.tsx`
 - `src/adapters/types.ts`
+
+`ConnectorStatus.tsx` and `WeekPicker.tsx` were removed in the design refresh;
+their jobs live in `AccountSheet.tsx`/`AppHeader.tsx` and `WeekSelect.tsx`.
 
 ## Verification baseline
 
 The Sleeper native-projection path has been verified against Sleeper's web UI
 and the live Supabase project. No active test connector remains paired.
+
+Re-verified 2026-08-18 evening against the live project, signed in: all four
+in-season leagues render complete lineups (Elite Dynasty 10 starters including
+its two empty FLEX slots, A League Has No Name 10 where it previously showed
+zero, NCL Dynasty projecting 172.25 rather than the stale 140.02). 213 tests,
+lint, and build pass.

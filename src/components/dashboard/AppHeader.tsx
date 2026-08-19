@@ -93,10 +93,14 @@ export function AppHeader({
                     type="button"
                     onClick={() => onConnectPlatform(platform)}
                     className={`flex cursor-pointer items-center ${isConnected ? "opacity-100" : "opacity-40 hover:opacity-100"}`}
-                    title={isConnected ? `${label(platform)} · connected` : `Connect ${label(platform)}`}
+                    title={
+                      isConnected
+                        ? `${label(platform)} · connected. Sign in again on ${label(platform)}.`
+                        : `Connect ${label(platform)}`
+                    }
                     aria-label={
                       isConnected
-                        ? `${label(platform)} is connected. Open connections.`
+                        ? `${label(platform)} is connected. Sign in again on ${label(platform)}.`
                         : `Connect ${label(platform)}`
                     }
                   >

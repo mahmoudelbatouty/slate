@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useState, type ReactNode } from "react";
 import {
   type LeagueScoreboardGame,
   type MatchupCard,
@@ -9,517 +9,412 @@ import {
 } from "@/lib/matchup";
 import type { StarterSummary } from "@/lib/game-state";
 import { playerGameLabel } from "@/lib/player-state";
+import { cardAnchorId } from "@/lib/ticker";
 import { PlatformMark } from "@/components/PlatformMark";
 
 /**
- * Color means game state and nothing else — see DESIGN.md. Platform identity
- * stays neutral: an official monochrome mark where available, otherwise the
- * compact monogram fallback.
+ * One league, one card. The 4px left bar is the only place the card's state is
+ * encoded as pure color — amber live, stone settled, flag broken, inert for a
+ * bye — and platform identity stays out of it entirely.
  */
 export function LeagueCard({
   card,
   reorderHandle,
+  onOpenConnections,
+  onRetrySync,
 }: {
   card: MatchupCard;
   reorderHandle?: ReactNode;
+  onOpenConnections?: () => void;
+  /** Supplied by the grid so a retry can refresh in place instead of reloading. */
+  onRetrySync?: () => Promise<void>;
 }) {
-  const [matchupExpanded, setMatchupExpanded] = useState(false);
-  const [scoreboardExpanded, setScoreboardExpanded] = useState(false);
-  const mine = card.mine.points ?? 0;
-  const theirs = card.opponent?.points ?? 0;
-  const diff = mine - theirs;
-
-  const total = mine + theirs;
+  const failed = Boolean(card.syncFailure);
+  const preDraft = card.leagueStatus === "pre_draft";
+  const bye = !preDraft && card.leagueFormat === "head_to_head" && !card.opponent;
 
   return (
-    <article className={`${matchupExpanded || scoreboardExpanded ? "" : "group/card"} border border-ink-line bg-ink-raised px-4 pt-[15px] pb-[13px]`}>
-      <div className="mb-[15px] flex items-center gap-[10px]">
-        {reorderHandle}
-        <PlatformMark platform={card.platform} />
-        <div className="min-w-0 flex-1" title={card.leagueName}>
-          <span className={`display block text-sm font-bold ${card.leagueFormat === "chopped" ? "leading-tight" : "truncate"}`}>
-            {card.leagueName}
-          </span>
-          <span className="mono mt-1 block text-[9px] tracking-[0.12em] text-bone-dim">
-            {card.leagueFormat === "chopped" ? "CHOPPED · " : ""}{card.leagueType.toUpperCase()}
-          </span>
-        </div>
-        {card.leagueStatus === "pre_draft" ? (
-          <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">PRE-DRAFT</span>
+    <article
+      id={cardAnchorId(card)}
+      className={`flex overflow-hidden rounded-[6px] ${preDraft ? "border border-dashed border-ink-line" : failed ? "border border-flag bg-ink-raised" : "border border-ink-line bg-ink-raised"} ${bye ? "opacity-85" : ""}`}
+    >
+      {!preDraft && <span className={`w-1 shrink-0 ${accent(card, failed, bye)}`} aria-hidden />}
+      <div className="flex min-w-0 flex-1 flex-col gap-[13px] p-[15px]">
+        <CardHeader card={card} reorderHandle={reorderHandle} failed={failed} bye={bye} preDraft={preDraft} />
+
+        {preDraft ? (
+          <PreDraftBody card={card} />
+        ) : failed ? (
+          <FailedBody card={card} onOpenConnections={onOpenConnections} onRetrySync={onRetrySync} />
+        ) : card.leagueFormat === "chopped" ? (
+          <ChoppedBody card={card} />
+        ) : bye ? (
+          <ByeBody card={card} />
         ) : (
-          <StateLabel isFinal={card.isFinal} isLive={card.isLive} hasScore={total > 0} />
+          <HeadToHeadBody card={card} />
+        )}
+
+        {card.platform === "yahoo" && (
+          <a
+            className="mono text-right text-[9px] tracking-[0.08em] text-stone underline-offset-2 hover:text-bone hover:underline"
+            href="https://football.fantasysports.yahoo.com/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Fantasy data provided by Yahoo Fantasy
+          </a>
         )}
       </div>
-
-      {card.leagueStatus === "pre_draft" ? (
-        <PreDraft card={card} />
-      ) : card.leagueFormat === "chopped" ? (
-        <ChoppedLeague card={card} expanded={matchupExpanded} setExpanded={setMatchupExpanded} />
-      ) : (
-        <>
-
-          <Row side={card.mine} isMine diff={diff} isFinal={card.isFinal} />
-
-          <div className="my-[14px] h-px bg-ink-line" />
-
-          <Row side={card.opponent} isMine={false} diff={0} isFinal={card.isFinal} />
-
-          <WinProbabilityBar
-            probability={card.winProbability}
-            fallback={marginLabel(diff, card.isFinal, total)}
-          />
-
-          <div className="mt-[12px] border-t border-ink-line pt-[10px] text-2xs text-bone-dim">
-            <StarterAvailability
-              leagueId={card.leagueId}
-              week={card.week}
-              mine={card.starterStatus.mine}
-              opponent={card.starterStatus.opponent}
-            />
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                className="min-h-11 border border-ink-line px-3 py-2 text-center text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
-                aria-expanded={matchupExpanded}
-                aria-controls={`matchup-detail-${card.leagueId}`}
-                onClick={() => setMatchupExpanded((value) => !value)}
-              >
-                {matchupExpanded ? "HIDE MATCHUP ↑" : "VIEW MATCHUP ↓"}
-              </button>
-              <button
-                type="button"
-                className="min-h-11 border border-ink-line px-3 py-2 text-center text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
-                aria-expanded={scoreboardExpanded}
-                aria-controls={`league-scoreboard-${card.leagueId}`}
-                onClick={() => setScoreboardExpanded((value) => !value)}
-              >
-                {scoreboardExpanded ? "HIDE LEAGUE ↑" : "LEAGUE SCORES ↓"}
-              </button>
-            </div>
-          </div>
-          {matchupExpanded ? <MatchupDetail card={card} /> : null}
-          {scoreboardExpanded ? <LeagueScoreboard card={card} /> : null}
-        </>
-      )}
-      {card.platform === "yahoo" ? (
-        <a
-          className="mono mt-3 block text-right text-[9px] tracking-[0.08em] text-bone-dim underline-offset-2 hover:text-bone hover:underline focus-visible:outline-2 focus-visible:outline-amber"
-          href="https://football.fantasysports.yahoo.com/"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Fantasy data provided by Yahoo Fantasy
-        </a>
-      ) : null}
     </article>
   );
 }
 
-function LeagueScoreboard({ card }: { card: MatchupCard }) {
-  const [view, setView] = useState<"matchups" | "standings">("matchups");
-  return (
-    <section
-      id={`league-scoreboard-${card.leagueId}`}
-      className="mt-4 border-t border-ink-line pt-4"
-      aria-label={`${card.leagueName} Week ${card.week} league scoreboard`}
-    >
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <p className="mono text-[9px] tracking-[0.1em] text-bone">ALL MATCHUPS</p>
-          <p className="text-xs text-bone-dim">Open any game for its synced lineup</p>
-        </div>
-        <span className="mono shrink-0 text-[9px] text-stone">WEEK {card.week}</span>
-      </div>
-      <div className="mb-2 grid grid-cols-2 border border-ink-line" role="tablist" aria-label="League view">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "matchups"}
-          className={`min-h-10 px-3 text-2xs focus-visible:outline-2 focus-visible:outline-amber ${view === "matchups" ? "bg-bone text-ink" : "text-bone hover:bg-ink"}`}
-          onClick={() => setView("matchups")}
-        >
-          MATCHUPS
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "standings"}
-          className={`min-h-10 border-l border-ink-line px-3 text-2xs focus-visible:outline-2 focus-visible:outline-amber ${view === "standings" ? "bg-bone text-ink" : "text-bone hover:bg-ink"}`}
-          onClick={() => setView("standings")}
-        >
-          STANDINGS
-        </button>
-      </div>
-      {view === "matchups" ? (
-        <div className="border border-ink-line bg-ink">
-          {card.scoreboard.map((game) => (
-            <ScoreboardGame key={game.key} game={game} />
-          ))}
-        </div>
-      ) : (
-        <LeagueStandings card={card} />
-      )}
-      {view === "matchups" && card.scoreboard.length === 0 ? (
-        <p className="py-3 text-xs text-bone-dim">
-          League matchups will appear when {card.platform} publishes Week {card.week}.
-        </p>
-      ) : null}
-      <p className="mono mt-3 text-[9px] leading-relaxed text-stone">
-        SCORES, PROJECTIONS, AND LINEUPS SYNC FROM {card.platform.toUpperCase()} · LAST PROVIDER SYNC {syncLabel(card.syncedAt)}
-      </p>
-    </section>
-  );
+function accent(card: MatchupCard, failed: boolean, bye: boolean): string {
+  if (failed) return "bg-flag";
+  if (bye) return "bg-mark-off";
+  if (card.isLive) return "bg-amber";
+  return "bg-stone";
 }
 
-function LeagueStandings({ card }: { card: MatchupCard }) {
-  const hasActivity = card.standings.some((team) =>
-    team.wins > 0 || team.losses > 0 || team.ties > 0 || (team.pointsFor ?? 0) > 0 || (team.pointsAgainst ?? 0) > 0
-  );
-  if (!hasActivity) {
-    return (
-      <div className="border border-ink-line bg-ink px-3 py-4" role="tabpanel" aria-label={`${card.leagueName} standings`}>
-        <p className="text-xs text-bone">Standings begin when league play starts.</p>
-        <p className="mt-1 text-xs text-bone-dim">Slate will show the provider-synced rank, record, and points here automatically.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="overflow-hidden border border-ink-line bg-ink" role="tabpanel" aria-label={`${card.leagueName} standings`}>
-      <div className="mono grid grid-cols-[28px_minmax(0,1fr)_44px_62px] gap-2 px-3 py-2 text-[8px] tracking-[0.08em] text-stone">
-        <span>RK</span><span>TEAM</span><span className="text-right">REC</span><span className="text-right">PF</span>
-      </div>
-      <ol>
-        {card.standings.map((team) => (
-          <li
-            key={team.teamId}
-            className={`grid grid-cols-[28px_minmax(0,1fr)_44px_62px] items-center gap-2 border-t border-ink-line px-3 py-2 ${team.isMine ? "bg-bone/5" : ""}`}
-          >
-            <span className="mono text-[10px] text-stone">{team.standing ?? "—"}</span>
-            <span className={`min-w-0 truncate text-xs ${team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
-              {team.name}{team.isMine ? " · YOU" : ""}
-            </span>
-            <span className="mono text-right text-[10px] text-bone">{recordLabel(team.wins, team.losses, team.ties)}</span>
-            <span className="mono text-right text-[10px] tabular-nums text-bone">{team.pointsFor?.toFixed(1) ?? "—"}</span>
-          </li>
-        ))}
-      </ol>
-      {card.standings.length === 0 ? <p className="px-3 py-3 text-xs text-bone-dim">Standings have not synced yet.</p> : null}
-    </div>
-  );
-}
-
-function recordLabel(wins: number, losses: number, ties: number): string {
-  return ties > 0 ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
-}
-
-function ScoreboardGame({ game }: { game: LeagueScoreboardGame }) {
-  const includesMine = game.left.isMine || Boolean(game.right?.isMine);
-  const leftLabel = game.left.isMine ? "YOU" : game.right?.isMine ? "OPP" : "TEAM 1";
-  const rightLabel = game.right?.isMine ? "YOU" : game.left.isMine ? "OPP" : "TEAM 2";
-  return (
-    <details className={`group/game border-t border-ink-line first:border-t-0 ${includesMine ? "bg-bone/5" : ""}`}>
-      <summary className="grid min-h-16 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 focus-visible:outline-2 focus-visible:outline-amber">
-        <ScoreboardIdentity team={game.left} align="left" />
-        <div className="mono grid grid-cols-[42px_12px_42px] items-center text-center tabular-nums">
-          <span className="text-base text-bone">{scoreLabel(game.left.points)}</span>
-          <span className="text-[8px] text-stone">–</span>
-          <span className="text-base text-bone">{scoreLabel(game.right?.points ?? null)}</span>
-          <span className="text-[8px] text-stone">{game.isFinal ? "FINAL" : "PROJ"}</span>
-          <span />
-          <span className="text-[8px] text-stone">{game.isFinal ? "FINAL" : "PROJ"}</span>
-          {!game.isFinal ? <span className="text-[10px] text-bone-dim">{scoreLabel(game.left.projected)}</span> : <span />}
-          <span />
-          {!game.isFinal ? <span className="text-[10px] text-bone-dim">{scoreLabel(game.right?.projected ?? null)}</span> : <span />}
-        </div>
-        <ScoreboardIdentity team={game.right} align="right" />
-      </summary>
-      <div className="border-t border-ink-line px-3 pb-4">
-        <div className="mono flex items-center justify-between py-2 text-[8px] tracking-[0.08em] text-stone">
-          <span>{game.isLive ? "LIVE" : game.isFinal ? "FINAL" : "PREGAME"}</span>
-          <span className="group-open/game:hidden">OPEN LINEUPS ↓</span>
-          <span className="hidden group-open/game:inline">CLOSE LINEUPS ↑</span>
-        </div>
-        <WeeklySummary
-          mine={game.left.starterStatus}
-          opponent={game.right?.starterStatus ?? null}
-          leftLabel={leftLabel}
-          rightLabel={rightLabel}
-        />
-        <HeadToHeadLineups
-          mine={game.left}
-          opponent={game.right}
-          leftLabel={leftLabel}
-          rightLabel={rightLabel}
-        />
-      </div>
-    </details>
-  );
-}
-
-function ScoreboardIdentity({ team, align }: { team: LeagueScoreboardGame["left"] | null; align: "left" | "right" }) {
-  return (
-    <div className={`min-w-0 ${align === "right" ? "text-right" : "text-left"}`}>
-      <p className={`truncate text-xs ${team?.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
-        {team?.name ?? "Bye"}
-      </p>
-      <p className="mono mt-1 text-[8px] text-stone">{team?.isMine ? "YOU" : ""}</p>
-    </div>
-  );
-}
-
-function scoreLabel(value: number | null): string {
-  return value === null ? "—" : value.toFixed(1);
-}
-
-function ChoppedLeague({
+function CardHeader({
   card,
-  expanded,
-  setExpanded,
+  reorderHandle,
+  failed,
+  bye,
+  preDraft,
 }: {
   card: MatchupCard;
-  expanded: boolean;
-  setExpanded: Dispatch<SetStateAction<boolean>>;
+  reorderHandle?: ReactNode;
+  failed: boolean;
+  bye: boolean;
+  preDraft: boolean;
 }) {
-  const summary = card.chopped;
-  const mine = summary?.standings.find((team) => team.isMine) ?? null;
-  const chop = summary?.chopZone ?? null;
-  const total = summary?.standings.length ?? 0;
+  const muted = bye || preDraft || failed;
+  return (
+    <div className="flex items-center justify-between gap-[10px]">
+      <div className="flex min-w-0 items-center gap-[10px]">
+        {reorderHandle}
+        <PlatformMark platform={card.platform} variant="mark" size={16} dim={muted} />
+        <div className="min-w-0">
+          <div className={`display truncate text-sm leading-tight ${muted ? "text-bone-dim" : "text-bone"}`}>
+            {card.leagueName}
+          </div>
+          <div className="mono mt-[3px] truncate text-[9.5px] tracking-[0.1em] text-stone">
+            {[
+              card.leagueFormat === "chopped" ? "CHOPPED" : null,
+              card.leagueType.toUpperCase(),
+              card.teamCount ? `${card.teamCount} TEAMS` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </div>
+        </div>
+      </div>
+      <StateLabel card={card} failed={failed} bye={bye} preDraft={preDraft} />
+    </div>
+  );
+}
+
+function StateLabel({
+  card,
+  failed,
+  bye,
+  preDraft,
+}: {
+  card: MatchupCard;
+  failed: boolean;
+  bye: boolean;
+  preDraft: boolean;
+}) {
+  if (failed) {
+    return <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-flag">SYNC FAILED</span>;
+  }
+  if (preDraft) {
+    return <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-stone">PRE-DRAFT</span>;
+  }
+  if (bye) return <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-stone">BYE</span>;
+  if (card.isFinal) {
+    return <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-stone">FINAL</span>;
+  }
+  if (card.isLive) {
+    return (
+      <span className="mono flex shrink-0 items-center gap-[6px] text-[10px] tracking-[0.1em] text-amber">
+        <i className="pulse h-[5px] w-[5px] rounded-full bg-amber" aria-hidden />
+        LIVE
+      </span>
+    );
+  }
+  const started = (card.mine.points ?? 0) + (card.opponent?.points ?? 0) > 0;
+  return (
+    <span className="mono shrink-0 text-[10px] tracking-[0.1em] text-stone">
+      {started ? "IN PROGRESS" : "PREGAME"}
+    </span>
+  );
+}
+
+/* ---------------------------------------------------------------- head to head */
+
+function HeadToHeadBody({ card }: { card: MatchupCard }) {
+  const [matchupOpen, setMatchupOpen] = useState(false);
+  const [leagueOpen, setLeagueOpen] = useState(false);
+  const diff = (card.mine.points ?? 0) - (card.opponent?.points ?? 0);
+
+  if (card.isFinal) {
+    return (
+      <>
+        <FinalScores card={card} diff={diff} />
+        <div className="flex flex-col gap-[11px] border-t border-ink-line pt-[10px]">
+          <span className="mono text-[10.5px] text-stone">{marginLabel(diff, true)}</span>
+          <div className="grid grid-cols-2 gap-2">
+            <CardButton open={matchupOpen} onClick={() => setMatchupOpen((v) => !v)} label="MATCHUP" />
+            <CardButton open={leagueOpen} onClick={() => setLeagueOpen((v) => !v)} label="LEAGUE" />
+          </div>
+        </div>
+        {matchupOpen && <FinalBoxScore card={card} />}
+        {leagueOpen && <LeagueExpansion card={card} />}
+      </>
+    );
+  }
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="min-w-0">
-          <p className="mono text-[9px] tracking-[0.08em] text-stone">YOUR SURVIVAL RANK</p>
-          <p className="display mt-1 text-[27px] leading-none text-bone">
-            {summary?.myRank ?? "—"}<span className="ml-1 text-sm text-bone-dim">/ {total || "—"}</span>
-          </p>
-          <p className="mt-2 truncate text-sm font-semibold text-bone">{card.mine.name}</p>
-          <p className="mono mt-1 text-2xs text-bone-dim">
-            {card.isFinal ? "final" : `proj ${mine?.projected?.toFixed(1) ?? "—"}`}
-          </p>
-        </div>
-        <div className="min-w-0 border-l border-ink-line pl-3 text-right">
-          <p className="mono text-[9px] tracking-[0.08em] text-flag">CHOP ZONE</p>
-          <p className="display mt-1 text-[27px] leading-none text-flag">
-            {chop?.projected?.toFixed(1) ?? chop?.points?.toFixed(1) ?? "—"}
-          </p>
-          <p className="mt-2 truncate text-sm text-bone-dim">{chop?.name ?? "Waiting for scores"}</p>
-          <p className="mono mt-1 text-2xs text-bone-dim">
-            {summary?.marginAboveChop === null || summary?.marginAboveChop === undefined
-              ? "margin —"
-              : `${summary.marginAboveChop.toFixed(1)} pts above`}
-          </p>
+      <div className="flex flex-col gap-[10px]">
+        <ScoreRow side={card.mine} isMine isFinal={false} />
+        <ScoreRow side={card.opponent} isMine={false} isFinal={false} />
+      </div>
+
+      <WinProbabilityBar probability={card.winProbability} fallback={marginLabel(diff, false)} />
+
+      <div className="flex flex-col gap-[11px] border-t border-ink-line pt-3">
+        <span className="mono text-[10.5px] tracking-[0.06em] text-bone-dim">
+          YOU {card.starterStatus.mine.remaining} LEFT · OPP {card.starterStatus.opponent?.remaining ?? "—"} LEFT
+        </span>
+        <div className="grid grid-cols-2 gap-2">
+          <CardButton open={matchupOpen} onClick={() => setMatchupOpen((v) => !v)} label="MATCHUP" />
+          <CardButton open={leagueOpen} onClick={() => setLeagueOpen((v) => !v)} label="LEAGUE" />
         </div>
       </div>
 
-      <div className="mt-[14px] grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-ink-line pt-[10px] text-2xs text-bone-dim">
-        <span className="mono">{total || card.teamCount || "—"} TEAMS · LOW SCORE IS CHOPPED</span>
-        <button
-          type="button"
-          className="min-h-11 shrink-0 border border-ink-line px-3 py-2 text-left text-2xs text-bone hover:bg-ink focus-visible:outline-2 focus-visible:outline-amber"
-          aria-expanded={expanded}
-          aria-controls={`chopped-detail-${card.leagueId}`}
-          onClick={() => setExpanded((value) => !value)}
-        >
-          {expanded ? "HIDE STANDINGS ↑" : "VIEW STANDINGS ↓"}
-        </button>
-      </div>
-      {expanded ? <ChoppedStandings card={card} /> : null}
+      {matchupOpen && <MatchupExpansion card={card} />}
+      {leagueOpen && <LeagueExpansion card={card} />}
     </>
   );
 }
 
-function ChoppedStandings({ card }: { card: MatchupCard }) {
-  const standings = card.chopped?.standings ?? [];
+function CardButton({
+  open,
+  onClick,
+  label,
+}: {
+  open: boolean;
+  onClick: () => void;
+  label: string;
+}) {
   return (
-    <section
-      id={`chopped-detail-${card.leagueId}`}
-      className="mt-4 border-t border-ink-line pt-4"
-      aria-label={`${card.leagueName} Week ${card.week} Chopping Block`}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={open}
+      className="mono min-h-11 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[10.5px] tracking-[0.09em] text-bone hover:bg-ink"
     >
-      <div className="mb-2 flex items-end justify-between gap-3">
-        <div>
-          <p className="mono text-[9px] tracking-[0.1em] text-flag">CHOPPING BLOCK</p>
-          <p className="text-xs text-bone-dim">Lowest projected score first</p>
-        </div>
-        <span className="mono text-[9px] text-stone">WEEK {card.week}</span>
-      </div>
-      <ol className="border border-ink-line bg-ink">
-        {standings.map((team, index) => (
-          <li
-            key={team.teamId}
-            className={`grid grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2 border-t border-ink-line px-3 py-2 first:border-t-0 ${team.isMine ? "bg-bone/5" : ""}`}
-          >
-            <span className={`mono text-[9px] ${index === 0 ? "text-flag" : "text-stone"}`}>
-              {index === 0 ? "CUT" : index + 1}
-            </span>
-            <span className={`truncate text-xs ${team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
-              {team.name}{team.isMine ? " · YOU" : ""}
-            </span>
-            <span className="mono tabular-nums text-xs text-bone">
-              {team.projected?.toFixed(1) ?? team.points?.toFixed(1) ?? "—"}
-            </span>
-          </li>
-        ))}
-      </ol>
-      {standings.length === 0 ? (
-        <p className="py-3 text-xs text-bone-dim">Standings will appear when Sleeper publishes Week {card.week} scores.</p>
-      ) : null}
-    </section>
+      {open ? `HIDE ${label} ↑` : `VIEW ${label} ↓`}
+    </button>
   );
 }
 
-function WinProbabilityBar({
-  probability,
-  fallback,
-}: {
-  probability: number | null;
-  fallback: string;
-}) {
+function ScoreRow({ side, isMine, isFinal }: { side: Side | null; isMine: boolean; isFinal: boolean }) {
+  if (!side) {
+    return (
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[14.5px] text-bone-dim">No opponent this week</span>
+        <span className="display text-[30px] leading-none text-bone-dim">—</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <div className="min-w-0">
+        <div className={`truncate text-[14.5px] ${isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
+          {side.name}
+        </div>
+        <div className={`mono mt-[2px] text-[10.5px] ${isMine ? "text-bone-dim" : "text-stone"}`}>
+          {isFinal ? "final" : `proj ${side.projected?.toFixed(1) ?? "—"}`}
+        </div>
+      </div>
+      <span
+        className={`display shrink-0 text-[30px] leading-none tabular-nums ${isMine ? "text-bone" : "text-bone-dim"}`}
+      >
+        {side.points?.toFixed(1) ?? "—"}
+      </span>
+    </div>
+  );
+}
+
+function FinalScores({ card, diff }: { card: MatchupCard; diff: number }) {
+  const rows: { side: Side | null; isMine: boolean }[] = [
+    { side: card.opponent, isMine: false },
+    { side: card.mine, isMine: true },
+  ];
+  return (
+    <div className="flex flex-col gap-[9px]">
+      {rows.map(({ side, isMine }) => {
+        const won = isMine ? diff > 0 : diff < 0;
+        return (
+          <div className="flex items-baseline justify-between gap-3" key={isMine ? "mine" : "opp"}>
+            <span
+              className={`min-w-0 truncate text-[14px] ${isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+            >
+              {side?.name ?? "No opponent"}
+            </span>
+            <span
+              className={`display shrink-0 text-[22px] leading-none tabular-nums ${won ? "text-turf" : isMine ? "text-bone" : "text-bone-dim"}`}
+            >
+              {side?.points?.toFixed(1) ?? "—"}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WinProbabilityBar({ probability, fallback }: { probability: number | null; fallback: string }) {
   if (probability === null) {
     return (
-      <div className="mono mt-[14px]" aria-label={`Win probability unavailable, ${fallback}`}>
-        <div className="mb-1.5 flex items-center justify-between text-[9px] text-bone-dim">
+      <div className="mono flex flex-col gap-[6px]" aria-label={`Win odds unavailable, ${fallback}`}>
+        <span className="h-[3px] rounded-[2px] bg-ink-line" aria-hidden />
+        <div className="flex justify-between text-[10px] tracking-[0.06em] text-stone">
           <span>WIN ODDS UNAVAILABLE</span>
           <span>{fallback.toUpperCase()}</span>
         </div>
-        <div className="h-1 bg-ink-line" />
       </div>
     );
   }
 
   const mine = Math.max(0, Math.min(100, Math.round(probability)));
   const opponent = 100 - mine;
-  const tied = mine === opponent;
-  const mineTone = tied ? "text-stone" : mine > opponent ? "text-turf" : "text-flag";
-  const opponentTone = tied ? "text-stone" : opponent > mine ? "text-turf" : "text-flag";
-  const mineBar = tied ? "bg-stone" : mine > opponent ? "bg-turf" : "bg-flag";
-  const opponentBar = tied ? "bg-stone" : opponent > mine ? "bg-turf" : "bg-flag";
 
   return (
-    <div className="mono mt-[14px]" aria-label={`Win probability: you ${mine}%, opponent ${opponent}%`}>
-      <div className="mb-1.5 flex items-center justify-between text-[10px] font-medium">
-        <span className={mineTone}>YOU {mine}%</span>
-        <span className={opponentTone}>OPP {opponent}%</span>
+    <div className="flex flex-col gap-[6px]" aria-label={`Win probability: you ${mine}%, opponent ${opponent}%`}>
+      <div className="flex h-[3px] overflow-hidden rounded-[2px]" aria-hidden>
+        <i className="block bg-turf" style={{ width: `${mine}%` }} />
+        <i className="block flex-1 bg-flag" />
       </div>
-      <div className="flex h-1 gap-px bg-ink-line" aria-hidden>
-        <i className={`block ${mineBar}`} style={{ width: `${mine}%` }} />
-        <i className={`block ${opponentBar}`} style={{ width: `${opponent}%` }} />
+      <div className="mono flex justify-between text-[10px] tracking-[0.06em]">
+        <span className="text-turf">YOU {mine}%</span>
+        <span className="text-flag">OPP {opponent}%</span>
       </div>
     </div>
   );
 }
 
-function StarterAvailability({
-  leagueId,
-  week,
-  mine,
-  opponent,
-}: {
-  leagueId: string;
-  week: number;
-  mine: StarterSummary;
-  opponent: StarterSummary | null;
-}) {
-  const tooltipId = `starter-status-${leagueId}`;
+/* ------------------------------------------------------------ matchup detail */
 
-  return (
-    <button
-      type="button"
-      className="group/status relative inline-flex min-h-11 min-w-0 cursor-help items-center py-2"
-      aria-describedby={tooltipId}
-      aria-label={`Week ${week} starters: you ${mine.remaining} left, opponent ${opponent?.remaining ?? "unknown"} left`}
-    >
-      <span className="mono whitespace-nowrap border-b border-dotted border-ink-line pb-[2px] text-bone-dim">
-        YOU {mine.remaining} LEFT · OPP {opponent?.remaining ?? "—"} LEFT
-      </span>
-      <span
-        id={tooltipId}
-        role="tooltip"
-        className="pointer-events-none invisible absolute right-0 bottom-[calc(100%+4px)] z-20 w-[220px] max-w-[calc(100vw-72px)] border border-ink-line bg-ink px-3 py-3 opacity-0 shadow-lg transition-opacity group-hover/card:visible group-hover/card:opacity-100 group-hover/status:visible group-hover/status:opacity-100 group-focus/status:visible group-focus/status:opacity-100"
-      >
-        <span className="mono mb-2 block text-[9px] tracking-[0.1em] text-bone">
-          WEEK {week} STARTERS
-        </span>
-        <span className="mono grid grid-cols-[1fr_34px_34px] gap-2 pb-1 text-[8px] tracking-[0.08em] text-stone">
-          <span>STATE</span>
-          <span className="text-right">YOU</span>
-          <span className="text-right">OPP</span>
-        </span>
-        <StatusRow label="PLAYED" mine={mine.played} opponent={opponent?.played} />
-        <StatusRow label="LIVE" mine={mine.live} opponent={opponent?.live} live />
-        <StatusRow label="TO PLAY" mine={mine.upcoming} opponent={opponent?.upcoming} />
-        {(mine.unassigned > 0 || (opponent?.unassigned ?? 0) > 0) ? (
-          <StatusRow
-            label="UNMATCHED"
-            mine={mine.unassigned}
-            opponent={opponent?.unassigned}
-          />
-        ) : null}
-      </span>
-    </button>
-  );
-}
+function MatchupExpansion({ card }: { card: MatchupCard }) {
+  const [benchOpen, setBenchOpen] = useState(false);
+  const bench = card.mine.lineup?.bench ?? [];
+  const flagged = bench.filter(isFlagged).length;
 
-function MatchupDetail({ card }: { card: MatchupCard }) {
   return (
     <section
-      id={`matchup-detail-${card.leagueId}`}
-      className="mt-4 border-t border-ink-line pt-4"
-      aria-label={`${card.leagueName} Week ${card.week} matchup details`}
+      className="flex flex-col gap-4 border-t border-ink-line pt-[14px]"
+      aria-label={`${card.leagueName} week ${card.week} matchup`}
     >
-      <div className="mb-4 flex items-center gap-2">
-        <PlatformMark platform={card.platform} />
-        <div className="min-w-0">
-          <p className="mono text-[9px] tracking-[0.1em] text-stone">WEEK {card.week} MATCHUP</p>
-          <p className="truncate text-xs text-bone">{card.mine.name} vs {card.opponent?.name ?? "No opponent"}</p>
-        </div>
+      <StarterStateTable
+        week={card.week}
+        mine={card.starterStatus.mine}
+        opponent={card.starterStatus.opponent}
+      />
+      <MirroredStarters mine={card.mine} opponent={card.opponent} />
+
+      <div className="flex items-center justify-between gap-[10px]">
+        <span className="mono text-[9.5px] tracking-[0.09em] text-stone">
+          LINEUP CHANGES HAPPEN IN {card.platform.toUpperCase()}
+        </span>
+        <button
+          type="button"
+          onClick={() => setBenchOpen((value) => !value)}
+          aria-expanded={benchOpen}
+          className="mono cursor-pointer border-b border-ink-line text-[10.5px] tracking-[0.08em] text-bone-dim"
+        >
+          {benchOpen ? "HIDE BENCH ↑" : "BENCH ↓"}
+        </button>
       </div>
 
-      <WeeklySummary mine={card.starterStatus.mine} opponent={card.starterStatus.opponent} />
-      <HeadToHeadLineups mine={card.mine} opponent={card.opponent} />
-      <p className="mono mt-4 text-[9px] leading-relaxed text-stone">
-        SCORES AND LINEUPS SYNC FROM {card.platform.toUpperCase()} · LAST PROVIDER SYNC {syncLabel(card.syncedAt)}
+      {benchOpen && (
+        <div className="flex flex-col gap-[9px] border-t border-ink-line pt-3">
+          <div className="mono flex items-baseline justify-between gap-[10px] text-[9.5px] text-stone">
+            <span className="tracking-[0.13em]">YOUR BENCH</span>
+            <span className="tracking-[0.1em]">
+              {bench.length} PLAYER{bench.length === 1 ? "" : "S"}
+              {flagged > 0 ? ` · ${flagged} FLAG` : ""}
+            </span>
+          </div>
+          <div className="overflow-hidden rounded-[5px] border border-ink-line">
+            {bench.map((player) => (
+              <BenchRow key={player.externalPlayerId} player={player} />
+            ))}
+            {bench.length === 0 && (
+              <p className="px-3 py-3 text-xs text-bone-dim">No bench players synced for this week.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <p className="mono text-[9.5px] leading-relaxed tracking-[0.07em] text-stone">
+        SCORES, PROJECTIONS, AND LINEUPS SYNC FROM {card.platform.toUpperCase()} · LAST PROVIDER SYNC{" "}
+        {syncLabel(card.syncedAt)}
       </p>
     </section>
   );
 }
 
-function WeeklySummary({
+function StarterStateTable({
+  week,
   mine,
   opponent,
   leftLabel = "YOU",
   rightLabel = "OPP",
 }: {
+  week: number;
   mine: StarterSummary;
   opponent: StarterSummary | null;
   leftLabel?: string;
   rightLabel?: string;
 }) {
+  const rows: { label: string; mine: number; opponent: number | undefined; live?: boolean }[] = [
+    { label: "PLAYED", mine: mine.played, opponent: opponent?.played },
+    { label: "LIVE", mine: mine.live, opponent: opponent?.live, live: true },
+    { label: "TO PLAY", mine: mine.upcoming, opponent: opponent?.upcoming },
+  ];
+
   return (
-    <div className="mb-5 border border-ink-line bg-ink px-3 py-3">
-      <p className="mono mb-2 text-[9px] tracking-[0.1em] text-bone">WEEKLY STARTERS</p>
-      <div className="mono grid grid-cols-[1fr_42px_42px] gap-2 text-[9px]">
-        <span className="text-stone">STATE</span><span className="text-right text-stone">{leftLabel}</span><span className="text-right text-stone">{rightLabel}</span>
-        <SummaryCell label="PLAYED" mine={mine.played} opponent={opponent?.played} />
-        <SummaryCell label="LIVE" mine={mine.live} opponent={opponent?.live} live />
-        <SummaryCell label="TO PLAY" mine={mine.upcoming} opponent={opponent?.upcoming} />
+    <div className="overflow-hidden rounded-[5px] border border-ink-line">
+      <div className="mono grid grid-cols-[minmax(0,1fr)_54px_54px] border-b border-ink-line bg-deep px-3 py-[9px] text-[9.5px] text-stone">
+        <span className="tracking-[0.11em]">WEEK {week} STARTERS</span>
+        <span className="text-right tracking-[0.08em]">{leftLabel}</span>
+        <span className="text-right tracking-[0.08em]">{rightLabel}</span>
       </div>
+      {rows.map((row) => (
+        <div
+          className="mono grid grid-cols-[minmax(0,1fr)_54px_54px] border-b border-ink-line px-3 py-2 last:border-b-0"
+          key={row.label}
+        >
+          <span className={`text-[10.5px] tracking-[0.09em] ${row.live ? "text-amber" : "text-bone-dim"}`}>
+            {row.label}
+          </span>
+          <span className="text-right text-[11px] font-medium tabular-nums text-bone">{row.mine}</span>
+          <span className="text-right text-[11px] font-medium tabular-nums text-bone-dim">
+            {row.opponent ?? "—"}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
 
-function SummaryCell({ label, mine, opponent, live = false }: { label: string; mine: number; opponent?: number; live?: boolean }) {
-  return (
-    <>
-      <span className={`border-t border-ink-line pt-1 ${live ? "text-amber" : "text-bone-dim"}`}>{label}</span>
-      <span className="border-t border-ink-line pt-1 text-right text-bone">{mine}</span>
-      <span className="border-t border-ink-line pt-1 text-right text-bone">{opponent ?? "—"}</span>
-    </>
-  );
-}
-
-function HeadToHeadLineups({
+function MirroredStarters({
   mine,
   opponent,
   leftLabel = "YOU",
@@ -532,103 +427,670 @@ function HeadToHeadLineups({
 }) {
   const mineStarters = mine.lineup?.starters ?? [];
   const opponentStarters = opponent?.lineup?.starters ?? [];
-  const mineBench = mine.lineup?.bench ?? [];
-  const opponentBench = opponent?.lineup?.bench ?? [];
+  const byOrder = new Map(mineStarters.map((player) => [player.lineupOrder, player]));
+  const opponentByOrder = new Map(opponentStarters.map((player) => [player.lineupOrder, player]));
+  // Provider slot order is canonical: keep the gaps rather than compacting the
+  // two lineups against each other.
+  const slots = Math.max(...byOrder.keys(), ...opponentByOrder.keys(), -1) + 1;
 
   return (
-    <section className="mt-5" aria-label="Head-to-head lineups">
-      <div className="grid grid-cols-2 gap-2 border-b border-ink-line pb-2">
-        <TeamColumnHeader label={leftLabel} side={mine} />
-        <TeamColumnHeader label={rightLabel} side={opponent} />
+    <div className="flex flex-col">
+      <div className="grid grid-cols-2 gap-3 border-b border-ink-line pb-[10px]">
+        <div className="min-w-0">
+          <div className="mono text-[9.5px] tracking-[0.11em] text-stone">{leftLabel}</div>
+          <div className="display mt-[3px] truncate text-sm">{mine.name}</div>
+        </div>
+        <div className="min-w-0 text-right">
+          <div className="mono text-[9.5px] tracking-[0.11em] text-stone">{rightLabel}</div>
+          <div className="display mt-[3px] truncate text-sm text-bone-dim">
+            {opponent?.name ?? "No opponent"}
+          </div>
+        </div>
       </div>
-      <PairedPlayerGroup label="STARTERS" mine={mineStarters} opponent={opponentStarters} leftLabel={leftLabel} rightLabel={rightLabel} alignSlots />
-      <details className="group/bench mt-3 border-t border-ink-line">
-        <summary className="mono flex min-h-11 cursor-pointer list-none items-center justify-between text-[9px] tracking-[0.1em] text-stone focus-visible:outline-2 focus-visible:outline-amber">
-          <span>BENCH · {leftLabel} {mineBench.length} / {rightLabel} {opponentBench.length}</span>
-          <span aria-hidden className="group-open/bench:hidden">SHOW ↓</span>
-          <span aria-hidden className="hidden group-open/bench:inline">HIDE ↑</span>
-        </summary>
-        <PairedPlayerRows mine={mineBench} opponent={opponentBench} emptyLabel="No bench synced." />
-      </details>
+
+      {slots === 0 && <p className="py-3 text-xs text-bone-dim">No starters synced for this week.</p>}
+
+      {Array.from({ length: slots }, (_, index) => {
+        const left = byOrder.get(index);
+        const right = opponentByOrder.get(index);
+        return (
+          <div
+            key={index}
+            className="grid grid-cols-[minmax(0,1fr)_62px_62px_minmax(0,1fr)] items-center gap-2 border-b border-ink-line py-[10px]"
+          >
+            <PlayerIdentity player={left} align="left" />
+            <PlayerPoints player={left} align="right" tone="text-bone" />
+            <PlayerPoints player={right} align="left" tone="text-bone-dim" />
+            <PlayerIdentity player={right} align="right" />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PlayerIdentity({ player, align }: { player: MatchupPlayer | undefined; align: "left" | "right" }) {
+  if (!player) {
+    return <span className={`mono text-[10px] text-stone ${align === "right" ? "text-right" : ""}`}>—</span>;
+  }
+  const meta = [player.nflTeam, playerGameLabel(player), meaningfulStatus(player.injuryStatus)]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className={`flex min-w-0 flex-col gap-[3px] ${align === "right" ? "items-end text-right" : ""}`}>
+      <span
+        className={`truncate text-[12.5px] ${align === "left" ? "font-semibold text-bone" : "text-bone-dim"}`}
+      >
+        {align === "left" && <SlotTag slot={player.slot} side="left" />}
+        {player.name}
+        {align === "right" && <SlotTag slot={player.slot} side="right" />}
+      </span>
+      <span
+        className={`mono truncate text-[9px] tracking-[0.07em] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}
+      >
+        {meta}
+      </span>
+    </div>
+  );
+}
+
+function SlotTag({ slot, side }: { slot: string | null; side: "left" | "right" }) {
+  return (
+    <span
+      className={`mono text-[9px] tracking-[0.08em] text-stone ${side === "left" ? "mr-[6px]" : "ml-[6px]"}`}
+    >
+      {slotLabel(slot)}
+    </span>
+  );
+}
+
+function PlayerPoints({
+  player,
+  align,
+  tone,
+}: {
+  player: MatchupPlayer | undefined;
+  align: "left" | "right";
+  tone: string;
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <div className={`mono text-[13px] font-medium tabular-nums ${tone}`}>
+        {numberLabel(player?.currentPoints ?? null)}
+      </div>
+      <div className="mono text-[9.5px] tabular-nums text-stone">
+        {numberLabel(player?.projectedPoints ?? null)}
+      </div>
+    </div>
+  );
+}
+
+function BenchRow({ player }: { player: MatchupPlayer }) {
+  const flagged = isFlagged(player);
+  const meta = [player.nflTeam, playerGameLabel(player), meaningfulStatus(player.injuryStatus)]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div
+      className={`grid grid-cols-[minmax(0,1fr)_58px] items-center gap-[10px] border-b border-ink-line px-3 py-[10px] last:border-b-0 ${flagged ? "bg-deep" : ""}`}
+    >
+      <div className="flex min-w-0 flex-col gap-[3px]">
+        <span className="truncate text-[12.5px] font-semibold text-bone">
+          <SlotTag slot={player.position ?? player.slot} side="left" />
+          {player.name}
+        </span>
+        <span className={`mono truncate text-[9px] tracking-[0.07em] ${flagged ? "text-flag" : "text-stone"}`}>
+          {meta}
+        </span>
+      </div>
+      <span className="mono text-right text-[12px] font-medium tabular-nums text-bone-dim">
+        {numberLabel(player.projectedPoints)}
+      </span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- league detail */
+
+function LeagueExpansion({ card }: { card: MatchupCard }) {
+  const [view, setView] = useState<"matchups" | "standings">("matchups");
+
+  return (
+    <section
+      className="flex flex-col gap-3 border-t border-ink-line pt-[14px]"
+      aria-label={`${card.leagueName} week ${card.week} league scoreboard`}
+    >
+      <div className="flex items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="mono text-[9.5px] tracking-[0.13em] text-stone">ALL MATCHUPS</span>
+          <span className="text-[13px] text-bone-dim">Open any game for its synced lineup</span>
+        </div>
+        <span className="mono shrink-0 text-[9.5px] tracking-[0.11em] text-stone">WEEK {card.week}</span>
+      </div>
+
+      <div className="grid grid-cols-2 overflow-hidden rounded-[4px] border border-ink-line" role="tablist">
+        <Tab label="MATCHUPS" active={view === "matchups"} onSelect={() => setView("matchups")} />
+        <Tab label="STANDINGS" active={view === "standings"} onSelect={() => setView("standings")} border />
+      </div>
+
+      {view === "matchups" ? (
+        <div className="overflow-hidden rounded-[5px] border border-ink-line">
+          {card.scoreboard.map((game) => (
+            <ScoreboardGame key={game.key} game={game} week={card.week} />
+          ))}
+          {card.scoreboard.length === 0 && (
+            <p className="px-3 py-3 text-xs text-bone-dim">
+              League matchups appear when {card.platform} publishes Week {card.week}.
+            </p>
+          )}
+        </div>
+      ) : (
+        <LeagueStandings card={card} />
+      )}
+
+      <p className="mono text-[9.5px] leading-relaxed tracking-[0.07em] text-stone">
+        SCORES, PROJECTIONS, AND LINEUPS SYNC FROM {card.platform.toUpperCase()} · LAST PROVIDER SYNC{" "}
+        {syncLabel(card.syncedAt)}
+      </p>
     </section>
   );
 }
 
-function TeamColumnHeader({ label, side }: { label: string; side: Side | null }) {
+function Tab({
+  label,
+  active,
+  onSelect,
+  border = false,
+}: {
+  label: string;
+  active: boolean;
+  onSelect: () => void;
+  border?: boolean;
+}) {
   return (
-    <div className="min-w-0">
-      <p className="mono text-[9px] tracking-[0.1em] text-stone">{label}</p>
-      <p className="display truncate text-xs text-bone">{side?.name ?? "No opponent"}</p>
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onSelect}
+      className={`mono min-h-11 cursor-pointer px-2 py-[11px] text-[10.5px] tracking-[0.1em] ${border ? "border-l border-ink-line" : ""} ${active ? "bg-bone text-ink" : "text-bone-dim hover:bg-ink"}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ScoreboardGame({ game, week }: { game: LeagueScoreboardGame; week: number }) {
+  const includesMine = game.left.isMine || Boolean(game.right?.isMine);
+  const leftLabel = game.left.isMine ? "YOU" : game.right?.isMine ? "OPP" : "TEAM 1";
+  const rightLabel = game.right?.isMine ? "YOU" : game.left.isMine ? "OPP" : "TEAM 2";
+
+  return (
+    <details className={`border-b border-ink-line last:border-b-0 ${includesMine ? "bg-deep" : ""}`}>
+      <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-[10px] px-[13px] py-3">
+        <div className="flex min-w-0 flex-col gap-[3px]">
+          <span
+            className={`truncate text-[13px] ${game.left.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+          >
+            {game.left.name}
+          </span>
+          {game.left.isMine && (
+            <span className="mono text-[9px] tracking-[0.12em] text-amber">YOU</span>
+          )}
+        </div>
+        <div className="flex items-start gap-[9px]">
+          <GameScore points={game.left.points} projected={game.left.projected} isFinal={game.isFinal} />
+          <span className="mono pt-[2px] text-[11px] text-stone">·</span>
+          <GameScore
+            points={game.right?.points ?? null}
+            projected={game.right?.projected ?? null}
+            isFinal={game.isFinal}
+            align="left"
+          />
+        </div>
+        <div className="flex min-w-0 flex-col items-end gap-[3px]">
+          <span
+            className={`truncate text-right text-[13px] ${game.right?.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+          >
+            {game.right?.name ?? "Bye"}
+          </span>
+          {game.right?.isMine && (
+            <span className="mono text-[9px] tracking-[0.12em] text-amber">YOU</span>
+          )}
+        </div>
+      </summary>
+      <div className="border-t border-ink-line px-[13px] pt-3 pb-4">
+        <div className="mono flex items-center justify-between pb-3 text-[9px] tracking-[0.08em] text-stone">
+          <span>{game.isLive ? "LIVE" : game.isFinal ? "FINAL" : "PREGAME"}</span>
+        </div>
+        <StarterStateTable
+          week={week}
+          mine={game.left.starterStatus}
+          opponent={game.right?.starterStatus ?? null}
+          leftLabel={leftLabel}
+          rightLabel={rightLabel}
+        />
+        <div className="mt-4">
+          <MirroredStarters
+            mine={game.left}
+            opponent={game.right}
+            leftLabel={leftLabel}
+            rightLabel={rightLabel}
+          />
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function GameScore({
+  points,
+  projected,
+  isFinal,
+  align = "right",
+}: {
+  points: number | null;
+  projected: number | null;
+  isFinal: boolean;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <div className="mono text-[14px] font-medium tabular-nums text-bone">
+        {points === null ? "—" : points.toFixed(1)}
+      </div>
+      {!isFinal && (
+        <>
+          <div className="mono mt-[3px] text-[8.5px] tracking-[0.09em] text-stone">PROJ</div>
+          <div className="mono text-[9.5px] tabular-nums text-stone">
+            {projected === null ? "—" : projected.toFixed(1)}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function PairedPlayerGroup({ label, mine, opponent, leftLabel, rightLabel, alignSlots = false }: { label: string; mine: MatchupPlayer[]; opponent: MatchupPlayer[]; leftLabel: string; rightLabel: string; alignSlots?: boolean }) {
-  return (
-    <div className="mt-3">
-      <p className="mono mb-1 text-[9px] tracking-[0.1em] text-stone">{label} · {leftLabel} {mine.length} / {rightLabel} {opponent.length}</p>
-      <PairedPlayerRows mine={mine} opponent={opponent} emptyLabel={`No ${label.toLowerCase()} synced.`} alignSlots={alignSlots} />
-    </div>
+function LeagueStandings({ card }: { card: MatchupCard }) {
+  // Every team at 0-0 makes a numbered rank meaningless, so suppress it.
+  const hasActivity = card.standings.some(
+    (team) => team.wins > 0 || team.losses > 0 || team.ties > 0 || (team.pointsFor ?? 0) > 0
   );
-}
-
-function PairedPlayerRows({ mine, opponent, emptyLabel, alignSlots = false }: { mine: MatchupPlayer[]; opponent: MatchupPlayer[]; emptyLabel: string; alignSlots?: boolean }) {
-  const mineByOrder = new Map(mine.map((player) => [player.lineupOrder, player]));
-  const opponentByOrder = new Map(opponent.map((player) => [player.lineupOrder, player]));
-  const length = alignSlots
-    ? Math.max(...mineByOrder.keys(), ...opponentByOrder.keys(), -1) + 1
-    : Math.max(mine.length, opponent.length);
-  if (length === 0) return <p className="border-t border-ink-line py-2 text-xs text-bone-dim">{emptyLabel}</p>;
-
-  return Array.from({ length }, (_, index) => {
-    const minePlayer = alignSlots ? mineByOrder.get(index) : mine[index];
-    const opponentPlayer = alignSlots ? opponentByOrder.get(index) : opponent[index];
+  if (!hasActivity) {
     return (
-      <div className="grid grid-cols-2 border-t border-ink-line py-2" key={`${minePlayer?.externalPlayerId ?? "empty"}:${opponentPlayer?.externalPlayerId ?? "empty"}:${index}`}>
-        <PlayerCell player={minePlayer} side="left" />
-        <PlayerCell player={opponentPlayer} side="right" />
+      <div className="rounded-[5px] border border-ink-line px-[13px] py-4" role="tabpanel">
+        <p className="text-xs text-bone">Standings begin when league play starts.</p>
+        <p className="mt-1 text-xs text-bone-dim">
+          Slate shows the provider-synced rank, record, and points here automatically.
+        </p>
       </div>
     );
-  });
-}
-
-function PlayerCell({ player, side }: { player: MatchupPlayer | undefined; side: "left" | "right" }) {
-  if (!player) return <div className={`min-h-12 min-w-0 text-xs text-stone ${side === "left" ? "text-left" : "text-right"}`}>—</div>;
-  const game = playerGameLabel(player);
-  const score = (
-    <div className={`mono self-center tabular-nums ${side === "left" ? "text-right" : "text-left"}`}>
-      <p className="text-[15px] font-medium leading-none text-bone">{numberLabel(player.currentPoints)}</p>
-      <p className="mt-1 text-[10px] leading-none text-stone">{numberLabel(player.projectedPoints)}</p>
-    </div>
-  );
-  const identity = (
-    <div className={`min-w-0 self-center ${side === "left" ? "text-left" : "text-right"}`}>
-      <div className={`flex min-w-0 items-baseline gap-1 ${side === "left" ? "justify-start" : "justify-end"}`}>
-        {side === "left" ? <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span> : null}
-        <p className="truncate text-xs text-bone">{player.name}</p>
-        {side === "right" ? <span className="mono shrink-0 text-[8px] text-stone">{slotLabel(player.slot)}</span> : null}
-      </div>
-      <p className={`mono mt-0.5 truncate text-[8px] ${player.game?.inProgress ? "text-amber" : "text-stone"}`}>
-        {[player.nflTeam, game, lockLabel(player), meaningfulStatus(player.injuryStatus)].filter(Boolean).join(" · ")}
-      </p>
-    </div>
-  );
+  }
 
   return (
-    <div className={`grid min-h-12 min-w-0 items-stretch gap-2 ${side === "left" ? "grid-cols-[minmax(0,1fr)_42px] pr-2" : "grid-cols-[42px_minmax(0,1fr)] border-l border-ink-line pl-2"}`}>
-      {side === "left" ? identity : score}
-      {side === "left" ? score : identity}
+    <div className="overflow-hidden rounded-[5px] border border-ink-line" role="tabpanel">
+      <div className="mono grid grid-cols-[26px_minmax(0,1fr)_58px_62px] gap-2 border-b border-ink-line bg-deep px-[13px] py-[9px] text-[9.5px] tracking-[0.1em] text-stone">
+        <span>#</span>
+        <span>TEAM</span>
+        <span className="text-right">REC</span>
+        <span className="text-right">PTS</span>
+      </div>
+      {card.standings.map((team, index) => (
+        <div
+          key={team.teamId}
+          className={`grid grid-cols-[26px_minmax(0,1fr)_58px_62px] items-center gap-2 border-b border-ink-line px-[13px] py-[11px] last:border-b-0 ${team.isMine ? "bg-deep" : ""}`}
+        >
+          <span className="mono text-[10.5px] text-stone">{team.standing ?? index + 1}</span>
+          <span
+            className={`truncate text-[13px] ${team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+          >
+            {team.name}
+          </span>
+          <span className="mono text-right text-[11px] font-medium tabular-nums text-bone-dim">
+            {recordLabel(team.wins, team.losses, team.ties)}
+          </span>
+          <span className="mono text-right text-[11px] font-medium tabular-nums text-bone">
+            {team.pointsFor?.toFixed(1) ?? "—"}
+          </span>
+        </div>
+      ))}
     </div>
   );
+}
+
+/* ------------------------------------------------------------------- chopped */
+
+function ChoppedBody({ card }: { card: MatchupCard }) {
+  const [open, setOpen] = useState(false);
+  const summary = card.chopped;
+  const mine = summary?.standings.find((team) => team.isMine) ?? null;
+  const chop = summary?.chopZone ?? null;
+  const total = summary?.standings.length ?? card.teamCount ?? 0;
+
+  return (
+    <>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="mono text-[9.5px] tracking-[0.11em] text-stone">SURVIVAL RANK</div>
+          <div className="display mt-1 text-[26px] leading-none">
+            {summary?.myRank ?? "—"}
+            <span className="text-sm text-bone-dim">/{total || "—"}</span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="mono text-[9.5px] tracking-[0.11em] text-stone">PROJECTED</div>
+          <div className="display mt-[5px] text-[20px] leading-none tabular-nums">
+            {mine?.projected?.toFixed(1) ?? mine?.points?.toFixed(1) ?? "—"}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-[11px] border-t border-ink-line pt-[11px]">
+        <span className="mono text-[10.5px] tracking-[0.06em] text-bone-dim">
+          CHOP ZONE: <span className="text-flag">{chop?.name ?? "Waiting for scores"}</span>
+          {summary?.marginAboveChop !== null && summary?.marginAboveChop !== undefined
+            ? ` · +${summary.marginAboveChop.toFixed(1)} CLEAR`
+            : ""}
+        </span>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="mono min-h-11 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[10.5px] tracking-[0.09em] text-bone hover:bg-ink"
+        >
+          {open ? "HIDE CHOPPING BLOCK ↑" : "CHOPPING BLOCK ↓"}
+        </button>
+      </div>
+
+      {open && <ChoppingBlock card={card} />}
+    </>
+  );
+}
+
+function ChoppingBlock({ card }: { card: MatchupCard }) {
+  // choppedSummary sorts lowest first — the ladder is drawn the same way, so
+  // the chop line sits above the last row.
+  const standings = card.chopped?.standings ?? [];
+  const ordered = [...standings].reverse();
+  const margin = card.chopped?.marginAboveChop ?? null;
+
+  return (
+    <section className="flex flex-col gap-3 border-t border-ink-line pt-[13px]" aria-label="Chopping block">
+      <div className="flex items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="mono text-[9.5px] tracking-[0.13em] text-stone">CHOPPING BLOCK</span>
+          <span className="text-[13px] text-bone-dim">Lowest score at final whistle is out</span>
+        </div>
+        <span className="mono shrink-0 text-[9.5px] tracking-[0.11em] text-stone">
+          WEEK {card.week} · {standings.length} LEFT
+        </span>
+      </div>
+
+      <div className="overflow-hidden rounded-[5px] border border-ink-line">
+        <div className="mono grid grid-cols-[24px_minmax(0,1fr)_62px_62px] gap-2 border-b border-ink-line bg-deep px-[13px] py-[9px] text-[9.5px] tracking-[0.1em] text-stone">
+          <span>#</span>
+          <span>TEAM</span>
+          <span className="text-right">LIVE</span>
+          <span className="text-right">PROJ</span>
+        </div>
+        {ordered.map((team, index) => {
+          const chopped = index === ordered.length - 1;
+          return (
+            <div key={team.teamId}>
+              {chopped && (
+                <div className="flex items-center gap-[9px] border-b border-ink-line bg-deep px-[13px] py-[7px]">
+                  <span className="mono shrink-0 text-[9px] tracking-[0.13em] text-flag">CHOP LINE</span>
+                  <span className="h-px flex-1 bg-flag opacity-55" aria-hidden />
+                  <span className="mono shrink-0 text-[9px] tracking-[0.09em] text-stone">SAFE ABOVE</span>
+                </div>
+              )}
+              <div
+                className={`grid grid-cols-[24px_minmax(0,1fr)_62px_62px] items-center gap-2 border-b border-ink-line px-[13px] py-[11px] last:border-b-0 ${team.isMine ? "bg-deep" : ""}`}
+              >
+                <span className={`mono text-[10.5px] ${chopped ? "text-flag" : "text-stone"}`}>
+                  {index + 1}
+                </span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className={`truncate text-[13px] ${chopped ? "font-semibold text-flag" : team.isMine ? "font-semibold text-bone" : "text-bone-dim"}`}
+                  >
+                    {team.name}
+                  </span>
+                  {team.isMine && (
+                    <span className="mono shrink-0 text-[9px] tracking-[0.11em] text-amber">YOU</span>
+                  )}
+                  {chopped && !team.isMine && (
+                    <span className="mono shrink-0 text-[9px] tracking-[0.11em] text-flag">CHOP ZONE</span>
+                  )}
+                </div>
+                <span className="mono text-right text-[12px] font-medium tabular-nums text-bone-dim">
+                  {team.points?.toFixed(1) ?? "—"}
+                </span>
+                <span
+                  className={`mono text-right text-[12px] font-medium tabular-nums ${chopped ? "text-flag" : "text-bone"}`}
+                >
+                  {team.projected?.toFixed(1) ?? "—"}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+        {ordered.length === 0 && (
+          <p className="px-[13px] py-3 text-xs text-bone-dim">
+            The ladder appears when {card.platform} publishes Week {card.week} scores.
+          </p>
+        )}
+      </div>
+
+      <div className="mono flex items-center justify-between gap-[10px] text-[9.5px] tracking-[0.09em]">
+        <span className="text-stone">YOUR MARGIN TO THE LINE</span>
+        <span className={`text-[11px] font-medium tabular-nums ${margin !== null && margin >= 0 ? "text-turf" : "text-flag"}`}>
+          {margin === null ? "—" : `${margin >= 0 ? "+" : ""}${margin.toFixed(1)}`}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ box score */
+
+interface BoxScoreRow {
+  label: string;
+  mine: number;
+  opponent: number;
+}
+
+/** Groups both starting lineups by position — the shape of a settled week. */
+export function buildBoxScore(mine: MatchupPlayer[], opponent: MatchupPlayer[]): BoxScoreRow[] {
+  const groups: { label: string; positions: string[] }[] = [
+    { label: "QB", positions: ["QB"] },
+    { label: "RB", positions: ["RB"] },
+    { label: "WR", positions: ["WR"] },
+    { label: "TE", positions: ["TE"] },
+    { label: "K / DEF", positions: ["K", "DEF", "DST"] },
+  ];
+  const sum = (players: MatchupPlayer[], positions: string[]) =>
+    players
+      .filter((player) => positions.includes((player.position ?? "").toUpperCase()))
+      .reduce((total, player) => total + (player.currentPoints ?? 0), 0);
+  const totals = (players: MatchupPlayer[]) =>
+    players.reduce((total, player) => total + (player.currentPoints ?? 0), 0);
+
+  return [
+    ...groups.map((group) => ({
+      label: group.label,
+      mine: sum(mine, group.positions),
+      opponent: sum(opponent, group.positions),
+    })),
+    { label: "TOTAL", mine: totals(mine), opponent: totals(opponent) },
+  ];
+}
+
+function FinalBoxScore({ card }: { card: MatchupCard }) {
+  const mineStarters = card.mine.lineup?.starters ?? [];
+  const opponentStarters = card.opponent?.lineup?.starters ?? [];
+  const rows = buildBoxScore(mineStarters, opponentStarters);
+  const won = (card.mine.points ?? 0) >= (card.opponent?.points ?? 0);
+  const top = [...mineStarters, ...opponentStarters].sort(
+    (a, b) => (b.currentPoints ?? 0) - (a.currentPoints ?? 0)
+  )[0];
+
+  return (
+    <section className="flex flex-col gap-3 border-t border-ink-line pt-[13px]" aria-label="Final box score">
+      <div className="flex items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="mono text-[9.5px] tracking-[0.13em] text-stone">FINAL BOX SCORE</span>
+          <span className="text-[13px] text-bone-dim">Locked when the last game ended</span>
+        </div>
+        <span className="mono shrink-0 text-[9.5px] tracking-[0.11em] text-stone">WEEK {card.week}</span>
+      </div>
+
+      <div className="overflow-hidden rounded-[5px] border border-ink-line">
+        <div className="mono grid grid-cols-[minmax(0,1fr)_58px_58px] gap-2 border-b border-ink-line bg-deep px-3 py-[9px] text-[9.5px] tracking-[0.1em] text-stone">
+          <span>BY POSITION</span>
+          <span className="truncate text-right">YOU</span>
+          <span className="truncate text-right">OPP</span>
+        </div>
+        {rows.map((row) => {
+          const total = row.label === "TOTAL";
+          return (
+            <div
+              key={row.label}
+              className={`mono grid grid-cols-[minmax(0,1fr)_58px_58px] items-center gap-2 border-b border-ink-line px-3 py-[10px] last:border-b-0 ${total ? "bg-deep" : ""}`}
+            >
+              <span
+                className={`text-[10.5px] tracking-[0.09em] ${total ? "font-medium text-bone" : "text-bone-dim"}`}
+              >
+                {row.label}
+              </span>
+              <span
+                className={`text-right text-[11.5px] font-medium tabular-nums ${total && won ? "text-turf" : "text-bone"}`}
+              >
+                {row.mine.toFixed(1)}
+              </span>
+              <span
+                className={`text-right text-[11.5px] font-medium tabular-nums ${total && !won ? "text-turf" : "text-bone-dim"}`}
+              >
+                {row.opponent.toFixed(1)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mono flex items-center justify-between gap-[10px] text-[9.5px] tracking-[0.09em] text-stone">
+        <span className="truncate">
+          {top ? `TOP SCORER · ${top.name.toUpperCase()} ${numberLabel(top.currentPoints)}` : "NO LINEUP SYNCED"}
+        </span>
+        <span className="mono shrink-0 text-[10.5px] tracking-[0.08em] text-turf">
+          {recordLabel(
+            card.standings.find((team) => team.isMine)?.wins ?? 0,
+            card.standings.find((team) => team.isMine)?.losses ?? 0,
+            card.standings.find((team) => team.isMine)?.ties ?? 0
+          )}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------- other states */
+
+function ByeBody({ card }: { card: MatchupCard }) {
+  return (
+    <>
+      <p className="text-[13px] leading-relaxed text-bone-dim">
+        No opponent this week — an odd team count means you sit out week {card.week}. Your score still
+        counts toward the points-for tiebreak.
+      </p>
+      <span className="mono border-t border-ink-line pt-[11px] text-[10.5px] tracking-[0.06em] text-stone">
+        NEXT GAME WEEK {card.week + 1}
+      </span>
+    </>
+  );
+}
+
+function PreDraftBody({ card }: { card: MatchupCard }) {
+  return (
+    <>
+      <p className="text-[13px] leading-relaxed text-bone-dim">
+        Nothing to score yet. Slate fills this card the moment picks start.
+        {card.leagueFormat === "chopped"
+          ? " The Chopping Block appears after the draft."
+          : " Matchups and projections appear after the draft."}
+      </p>
+      <div className="mono flex items-center justify-between gap-[10px] border-t border-ink-line pt-[11px] text-[10.5px] tracking-[0.06em] text-stone">
+        <span className="truncate">{card.mine.teamId ? card.mine.name.toUpperCase() : "ROSTER PENDING"}</span>
+        <span>{card.teamCount ? `${card.teamCount} TEAMS` : ""}</span>
+      </div>
+    </>
+  );
+}
+
+function FailedBody({
+  card,
+  onOpenConnections,
+  onRetrySync,
+}: {
+  card: MatchupCard;
+  onOpenConnections?: () => void;
+  onRetrySync?: () => Promise<void>;
+}) {
+  const [retrying, setRetrying] = useState(false);
+
+  async function retry() {
+    setRetrying(true);
+    try {
+      if (onRetrySync) await onRetrySync();
+      else {
+        await fetch("/api/live/sync", { method: "POST", cache: "no-store" });
+        window.location.reload();
+      }
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  return (
+    <>
+      <p className="text-[13px] leading-relaxed text-bone-dim">
+        {retrying
+          ? `Retrying now — reconnecting to ${title(card.platform)}.`
+          : `${title(card.platform)} stopped returning this league ${syncLabel(card.syncFailure?.at ?? null)}. Scores below are from the last good sync.`}
+      </p>
+      <div className="flex items-center gap-2 border-t border-ink-line pt-[11px]">
+        <button
+          type="button"
+          onClick={retry}
+          disabled={retrying}
+          className="mono min-h-11 flex-1 cursor-pointer rounded-[4px] border border-flag px-[10px] py-[11px] text-[10.5px] tracking-[0.09em] text-flag disabled:cursor-wait"
+        >
+          {retrying ? "RETRYING…" : "RETRY SYNC"}
+        </button>
+        <button
+          type="button"
+          onClick={onOpenConnections}
+          className="mono min-h-11 flex-1 cursor-pointer rounded-[4px] border border-ink-line px-[10px] py-[11px] text-[10.5px] tracking-[0.09em] text-bone-dim"
+        >
+          CONNECTIONS
+        </button>
+      </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------- helpers */
+
+function isFlagged(player: MatchupPlayer): boolean {
+  const status = meaningfulStatus(player.injuryStatus);
+  return status !== null && status !== "HEALTHY";
 }
 
 function meaningfulStatus(status: string | null): string | null {
   if (!status || status.toLowerCase() === "active") return null;
   return status.toUpperCase();
-}
-
-function lockLabel(player: MatchupPlayer): string | null {
-  return player.game?.inProgress || player.game?.isOver ? "LOCKED" : null;
 }
 
 function slotLabel(slot: string | null): string {
@@ -639,6 +1101,21 @@ function numberLabel(value: number | null): string {
   return value === null ? "—" : value.toFixed(2);
 }
 
+function recordLabel(wins: number, losses: number, ties: number): string {
+  return ties > 0 ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
+}
+
+function title(platform: MatchupCard["platform"]): string {
+  return platform === "espn" ? "ESPN" : platform === "yahoo" ? "Yahoo" : "Sleeper";
+}
+
+export function marginLabel(diff: number, isFinal: boolean): string {
+  const amount = Math.abs(diff).toFixed(1);
+  if (diff === 0) return isFinal ? "tied" : "level";
+  if (isFinal) return diff > 0 ? `won by ${amount}` : `lost by ${amount}`;
+  return diff > 0 ? `up ${amount}` : `down ${amount}`;
+}
+
 function syncLabel(iso: string | null): string {
   if (!iso) return "UNKNOWN";
   return new Intl.DateTimeFormat("en-US", {
@@ -647,112 +1124,7 @@ function syncLabel(iso: string | null): string {
     hour: "numeric",
     minute: "2-digit",
     timeZone: "America/New_York",
-  }).format(new Date(iso)).toUpperCase();
-}
-
-function StatusRow({
-  label,
-  mine,
-  opponent,
-  live = false,
-}: {
-  label: string;
-  mine: number;
-  opponent: number | undefined;
-  live?: boolean;
-}) {
-  return (
-    <span className="mono grid grid-cols-[1fr_34px_34px] gap-2 border-t border-ink-line py-1 text-[9px] first:border-t-0">
-      <span className={live ? "text-amber" : "text-bone-dim"}>{label}</span>
-      <span className="text-right text-bone" aria-label={`You ${mine}`}>{mine}</span>
-      <span className="text-right text-bone" aria-label={`Opponent ${opponent ?? "unknown"}`}>
-        {opponent ?? "—"}
-      </span>
-    </span>
-  );
-}
-
-function PreDraft({ card }: { card: MatchupCard }) {
-  return (
-    <div>
-      <p className="text-sm font-semibold text-bone">Draft not started</p>
-      <p className="mt-1 text-xs text-bone-dim">
-        {card.teamCount ? `${card.teamCount} teams · ` : ""}
-        {card.leagueFormat === "chopped"
-          ? "Lowest score is eliminated each week. The Chopping Block will appear after the draft."
-          : "Matchups and projections will appear after the draft."}
-      </p>
-      <div className="mt-[14px] border-t border-ink-line pt-[11px] text-2xs text-bone-dim">
-        <span className="mono">{card.mine.teamId ? card.mine.name : "ROSTER PENDING"}</span>
-      </div>
-    </div>
-  );
-}
-
-function StateLabel({ isFinal, isLive, hasScore }: { isFinal: boolean; isLive: boolean; hasScore: boolean }) {
-  if (isFinal) {
-    return <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">FINAL</span>;
-  }
-  if (!hasScore) {
-    // Pre-kickoff. Amber is rationed for things actually happening.
-    return <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">PREGAME</span>;
-  }
-  if (!isLive) {
-    return <span className="mono text-[10px] tracking-[0.14em] text-bone-dim">IN PROGRESS</span>;
-  }
-  return (
-    <span className="mono flex items-center gap-[6px] text-[10px] tracking-[0.14em] text-amber">
-      <i className="pulse block h-2 w-2 rounded-full bg-amber" aria-hidden />
-      LIVE
-    </span>
-  );
-}
-
-function Row({
-  side,
-  isMine,
-  diff,
-  isFinal,
-}: {
-  side: Side | null;
-  isMine: boolean;
-  diff: number;
-  isFinal: boolean;
-}) {
-  if (!side) {
-    return (
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-sm text-bone-dim">No opponent this week</div>
-        <div className="display text-right text-[27px] leading-none text-bone-dim">—</div>
-      </div>
-    );
-  }
-
-  // Only my own score is colored. Coloring both sides would double the
-  // ink for one piece of information.
-  const tone = !isMine || diff === 0 ? "text-bone" : diff > 0 ? "text-turf" : "text-flag";
-
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <div className={`truncate text-sm ${isMine ? "font-semibold text-bone" : "text-bone-dim"}`}>
-          {side.name}
-        </div>
-        <div className="mono mt-[3px] text-2xs text-bone-dim">
-          {isFinal ? "final" : `proj ${side.projected?.toFixed(1) ?? "—"}`}
-        </div>
-      </div>
-      <div className={`display text-right text-[27px] leading-none ${tone}`}>
-        {side.points?.toFixed(1) ?? "—"}
-      </div>
-    </div>
-  );
-}
-
-function marginLabel(diff: number, isFinal: boolean, total: number): string {
-  if (total === 0) return "not started";
-  const amount = Math.abs(diff).toFixed(1);
-  if (diff === 0) return isFinal ? "tied" : "level";
-  if (isFinal) return diff > 0 ? `won by ${amount}` : `lost by ${amount}`;
-  return diff > 0 ? `up ${amount}` : `down ${amount}`;
+  })
+    .format(new Date(iso))
+    .toUpperCase();
 }

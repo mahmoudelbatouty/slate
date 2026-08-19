@@ -17,12 +17,15 @@ import {
   type StarterGame,
 } from "./game-state";
 import { canonicalLeagueType, choppedSummary } from "./league-format";
+import { buildScoreboard, type NflGameBox, type NflGameRow } from "./nfl-scoreboard";
 
 export type { WeekOption } from "./weeks";
 
 export interface Dashboard {
   configured: boolean;
   cards: MatchupCard[];
+  /** Real NFL games for the selected week — the "around the league" rail. */
+  games: NflGameBox[];
   lastSyncedAt: string | null;
   leagueCount: number;
   /** The week actually being shown, after clamping whatever was asked for. */
@@ -33,6 +36,7 @@ export interface Dashboard {
 const EMPTY: Dashboard = {
   configured: false,
   cards: [],
+  games: [],
   lastSyncedAt: null,
   leagueCount: 0,
   week: null,
@@ -87,6 +91,28 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
     .in("league_id", leagues.map((league) => league.id));
 
   if (teamError) throw new Error(`teams read: ${teamError.message}`);
+
+  // A league whose newest provider run errored keeps rendering its last good
+  // scores, but says so on the card. Newest-first, then first-seen wins.
+  const { data: runs, error: runError } = await client
+    .from("sync_runs")
+    .select("league_id, status, error, finished_at, started_at")
+    .eq("owner_id", ownerId)
+    .order("started_at", { ascending: false })
+    .limit(300);
+  if (runError) throw new Error(`sync runs read: ${runError.message}`);
+  const failureByLeague = new Map<string, { message: string | null; at: string | null }>();
+  const seenLeagues = new Set<string>();
+  for (const run of runs ?? []) {
+    if (!run.league_id || seenLeagues.has(run.league_id)) continue;
+    seenLeagues.add(run.league_id);
+    if (run.status === "error") {
+      failureByLeague.set(run.league_id, {
+        message: run.error,
+        at: run.finished_at ?? run.started_at,
+      });
+    }
+  }
 
   const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
   const rowByTeam = new Map((rows ?? []).map((r) => [`${r.week}:${r.team_id}`, r]));
@@ -199,6 +225,30 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
     }
   }
 
+  let games: NflGameBox[] = [];
+  if (week) {
+    const { data: gameRows, error: gameError } = await client
+      .from("nfl_games")
+      .select("game_id, home_team, away_team, start_time, status, is_over, in_progress, canceled, quarter, raw")
+      .eq("week", week)
+      .in("season", [...new Set(leagues.map((league) => league.season))]);
+    if (gameError) throw new Error(`nfl games read: ${gameError.message}`);
+    games = buildScoreboard(
+      (gameRows ?? []).map((row): NflGameRow => ({
+        gameId: row.game_id,
+        homeTeam: row.home_team,
+        awayTeam: row.away_team,
+        startTime: row.start_time,
+        status: row.status,
+        isOver: row.is_over,
+        inProgress: row.in_progress,
+        canceled: row.canceled,
+        quarter: row.quarter,
+        raw: row.raw,
+      }))
+    );
+  }
+
   let starterGames: StarterGame[] = [];
   if (week) {
     const { data: starterRows, error: starterError } = await client
@@ -270,6 +320,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
           opponent: null,
         },
         syncedAt: league.synced_at,
+        syncFailure: failureByLeague.get(league.id) ?? null,
         mine: {
           teamId: mineTeamForLeague?.id ?? "",
           externalId: mineTeamForLeague?.external_id ?? "",
@@ -411,6 +462,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
           : oppTeam ? summarizeStarterStates(opponentStarters) : null,
       },
       syncedAt: league.synced_at,
+      syncFailure: failureByLeague.get(league.id) ?? null,
       mine: {
         teamId: mineTeam.id,
         externalId: mineTeam.external_id,
@@ -446,6 +498,7 @@ export async function getDashboard(ownerId: string, requestedWeek?: number): Pro
   return {
     configured: true,
     cards,
+    games,
     lastSyncedAt: syncTimes.at(-1) ?? null,
     leagueCount: leagues.length,
     week,

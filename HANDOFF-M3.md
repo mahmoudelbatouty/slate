@@ -95,6 +95,45 @@ follows. Note `teams.avatar_url` still stores `sleepercdn.com` URLs from the
 adapter; nothing renders them today, and anything that starts to will need a
 remote pattern restored or the images proxied.
 
+### ESPN refresh is not on Slate's schedule — 2026-08-19
+
+Worth stating plainly because the numbers match and hide the difference: **ESPN
+has no server-side sync path at all.** Not live, not cron.
+
+- `REFRESH_PLATFORMS` in `src/app/api/live/sync/route.ts` is `["sleeper", "yahoo"]`.
+- `enabledPlatforms()` in `src/sync/run.ts` only ever builds Sleeper and Yahoo
+  connections, so the nightly cron never touches ESPN either.
+- ESPN data reaches Postgres only when the Chrome extension pushes a capture to
+  `/api/connector/ingest`, on its own `chrome.alarms` schedule:
+  `ESPN_LIVE_REFRESH_MS = 60_000`, `ESPN_IDLE_REFRESH_MS = 5 * 60_000` in
+  `connector/service-worker.js`.
+
+The cadence *numbers* land in the same place as the server's (`LIVE_POLL_MS`
+30s poll, `LIVE_SYNC_MIN_GAP_MS` 60s provider gap, `IDLE_POLL_MS` 5m). What
+differs is the precondition:
+
+| Situation | Sleeper / Yahoo | ESPN |
+| --- | --- | --- |
+| Dashboard open on any device | refreshes | no effect |
+| Desktop browser open, no Slate tab | refreshes (cron) | refreshes (alarms) |
+| Browser closed, or phone only | refreshes | **stale** |
+| Overnight, machine off | cron at 04:00 / 06:00 | **nothing** |
+| Provider session expired | unaffected (public API) | stops until re-sign-in |
+
+So on a Sunday spent on a phone, Sleeper stays live and ESPN freezes at whatever
+the desktop last captured. The card's "last synced" label stays honest, so this
+degrades rather than lying — but ESPN is the one that quietly stops, and it is
+why the RECONNECT path matters more for ESPN than for Sleeper: an expired ESPN
+session has no server-side fallback behind it.
+
+**This contradicts CLAUDE.md's sync-cadence section**, which says ESPN and Yahoo
+"must populate the same tables and types so they inherit the same cadence and
+weekly status model." ESPN does populate the same tables, so the UI is uniform
+and needs no provider-specific branch — but it does not inherit the cadence, it
+reimplements a parallel one in the extension. Closing that gap means giving ESPN
+a server-side read, which the connector exists precisely because ESPN does not
+offer. Recorded as a known asymmetry, not a bug to fix blind.
+
 ### Session decisions — 2026-08-18, late: measured type scale, prototype rows dropped
 
 **`--ui-scale` is derived now, not guessed.** Legibility tracks x-height rather
@@ -158,6 +197,8 @@ skip owner scoping.
   calibration and the derived desktop value, not measured on its own.
 - `transactions` is empty. Nothing reads it; the sync writes it only for leagues
   whose adapter reports transactions, and no UI surfaces them yet.
+- ESPN freshness depends on a desktop browser being awake — it has no
+  server-side sync path. See the ESPN refresh section above.
 - Notification delivery is still unwired — preferences are browser-local only.
 - Best-ball and playoff-bracket cards remain unbuilt because no adapter reports
   either shape.
